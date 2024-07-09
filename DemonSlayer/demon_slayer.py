@@ -29,16 +29,41 @@ class DemonSlayer(commands.Cog):
             "total_concentration": 0,
             "demon_moon_rank": None,
             "last_daily": None,
-            "trainings_completed": 0
+            "trainings_completed": 0,
+            "event_points": 0
         }
         default_guild = {
             "active_missions": {},
             "group_training": None,
             "hashira_challenge": None,
-            "last_invasion": None
+            "last_invasion": None,
+            "active_event": None,
+            "event_end_time": None
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
+        
+        self.seasonal_events = {
+            "Blood Moon Festival": {
+                "description": "Demons are stronger, but rewards are greater!",
+                "bonus_multiplier": 1.5,
+                "difficulty_increase": 1.2,
+                "duration": timedelta(days=3)
+            },
+            "Wisteria Bloom": {
+                "description": "The blooming wisteria weakens demons, making them easier to defeat!",
+                "bonus_multiplier": 1.2,
+                "difficulty_decrease": 0.8,
+                "duration": timedelta(days=5)
+            },
+            "Demon Slayer Corps Anniversary": {
+                "description": "Celebrate the founding of the Demon Slayer Corps with increased rewards!",
+                "bonus_multiplier": 2.0,
+                "difficulty_increase": 1.0,
+                "duration": timedelta(days=1)
+            }
+        }
+
         
         self.breathing_techniques = {
             "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
@@ -76,6 +101,29 @@ class DemonSlayer(commands.Cog):
         self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
         
         self.bot.loop.create_task(self.migrate_user_data())
+        self.bg_task = self.bot.loop.create_task(self.event_background_task())
+        
+        def cog_unload(self):
+            self.bg_task.cancel()
+            
+    async def event_background_task(self):
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            for guild in self.bot.guilds:
+                guild_data = await self.config.guild(guild).all()
+                if not guild_data['active_event'] or datetime.now() > guild_data['event_end_time']:
+                    # Start a new event
+                    event_name = random.choice(list(self.seasonal_events.keys()))
+                    event_data = self.seasonal_events[event_name]
+                    end_time = datetime.now() + event_data['duration']
+                    await self.config.guild(guild).active_event.set(event_name)
+                    await self.config.guild(guild).event_end_time.set(end_time.isoformat())
+                    
+                    announcement_channel = guild.system_channel or guild.text_channels[0]
+                    await announcement_channel.send(f"🎉 The {event_name} has begun! {event_data['description']} This event will last for {event_data['duration'].days} days.")
+            
+            await asyncio.sleep(3600)  # Check every hour
+
 
     async def migrate_user_data(self):
         await self.bot.wait_until_ready()
@@ -94,6 +142,40 @@ class DemonSlayer(commands.Cog):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
+            
+    @ds.command(name="event")
+    async def check_event(self, ctx):
+        """Check the current seasonal event."""
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
+        
+        if not active_event:
+            return await ctx.send("There is no active event at the moment.")
+        
+        event_data = self.seasonal_events[active_event]
+        end_time = datetime.fromisoformat(guild_data['event_end_time'])
+        time_left = end_time - datetime.now()
+        
+        embed = discord.Embed(title=f"Active Event: {active_event}", color=discord.Color.gold())
+        embed.add_field(name="Description", value=event_data['description'], inline=False)
+        embed.add_field(name="Bonus Multiplier", value=f"{event_data['bonus_multiplier']}x", inline=True)
+        embed.add_field(name="Time Left", value=f"{time_left.days}d {time_left.seconds // 3600}h {(time_left.seconds // 60) % 60}m", inline=True)
+        
+        await ctx.send(embed=embed)
+
+    @ds.command(name="event_leaderboard")
+    async def event_leaderboard(self, ctx):
+        """View the event leaderboard."""
+        all_users = await self.config.all_users()
+        sorted_users = sorted(all_users.items(), key=lambda x: x[1]['event_points'], reverse=True)[:10]
+        
+        embed = discord.Embed(title="Event Leaderboard", color=discord.Color.gold())
+        for i, (user_id, data) in enumerate(sorted_users, 1):
+            user = self.bot.get_user(user_id)
+            if user:
+                embed.add_field(name=f"{i}. {user.name}", value=f"Event Points: {data['event_points']}", inline=False)
+        
+        await ctx.send(embed=embed)
 
     @ds.command(name="assign_technique")
     async def assign_breathing_technique(self, ctx):
@@ -155,7 +237,7 @@ class DemonSlayer(commands.Cog):
         await ctx.send(f"{ctx.author.mention}, your Nichirin Blade turns **{color}**!")
 
     @ds.command(name="train")
-    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
+    @commands.cooldown(1, 7200, commands.BucketType.user)
     async def train(self, ctx):
         """Undergo training to improve your skills."""
         user_data = await self.config.user(ctx.author).all()
@@ -179,12 +261,25 @@ class DemonSlayer(commands.Cog):
         mastery_gained = random.randint(10, 30)
         points_earned = random.randint(5, 15)
 
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
+        
+        if active_event:
+            event_data = self.seasonal_events[active_event]
+            mastery_gained = int(mastery_gained * event_data['bonus_multiplier'])
+            points_earned = int(points_earned * event_data['bonus_multiplier'])
+
         async with self.config.user(ctx.author).all() as user_data:
             user_data['technique_mastery'] += mastery_gained
             user_data['slayer_points'] += points_earned
             user_data['trainings_completed'] = user_data.get('trainings_completed', 0) + 1
+            if active_event:
+                user_data['event_points'] = user_data.get('event_points', 0) + points_earned
 
         await ctx.send(f"Training complete! You gained {mastery_gained} Technique Mastery and {points_earned} Slayer Points.")
+        if active_event:
+            await ctx.send(f"Event bonus applied! You also earned {points_earned} Event Points.")
+        
         await self.check_rank_up(ctx)
 
     @ds.command(name="quote")
@@ -295,13 +390,19 @@ class DemonSlayer(commands.Cog):
 
     async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
-        current_rank_index = self.ranks.index(user_data['rank'])
-        xp_required = (current_rank_index + 1) * 1000
+        current_rank = self.calculate_rank(user_data)
+        next_rank = self.get_next_rank(current_rank)
 
-        if user_data['experience'] >= xp_required and current_rank_index < len(self.ranks) - 1:
-            new_rank = self.ranks[current_rank_index + 1]
-            await self.config.user(ctx.author).rank.set(new_rank)
-            await ctx.send(f"Congratulations {ctx.author.mention}! You've been promoted to the rank of **{new_rank}**!")
+        if (user_data.get('slayer_points', 0) >= next_rank['points'] and
+            user_data.get('missions_completed', 0) >= next_rank['missions'] and
+            user_data.get('tasks_completed', 0) >= next_rank['tasks'] and
+            user_data.get('trainings_completed', 0) >= next_rank['trainings']):
+            
+            await self.config.user(ctx.author).rank.set(next_rank['name'])
+            await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {next_rank['name']}!")
+
+            if next_rank['name'] == "Hashira Candidate":
+                await ctx.send("You are now a Hashira Candidate! Complete the Hashira Trial to become a full-fledged Hashira.")
 
     async def check_new_form(self, ctx):
         user_data = await self.config.user(ctx.author).all()
@@ -403,29 +504,51 @@ class DemonSlayer(commands.Cog):
         reward_points = random.randint(10, 50)
         mastery_increase = random.randint(5, 15)
 
-        await self.config.user(ctx.author).slayer_points.set(user_data['slayer_points'] + reward_points)
-        await self.config.user(ctx.author).technique_mastery.set(user_data['technique_mastery'] + mastery_increase)
-        await self.config.user(ctx.author).last_daily.set(now.isoformat())
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
+        
+        if active_event:
+            event_data = self.seasonal_events[active_event]
+            reward_points = int(reward_points * event_data['bonus_multiplier'])
+            mastery_increase = int(mastery_increase * event_data['bonus_multiplier'])
+
+        async with self.config.user(ctx.author).all() as user_data:
+            user_data['slayer_points'] += reward_points
+            user_data['technique_mastery'] += mastery_increase
+            user_data['last_daily'] = now.isoformat()
+            if active_event:
+                user_data['event_points'] = user_data.get('event_points', 0) + reward_points
 
         await ctx.send(f"{ctx.author.mention}, you've claimed your daily reward!\n"
                        f"• {reward_points} Slayer Points\n"
                        f"• {mastery_increase} Technique Mastery")
+        if active_event:
+            await ctx.send(f"Event bonus applied! You also earned {reward_points} Event Points.")
 
-    @commands.cooldown(1, 3600, commands.BucketType.user)  # 1-hour cooldown
     @ds.command(name="boss")
+    @commands.cooldown(1, 3600, commands.BucketType.user)
     async def boss_battle(self, ctx):
         """Initiate a boss battle against a powerful demon."""
         user_data = await self.config.user(ctx.author).all()
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
         
         boss = random.choice(["Rui", "Gyutaro", "Daki", "Akaza", "Doma"])
         boss_health = random.randint(1000, 2000)
         player_health = 1000
         turns = 0
         
+        if active_event:
+            event_data = self.seasonal_events[active_event]
+            if 'difficulty_increase' in event_data:
+                boss_health = int(boss_health * event_data['difficulty_increase'])
+            elif 'difficulty_decrease' in event_data:
+                boss_health = int(boss_health * event_data['difficulty_decrease'])
+        
         battle_log = []
 
         embed = discord.Embed(title=f"Boss Battle: {ctx.author.name} vs {boss}", color=discord.Color.red())
-        embed.add_field(name="Boss Health", value=f"{boss_health}/2000", inline=True)
+        embed.add_field(name="Boss Health", value=f"{boss_health}/{boss_health}", inline=True)
         embed.add_field(name="Your Health", value=f"{player_health}/1000", inline=True)
         message = await ctx.send(embed=embed)
 
@@ -441,7 +564,7 @@ class DemonSlayer(commands.Cog):
 
             if turns % 3 == 0 or boss_health <= 0 or player_health <= 0:
                 embed.clear_fields()
-                embed.add_field(name="Boss Health", value=f"{max(0, boss_health)}/2000", inline=True)
+                embed.add_field(name="Boss Health", value=f"{max(0, boss_health)}/{boss_health}", inline=True)
                 embed.add_field(name="Your Health", value=f"{max(0, player_health)}/1000", inline=True)
                 embed.add_field(name="Battle Log", value="\n".join(battle_log[-3:]), inline=False)
                 await message.edit(embed=embed)
@@ -451,13 +574,22 @@ class DemonSlayer(commands.Cog):
             xp_reward = random.randint(500, 1000)
             slayer_points = random.randint(50, 100)
             
+            if active_event:
+                event_data = self.seasonal_events[active_event]
+                xp_reward = int(xp_reward * event_data['bonus_multiplier'])
+                slayer_points = int(slayer_points * event_data['bonus_multiplier'])
+            
             async with self.config.user(ctx.author).all() as user_data:
                 user_data['technique_mastery'] += xp_reward
                 user_data['slayer_points'] += slayer_points
                 user_data['demons_slayed'] += 1
+                if active_event:
+                    user_data['event_points'] = user_data.get('event_points', 0) + slayer_points
 
             embed.add_field(name="Result", value=f"Victory! You've defeated {boss}!", inline=False)
             embed.add_field(name="Rewards", value=f"XP: {xp_reward}\nSlayer Points: {slayer_points}", inline=False)
+            if active_event:
+                embed.add_field(name="Event Bonus", value=f"You also earned {slayer_points} Event Points!", inline=False)
         else:
             embed.add_field(name="Result", value=f"Defeat... {boss} was too powerful. Train harder and try again!", inline=False)
 
@@ -553,16 +685,26 @@ class DemonSlayer(commands.Cog):
         task = random.choice(tasks)
         points_earned = random.randint(5, 15)
         
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
+        
+        if active_event:
+            event_data = self.seasonal_events[active_event]
+            points_earned = int(points_earned * event_data['bonus_multiplier'])
+        
         await ctx.send(f"{ctx.author.mention}, your task: {task}")
         await asyncio.sleep(5)  # Simulating task completion time
         
         async with self.config.user(ctx.author).all() as user_data:
             user_data['slayer_points'] += points_earned
             user_data['tasks_completed'] += 1
+            if active_event:
+                user_data['event_points'] = user_data.get('event_points', 0) + points_earned
         
         await ctx.send(f"Task completed! You earned {points_earned} Slayer Points.")
+        if active_event:
+            await ctx.send(f"Event bonus applied! You also earned {points_earned} Event Points.")
         await self.check_rank_up(ctx)
-
 
     @ds.command(name="invasion")
     @commands.guild_only()
@@ -609,13 +751,25 @@ class DemonSlayer(commands.Cog):
         await ctx.send("Mission accepted! The outcome will be determined shortly...")
         await asyncio.sleep(10)  # Simulating mission time
 
+        guild_data = await self.config.guild(ctx.guild).all()
+        active_event = guild_data['active_event']
+
         success = random.random() < 0.6  # 60% success rate
         if success:
             points_earned = random.randint(50, 100)
+            if active_event:
+                event_data = self.seasonal_events[active_event]
+                points_earned = int(points_earned * event_data['bonus_multiplier'])
+            
             async with self.config.user(ctx.author).all() as user_data:
                 user_data['slayer_points'] += points_earned
                 user_data['missions_completed'] += 1
+                if active_event:
+                    user_data['event_points'] = user_data.get('event_points', 0) + points_earned
+            
             await ctx.send(f"Mission successful! You earned {points_earned} Slayer Points.")
+            if active_event:
+                await ctx.send(f"Event bonus applied! You also earned {points_earned} Event Points.")
         else:
             await ctx.send("Despite your best efforts, the mission was not successful. Keep training and try again!")
 
@@ -636,7 +790,21 @@ class DemonSlayer(commands.Cog):
         if not user_data['breathing_technique']:
             return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique to fight in the invasion! Use `[p]ds assign_technique` first.")
         
-        await ctx.send(f"{ctx.author.mention} joins the battle against the invading demons! Fight bravely!")
+        active_event = guild_data['active_event']
+        points_earned = random.randint(10, 30)
+        
+        if active_event:
+            event_data = self.seasonal_events[active_event]
+            points_earned = int(points_earned * event_data['bonus_multiplier'])
+        
+        async with self.config.user(ctx.author).all() as user_data:
+            user_data['slayer_points'] += points_earned
+            if active_event:
+                user_data['event_points'] = user_data.get('event_points', 0) + points_earned
+        
+        await ctx.send(f"{ctx.author.mention} joins the battle against the invading demons! You earned {points_earned} Slayer Points for your bravery.")
+        if active_event:
+            await ctx.send(f"Event bonus applied! You also earned {points_earned} Event Points.")
 
     async def start_invasion(self, guild):
         channel = guild.system_channel or random.choice(guild.text_channels)
@@ -651,11 +819,20 @@ class DemonSlayer(commands.Cog):
         participants = [member for member in guild.members if await self.config.user(member).breathing_technique()]
         survivors = random.sample(participants, k=max(1, len(participants) * 2 // 3))
         
+        guild_data = await self.config.guild(guild).all()
+        active_event = guild_data['active_event']
+        
         for survivor in survivors:
             points = random.randint(10, 50)
-            user_data = await self.config.user(survivor).all()
-            await self.config.user(survivor).slayer_points.set(user_data['slayer_points'] + points)
-            await self.config.user(survivor).technique_mastery.set(user_data['technique_mastery'] + random.randint(5, 15))
+            if active_event:
+                event_data = self.seasonal_events[active_event]
+                points = int(points * event_data['bonus_multiplier'])
+            
+            async with self.config.user(survivor).all() as user_data:
+                user_data['slayer_points'] += points
+                user_data['technique_mastery'] += random.randint(5, 15)
+                if active_event:
+                    user_data['event_points'] = user_data.get('event_points', 0) + points
         
         await channel.send("The demon invasion has been repelled! Congratulations to all participants!\n"
                            f"Survivors: {', '.join(survivor.mention for survivor in survivors)}\n"
@@ -900,9 +1077,9 @@ class DemonSlayer(commands.Cog):
     def calculate_rank(self, user_data):
         for rank in reversed(self.ranks):
             if (user_data.get('slayer_points', 0) >= rank['points'] and
-                user_data.get('missions_completed', 0) >= rank['missions'] and
-                user_data.get('tasks_completed', 0) >= rank['tasks'] and
-                user_data.get('trainings_completed', 0) >= rank['trainings']):
+                user_data.get('missions_completed', 0) >= rank.get('missions', 0) and
+                user_data.get('tasks_completed', 0) >= rank.get('tasks', 0) and
+                user_data.get('trainings_completed', 0) >= rank.get('trainings', 0)):
                 return rank
         return self.ranks[0]  # Default to lowest rank
 
