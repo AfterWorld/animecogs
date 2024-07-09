@@ -34,14 +34,18 @@ class DemonSlayer(commands.Cog):
             "form_mastery": {},
             "secondary_technique": None,
             "technique_mastery": {},
-            "demon": False,
+            "is_demon": False,
             "demon_blood_art": None,
             "companion": None,
-            "appearance": {},
+            "appearance": {
+                "hair": "",
+                "eyes": "",
+                "outfit": ""
+            },
             "background_story": "",
             "exam_status": "Not Taken",
             "current_location": "Butterfly Mansion",
-            "guild": None,
+            "guild_name": None,
             "pvp_rating": 1000
         }
         default_guild = {
