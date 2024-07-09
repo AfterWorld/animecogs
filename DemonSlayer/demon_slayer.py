@@ -2149,6 +2149,96 @@ class DemonSlayer(commands.Cog):
         if current_index < len(self.ranks) - 1:
             return self.ranks[current_index + 1]
         return current_rank  # Return current rank if it's the highes
+    
+     @commands.command()
+    async def ds_update_guide(self, ctx):
+        """Display a guide for all new Demon Slayer cog features"""
+
+        pages = [
+            {
+                "title": "Demon Slayer Cog Update Guide",
+                "description": "Welcome to the comprehensive guide for all new Demon Slayer cog features! Use the reactions to navigate through the guide."
+            },
+            {
+                "title": "1. Guild System",
+                "description": "Join or create guilds with fellow Demon Slayers!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds guild create <name>` - Create a new guild\n"
+                               "• `[p]ds guild join <name>` - Join an existing guild\n"
+                               "• `[p]ds guild mission` - Start a guild mission\n"
+                               "• `[p]ds guild challenge <other_guild>` - Challenge another guild\n"
+                               "• `[p]ds guild info [guild_name]` - Display guild information"
+            },
+            {
+                "title": "2. Companion System",
+                "description": "Recruit companions to assist you in battles and activities!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds companion info` - Display information about your companion\n"
+                               "• `[p]ds companion obtain` - Try to obtain a new companion\n\n"
+                               "Companions provide bonuses in battles and training sessions."
+            },
+            {
+                "title": "3. PvP System",
+                "description": "Engage in battles with other Demon Slayers!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds pvp queue` - Join the PvP queue for matchmaking\n"
+                               "• `[p]ds pvp leave` - Leave the PvP queue\n"
+                               "• `[p]ds pvp stats` - View your PvP stats\n\n"
+                               "Battle other players to climb the ranks and earn rewards!"
+            },
+            {
+                "title": "4. Demon Transformation",
+                "description": "Choose the path of a demon with unique abilities!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds demon transform` - Transform into a demon\n"
+                               "• `[p]ds demon info` - Display your demon information\n"
+                               "• `[p]ds demon feed` - Feed on humans to increase your demon power\n"
+                               "• `[p]ds demon use_ability <ability_name>` - Use a demon ability\n\n"
+                               "Demons have their own progression system and unique powers!"
+            },
+            {
+                "title": "5. Character Customization",
+                "description": "Personalize your Demon Slayer character!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds character set_appearance` - Set your character's appearance\n"
+                               "• `[p]ds character set_background` - Set your character's background story\n"
+                               "• `[p]ds character set_nickname <nickname>` - Set your character's nickname\n"
+                               "• `[p]ds character info` - View your character's information"
+            },
+            {
+                "title": "6. Demon Slayer Exam",
+                "description": "Take the official Demon Slayer Exam to progress in your journey!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds exam start` - Start the Demon Slayer Exam\n"
+                               "• `[p]ds exam status` - Check your exam status\n\n"
+                               "The exam consists of a Written Test, Physical Test, and Final Selection. "
+                               "Passing the exam unlocks new features and opportunities!"
+            },
+            {
+                "title": "7. Location-based Activities",
+                "description": "Explore various locations, each with unique activities and challenges!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds location travel <destination>` - Travel to a new location\n"
+                               "• `[p]ds location explore` - Explore your current location\n"
+                               "• `[p]ds location activity <activity_name>` - Perform a location-specific activity\n"
+                               "• `[p]ds location encounter` - Trigger a demon encounter\n"
+                               "• `[p]ds location map` - View the world map\n\n"
+                               "Each location has its own set of activities, demon threats, and difficulty level!"
+            },
+            {
+                "title": "Conclusion",
+                "description": "These new features greatly expand the Demon Slayer experience!\n\n"
+                               "Remember to check individual command helps for more detailed information.\n\n"
+                               "Happy demon slaying!"
+            }
+        ]
+
+        embed_pages = []
+        for page in pages:
+            embed = discord.Embed(title=page["title"], description=page["description"], color=discord.Color.red())
+            embed_pages.append(embed)
+
+        await menu(ctx, embed_pages, DEFAULT_CONTROLS)
 
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
