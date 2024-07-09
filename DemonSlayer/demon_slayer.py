@@ -2148,19 +2148,42 @@ class DemonSlayer(commands.Cog):
         current_index = self.ranks.index(current_rank)
         if current_index < len(self.ranks) - 1:
             return self.ranks[current_index + 1]
-        return current_rank  # Return current rank if it's the highes
+        return current_rank  # Return current rank if it's the highest
     
-    @commands.command()
-    async def ds_update_guide(self, ctx):
-        """Display a guide for all new Demon Slayer cog features"""
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+
+        if message.content.lower() in ["how to play", "how do i play", "how do you play"]:
+            ctx = await self.bot.get_context(message)
+            if ctx.valid:
+                prefix = ctx.prefix
+            else:
+                prefix = (await self.bot.get_prefix(message))[0]
+            
+            response = f"To learn how to play the Demon Slayer game, type `{prefix}ds guide` for a comprehensive guide!"
+            await message.channel.send(response)
+    
+    @ds.command(name="guide")
+    async def ds_guide(self, ctx):
+        """Display a guide for all Demon Slayer cog features"""
 
         pages = [
             {
-                "title": "Demon Slayer Cog Update Guide",
-                "description": "Welcome to the comprehensive guide for all new Demon Slayer cog features! Use the reactions to navigate through the guide."
+                "title": "Demon Slayer Cog Guide",
+                "description": "Welcome to the comprehensive guide for all Demon Slayer cog features! Use the reactions to navigate through the guide."
             },
             {
-                "title": "1. Guild System",
+                "title": "1. Getting Started",
+                "description": "Begin your journey as a Demon Slayer!\n\n"
+                               "Commands:\n"
+                               "• `[p]ds start` - Create your Demon Slayer character\n"
+                               "• `[p]ds profile` - View your Demon Slayer profile\n"
+                               "• `[p]ds train` - Train to improve your skills"
+            },
+            {
+                "title": "2. Guild System",
                 "description": "Join or create guilds with fellow Demon Slayers!\n\n"
                                "Commands:\n"
                                "• `[p]ds guild create <name>` - Create a new guild\n"
@@ -2170,7 +2193,7 @@ class DemonSlayer(commands.Cog):
                                "• `[p]ds guild info [guild_name]` - Display guild information"
             },
             {
-                "title": "2. Companion System",
+                "title": "3. Companion System",
                 "description": "Recruit companions to assist you in battles and activities!\n\n"
                                "Commands:\n"
                                "• `[p]ds companion info` - Display information about your companion\n"
@@ -2178,7 +2201,7 @@ class DemonSlayer(commands.Cog):
                                "Companions provide bonuses in battles and training sessions."
             },
             {
-                "title": "3. PvP System",
+                "title": "4. PvP System",
                 "description": "Engage in battles with other Demon Slayers!\n\n"
                                "Commands:\n"
                                "• `[p]ds pvp queue` - Join the PvP queue for matchmaking\n"
@@ -2187,7 +2210,7 @@ class DemonSlayer(commands.Cog):
                                "Battle other players to climb the ranks and earn rewards!"
             },
             {
-                "title": "4. Demon Transformation",
+                "title": "5. Demon Transformation",
                 "description": "Choose the path of a demon with unique abilities!\n\n"
                                "Commands:\n"
                                "• `[p]ds demon transform` - Transform into a demon\n"
@@ -2197,7 +2220,7 @@ class DemonSlayer(commands.Cog):
                                "Demons have their own progression system and unique powers!"
             },
             {
-                "title": "5. Character Customization",
+                "title": "6. Character Customization",
                 "description": "Personalize your Demon Slayer character!\n\n"
                                "Commands:\n"
                                "• `[p]ds character set_appearance` - Set your character's appearance\n"
@@ -2206,7 +2229,7 @@ class DemonSlayer(commands.Cog):
                                "• `[p]ds character info` - View your character's information"
             },
             {
-                "title": "6. Demon Slayer Exam",
+                "title": "7. Demon Slayer Exam",
                 "description": "Take the official Demon Slayer Exam to progress in your journey!\n\n"
                                "Commands:\n"
                                "• `[p]ds exam start` - Start the Demon Slayer Exam\n"
@@ -2215,7 +2238,7 @@ class DemonSlayer(commands.Cog):
                                "Passing the exam unlocks new features and opportunities!"
             },
             {
-                "title": "7. Location-based Activities",
+                "title": "8. Location-based Activities",
                 "description": "Explore various locations, each with unique activities and challenges!\n\n"
                                "Commands:\n"
                                "• `[p]ds location travel <destination>` - Travel to a new location\n"
@@ -2227,7 +2250,7 @@ class DemonSlayer(commands.Cog):
             },
             {
                 "title": "Conclusion",
-                "description": "These new features greatly expand the Demon Slayer experience!\n\n"
+                "description": "This guide covers the main features of the Demon Slayer game!\n\n"
                                "Remember to check individual command helps for more detailed information.\n\n"
                                "Happy demon slaying!"
             }
@@ -2239,6 +2262,6 @@ class DemonSlayer(commands.Cog):
             embed_pages.append(embed)
 
         await menu(ctx, embed_pages, DEFAULT_CONTROLS)
-
+        
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
