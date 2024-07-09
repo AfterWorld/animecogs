@@ -27,7 +27,8 @@ class DemonSlayer(commands.Cog):
             "technique_mastery": 0,
             "slayer_points": 0,
             "total_concentration": 0,
-            "demon_moon_rank": None
+            "demon_moon_rank": None,
+            "last_daily": None
         }
         default_guild = {
             "active_missions": {},
@@ -400,21 +401,16 @@ class DemonSlayer(commands.Cog):
             time_left = datetime.fromisoformat(last_daily) + timedelta(days=1) - now
             return await ctx.send(f"{ctx.author.mention}, you can claim your next daily reward in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
 
-        xp_reward = random.randint(100, 300)
-        steel_reward = random.randint(1, 5)
-        scarlet_ore_reward = random.randint(0, 2)
+        reward_points = random.randint(10, 50)
+        mastery_increase = random.randint(5, 15)
 
-        await self.add_xp(ctx.author, xp_reward)
-        async with self.config.user(ctx.author).nichirin_materials() as materials:
-            materials['steel'] += steel_reward
-            materials['scarlet_ore'] += scarlet_ore_reward
-
+        await self.config.user(ctx.author).slayer_points.set(user_data['slayer_points'] + reward_points)
+        await self.config.user(ctx.author).technique_mastery.set(user_data['technique_mastery'] + mastery_increase)
         await self.config.user(ctx.author).last_daily.set(now.isoformat())
 
-        await ctx.send(f"{ctx.author.mention}, you've claimed your daily reward!\nYou received:\n"
-                       f"• {xp_reward} XP\n"
-                       f"• {steel_reward} steel\n"
-                       f"• {scarlet_ore_reward} scarlet ore")
+        await ctx.send(f"{ctx.author.mention}, you've claimed your daily reward!\n"
+                       f"• {reward_points} Slayer Points\n"
+                       f"• {mastery_increase} Technique Mastery")
 
     @ds.command(name="boss")
     async def boss_battle(self, ctx):
