@@ -898,24 +898,6 @@ class DemonSlayer(commands.Cog):
             # Implement player vs player battle logic here
             await ctx.send("Player vs Player battles are not implemented yet.")
 
-    @ds.command(name="train")
-    async def ds_train(self, ctx):
-        """Train to improve your skills"""
-        user_data = await self.config.user(ctx.author).all()
-        
-        base_exp_gain = random.randint(10, 20)
-        
-        # Apply companion effects
-        training_stats = {'experience': base_exp_gain}
-        training_stats = await self.apply_companion_effects(ctx.author, training_stats)
-        
-        exp_gain = training_stats['experience']
-        
-        user_data['technique_mastery'] += exp_gain
-        await self.config.user(ctx.author).set(user_data)
-        
-        await ctx.send(f"{ctx.author.mention} trained hard and gained {exp_gain} experience!")
-
     @ds.group(name="companion")
     async def ds_companion(self, ctx):
         """Companion-related commands"""
