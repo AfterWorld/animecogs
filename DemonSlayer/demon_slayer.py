@@ -23,10 +23,14 @@ class DemonSlayer(commands.Cog):
             "rank": "Mizunoto",
             "experience": 0,
             "known_forms": [],
-            "last_mission": None
+            "last_mission": None,
+            "last_daily": None,
+            "nichirin_materials": {"steel": 0, "scarlet_ore": 0},
+            "boss_cooldown": None
         }
         default_guild = {
-            "active_missions": {}
+            "active_missions": {},
+            "group_training": None
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
@@ -126,12 +130,13 @@ class DemonSlayer(commands.Cog):
         Training will give you experience points and potentially help you learn new forms.
         You can train once every 30 minutes.
         """
-        user_technique = await self.config.user(ctx.author).breathing_technique()
+        user_data = await self.config.user(ctx.author).all()
+        user_technique = user_data['breathing_technique']
         if not user_technique:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first! Use `[p]ds assign_technique`")
         
-        known_forms = await self.config.user(ctx.author).known_forms()
+        known_forms = user_data['known_forms']
         form = random.choice(known_forms)
         exercises = [
             f"practices {form} 1000 times",
@@ -144,6 +149,8 @@ class DemonSlayer(commands.Cog):
         xp_gained = random.randint(50, 100)
         await self.add_xp(ctx.author, xp_gained)
         await ctx.send(f"{ctx.author.mention} {exercise}. Your {user_technique} Breathing skills have improved! You gained {xp_gained} XP!")
+        await self.check_rank_up(ctx)
+        await self.check_new_form(ctx)
 
     @ds.command(name="quote")
     async def demon_quote(self, ctx):
@@ -279,8 +286,8 @@ class DemonSlayer(commands.Cog):
             await ctx.send(f"{ctx.author.mention}, despite your best efforts, {mission['demon']} managed to escape. Better luck next time!")
 
     async def add_xp(self, user, amount):
-        async with self.config.user(user).experience() as xp:
-            xp += amount
+        current_xp = await self.config.user(user).experience()
+        await self.config.user(user).experience.set(current_xp + amount)t
 
     async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
@@ -377,6 +384,145 @@ class DemonSlayer(commands.Cog):
 
         await bank.withdraw_credits(ctx.author, item["cost"])
         await item["effect"](ctx)
+        
+    @ds.command(name="daily")
+    async def daily_reward(self, ctx):
+        """Claim your daily reward of experience and materials."""
+        user_data = await self.config.user(ctx.author).all()
+        last_daily = user_data['last_daily']
+        now = datetime.now()
+
+        if last_daily and datetime.fromisoformat(last_daily) + timedelta(days=1) > now:
+            time_left = datetime.fromisoformat(last_daily) + timedelta(days=1) - now
+            return await ctx.send(f"{ctx.author.mention}, you can claim your next daily reward in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
+
+        xp_reward = random.randint(100, 300)
+        steel_reward = random.randint(1, 5)
+        scarlet_ore_reward = random.randint(0, 2)
+
+        await self.add_xp(ctx.author, xp_reward)
+        async with self.config.user(ctx.author).nichirin_materials() as materials:
+            materials['steel'] += steel_reward
+            materials['scarlet_ore'] += scarlet_ore_reward
+
+        await self.config.user(ctx.author).last_daily.set(now.isoformat())
+
+        await ctx.send(f"{ctx.author.mention}, you've claimed your daily reward!\nYou received:\n"
+                       f"• {xp_reward} XP\n"
+                       f"• {steel_reward} steel\n"
+                       f"• {scarlet_ore_reward} scarlet ore")
+
+    @ds.command(name="boss")
+    async def boss_battle(self, ctx):
+        """Initiate a boss battle against a powerful demon."""
+        user_data = await self.config.user(ctx.author).all()
+        now = datetime.now()
+
+        if user_data['boss_cooldown'] and datetime.fromisoformat(user_data['boss_cooldown']) > now:
+            time_left = datetime.fromisoformat(user_data['boss_cooldown']) - now
+            return await ctx.send(f"{ctx.author.mention}, you're still recovering from your last boss battle. You can challenge a boss again in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
+
+        boss = random.choice(["Rui", "Gyutaro", "Daki", "Akaza", "Doma"])
+        boss_health = random.randint(1000, 2000)
+        player_health = 1000
+        turns = 0
+
+        await ctx.send(f"{ctx.author.mention}, you've encountered the demon {boss} with {boss_health} health! Prepare for battle!")
+
+        while boss_health > 0 and player_health > 0:
+            turns += 1
+            player_damage = random.randint(50, 200)
+            boss_damage = random.randint(50, 150)
+
+            boss_health -= player_damage
+            player_health -= boss_damage
+
+            await ctx.send(f"Turn {turns}:\n"
+                           f"You deal {player_damage} damage to {boss}. Boss health: {max(0, boss_health)}\n"
+                           f"{boss} deals {boss_damage} damage to you. Your health: {max(0, player_health)}")
+
+            await asyncio.sleep(2)
+
+        if boss_health <= 0:
+            xp_reward = random.randint(500, 1000)
+            await self.add_xp(ctx.author, xp_reward)
+            await ctx.send(f"Victory! You've defeated {boss} and gained {xp_reward} XP!")
+        else:
+            await ctx.send(f"Defeat... {boss} was too powerful. Train harder and try again!")
+
+        await self.config.user(ctx.author).boss_cooldown.set((now + timedelta(hours=12)).isoformat())
+
+    @ds.command(name="craft")
+    async def craft_nichirin(self, ctx):
+        """Craft or reforge your Nichirin Blade."""
+        user_data = await self.config.user(ctx.author).all()
+        materials = user_data['nichirin_materials']
+
+        if materials['steel'] < 10 or materials['scarlet_ore'] < 5:
+            return await ctx.send(f"{ctx.author.mention}, you don't have enough materials to craft a Nichirin Blade. You need 10 steel and 5 scarlet ore.")
+
+        new_color = random.choice(["Red", "Orange", "Yellow", "Green", "Blue", "Indigo", "Violet", "Black", "White"])
+        
+        async with self.config.user(ctx.author).nichirin_materials() as mats:
+            mats['steel'] -= 10
+            mats['scarlet_ore'] -= 5
+
+        await self.config.user(ctx.author).nichirin_color.set(new_color)
+
+        await ctx.send(f"{ctx.author.mention}, you've successfully crafted a new Nichirin Blade!\n"
+                       f"Its color is... **{new_color}**!")
+
+    @ds.command(name="group_train")
+    async def group_training(self, ctx):
+        """Start or join a group training session."""
+        guild_data = await self.config.guild(ctx.guild).all()
+        now = datetime.now()
+
+        if guild_data['group_training'] and datetime.fromisoformat(guild_data['group_training']['end_time']) > now:
+            # Join existing training
+            guild_data['group_training']['participants'].append(ctx.author.id)
+            await self.config.guild(ctx.guild).set(guild_data)
+            time_left = datetime.fromisoformat(guild_data['group_training']['end_time']) - now
+            await ctx.send(f"{ctx.author.mention} has joined the group training session! {len(guild_data['group_training']['participants'])} participants now. {time_left.seconds // 60} minutes remaining.")
+        else:
+            # Start new training
+            end_time = now + timedelta(minutes=30)
+            guild_data['group_training'] = {
+                "participants": [ctx.author.id],
+                "end_time": end_time.isoformat()
+            }
+            await self.config.guild(ctx.guild).set(guild_data)
+            await ctx.send(f"{ctx.author.mention} has started a group training session! It will last for 30 minutes. Use `[p]ds group_train` to join!")
+
+            # Schedule end of training
+            await asyncio.sleep(1800)  # 30 minutes
+            await self.end_group_training(ctx.guild)
+
+    async def end_group_training(self, guild):
+        guild_data = await self.config.guild(guild).all()
+        if not guild_data['group_training']:
+            return
+
+        participants = guild_data['group_training']['participants']
+        xp_reward = len(participants) * 50  # More participants = more XP
+
+        for user_id in participants:
+            user = guild.get_member(user_id)
+            if user:
+                await self.add_xp(user, xp_reward)
+
+        await self.config.guild(guild).group_training.set(None)
+        channel = guild.get_channel(guild.system_channel.id)  # Announce in the system channel
+        if channel:
+            await channel.send(f"The group training session has ended! All {len(participants)} participants gained {xp_reward} XP!")
+
+    @ds.command(name="materials")
+    async def show_materials(self, ctx):
+        """Show your crafting materials for Nichirin Blades."""
+        materials = await self.config.user(ctx.author).nichirin_materials()
+        await ctx.send(f"{ctx.author.mention}, your crafting materials:\n"
+                       f"• Steel: {materials['steel']}\n"
+                       f"• Scarlet Ore: {materials['scarlet_ore']}")
 
     async def extra_training(self, ctx):
         await self.add_xp(ctx.author, 200)
