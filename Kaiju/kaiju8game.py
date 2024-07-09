@@ -35,7 +35,8 @@ class Kaiju8Game(commands.Cog):
             "ongoing_event": None,
             "research_projects": {},
             "event_participants": [],
-            "numbered_kaiju": None
+            "numbered_kaiju": None,
+            "event_channel_id": None  # New field for storing the event channel ID
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
@@ -93,7 +94,14 @@ class Kaiju8Game(commands.Cog):
                     await self.start_kaiju_event(guild)
 
     async def start_kaiju_event(self, guild):
-        channel = guild.text_channels[0]  # Choose an appropriate channel
+        event_channel_id = await self.config.guild(guild).event_channel_id()
+        if event_channel_id is None:
+            return  # Don't start an event if no channel is set
+
+        channel = guild.get_channel(event_channel_id)
+        if channel is None:
+            return  # Don't start an event if the channel doesn't exist
+
         kaiju_ranks = ['F', 'E', 'D', 'C', 'B', 'A', 'S']
         kaiju_rank = random.choice(kaiju_ranks)
         
@@ -111,7 +119,14 @@ class Kaiju8Game(commands.Cog):
         await self.end_kaiju_event(guild)
 
     async def end_kaiju_event(self, guild):
-        channel = guild.text_channels[0]  # Choose an appropriate channel
+        event_channel_id = await self.config.guild(guild).event_channel_id()
+        if event_channel_id is None:
+            return
+
+        channel = guild.get_channel(event_channel_id)
+        if channel is None:
+            return
+
         participants = await self.config.guild(guild).event_participants()
         
         if participants:
@@ -137,12 +152,22 @@ class Kaiju8Game(commands.Cog):
         await self.config.guild(guild).ongoing_event.set(None)
         await self.config.guild(guild).event_participants.set([])
         await self.config.guild(guild).numbered_kaiju.set(None)
-
+        
     @commands.group()
     async def df(self, ctx):
         """Defense Force game commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send("Type `[p]help df` for more info.")
+
+    @df.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def setup(self, ctx, channel: discord.TextChannel = None):
+        """Set up the event channel for Kaiju attacks (Admin only)"""
+        if channel is None:
+            channel = ctx.channel
+
+        await self.config.guild(ctx.guild).event_channel_id.set(channel.id)
+        await ctx.send(f"Kaiju attack events will now be announced in {channel.mention}.")
 
     @df.command()
     async def join(self, ctx):
@@ -526,6 +551,12 @@ class Kaiju8Game(commands.Cog):
         guild_data = await self.config.guild(ctx.guild).all()
         if guild_data['ongoing_event'] != "kaiju_attack":
             await ctx.send("There's no ongoing Kaiju attack event.")
+            return
+
+        event_channel_id = guild_data['event_channel_id']
+        if ctx.channel.id != event_channel_id:
+            event_channel = ctx.guild.get_channel(event_channel_id)
+            await ctx.send(f"Kaiju battles can only be joined in {event_channel.mention}.")
             return
 
         user_data = await self.config.user(ctx.author).all()
