@@ -1,21 +1,10 @@
 {
+    "author": ["UltPanda"],
+    "install_msg": "Thank you for installing the Kaiju #8 Defense Force cog! Prepare to defend humanity against kaiju threats and potentially awaken your own kaiju powers. Use `[p]help df` to see all available commands.",
     "name": "Kaiju8Game",
     "short": "A Kaiju #8 themed Defense Force game cog",
-    "description": "Engage in an immersive game experience based on the Kaiju #8 manga. Join the Defense Force, battle Kaiju, gather resources, conduct research, and potentially discover your hidden Kaiju powers!",
-    "end_user_data_statement": "This cog stores user data including game progress, stats, resources, and achievements. Users can request data deletion at any time.",
-    "author": [
-        "UltPanda"
-    ],
-    "required_cogs": {},
-    "requirements": [],
-    "tags": [
-        "game",
-        "rpg",
-        "kaiju",
-        "anime"
-    ],
+    "description": "This cog brings the world of Kaiju #8 to your Discord server. Join the Defense Force, battle kaiju, gather resources, conduct research, and potentially discover your hidden kaiju powers!",
+    "tags": ["fun", "games", "rpg", "anime", "kaiju", "kaiju #8"],
     "min_bot_version": "3.5.0",
-    "hidden": false,
-    "disabled": false,
-    "type": "COG"
+    "end_user_data_statement": "This cog stores user data including Defense Force rank, stats, resources, research contributions, and kaiju compatibility. Users can delete their data at any time using the appropriate command."
 }
