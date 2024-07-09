@@ -2150,7 +2150,7 @@ class DemonSlayer(commands.Cog):
             return self.ranks[current_index + 1]
         return current_rank  # Return current rank if it's the highes
     
-     @commands.command()
+    @commands.command()
     async def ds_update_guide(self, ctx):
         """Display a guide for all new Demon Slayer cog features"""
 
