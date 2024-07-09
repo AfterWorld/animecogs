@@ -424,13 +424,13 @@ class DemonSlayer(commands.Cog):
 
         await ctx.send(embed=embed)
             
-    @ds.group(name="exam")
+    @ds.group(name="dexam")
     async def ds_exam(self, ctx):
         """Demon Slayer Exam commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
-    @ds_exam.command(name="start")
+    @ds_dexam.command(name="start")
     async def start_exam(self, ctx):
         """Start the Demon Slayer Exam"""
         user_data = await self.config.user(ctx.author).all()
@@ -542,7 +542,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You have failed the Final Selection. You can try again later.")
             await self.config.user(ctx.author).exam_status.set("Failed")
 
-    @ds_exam.command(name="status")
+    @ds_dexam.command(name="status")
     async def exam_status(self, ctx):
         """Check your Demon Slayer Exam status"""
         user_data = await self.config.user(ctx.author).all()
