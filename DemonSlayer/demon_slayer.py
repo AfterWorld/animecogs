@@ -411,22 +411,23 @@ class DemonSlayer(commands.Cog):
                        f"• {reward_points} Slayer Points\n"
                        f"• {mastery_increase} Technique Mastery")
 
+    @commands.cooldown(1, 3600, commands.BucketType.user)  # 1-hour cooldown
     @ds.command(name="boss")
     async def boss_battle(self, ctx):
         """Initiate a boss battle against a powerful demon."""
         user_data = await self.config.user(ctx.author).all()
-        now = datetime.now()
-
-        if user_data['boss_cooldown'] and datetime.fromisoformat(user_data['boss_cooldown']) > now:
-            time_left = datetime.fromisoformat(user_data['boss_cooldown']) - now
-            return await ctx.send(f"{ctx.author.mention}, you're still recovering from your last boss battle. You can challenge a boss again in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
-
+        
         boss = random.choice(["Rui", "Gyutaro", "Daki", "Akaza", "Doma"])
         boss_health = random.randint(1000, 2000)
         player_health = 1000
         turns = 0
+        
+        battle_log = []
 
-        await ctx.send(f"{ctx.author.mention}, you've encountered the demon {boss} with {boss_health} health! Prepare for battle!")
+        embed = discord.Embed(title=f"Boss Battle: {ctx.author.name} vs {boss}", color=discord.Color.red())
+        embed.add_field(name="Boss Health", value=f"{boss_health}/2000", inline=True)
+        embed.add_field(name="Your Health", value=f"{player_health}/1000", inline=True)
+        message = await ctx.send(embed=embed)
 
         while boss_health > 0 and player_health > 0:
             turns += 1
@@ -436,20 +437,32 @@ class DemonSlayer(commands.Cog):
             boss_health -= player_damage
             player_health -= boss_damage
 
-            await ctx.send(f"Turn {turns}:\n"
-                           f"You deal {player_damage} damage to {boss}. Boss health: {max(0, boss_health)}\n"
-                           f"{boss} deals {boss_damage} damage to you. Your health: {max(0, player_health)}")
+            battle_log.append(f"Turn {turns}: You deal {player_damage} damage. {boss} deals {boss_damage} damage.")
 
-            await asyncio.sleep(2)
+            if turns % 3 == 0 or boss_health <= 0 or player_health <= 0:
+                embed.clear_fields()
+                embed.add_field(name="Boss Health", value=f"{max(0, boss_health)}/2000", inline=True)
+                embed.add_field(name="Your Health", value=f"{max(0, player_health)}/1000", inline=True)
+                embed.add_field(name="Battle Log", value="\n".join(battle_log[-3:]), inline=False)
+                await message.edit(embed=embed)
+                await asyncio.sleep(2)
 
         if boss_health <= 0:
             xp_reward = random.randint(500, 1000)
-            await self.add_xp(ctx.author, xp_reward)
-            await ctx.send(f"Victory! You've defeated {boss} and gained {xp_reward} XP!")
-        else:
-            await ctx.send(f"Defeat... {boss} was too powerful. Train harder and try again!")
+            slayer_points = random.randint(50, 100)
+            
+            async with self.config.user(ctx.author).all() as user_data:
+                user_data['technique_mastery'] += xp_reward
+                user_data['slayer_points'] += slayer_points
+                user_data['demons_slayed'] += 1
 
-        await self.config.user(ctx.author).boss_cooldown.set((now + timedelta(hours=12)).isoformat())
+            embed.add_field(name="Result", value=f"Victory! You've defeated {boss}!", inline=False)
+            embed.add_field(name="Rewards", value=f"XP: {xp_reward}\nSlayer Points: {slayer_points}", inline=False)
+        else:
+            embed.add_field(name="Result", value=f"Defeat... {boss} was too powerful. Train harder and try again!", inline=False)
+
+        await message.edit(embed=embed)
+        await self.check_rank_up(ctx)
 
     @ds.command(name="craft")
     async def craft_nichirin(self, ctx):
