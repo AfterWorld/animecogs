@@ -78,12 +78,21 @@ class DemonSlayer(commands.Cog):
             await self.config.guild(guild).set(self.config.guild.default)
 
     async def get_guild_data(self, guild):
-        """Get guild data, initializing it if it doesn't exist."""
-        guild_data = await self.config.guild(guild).all()
-        if not guild_data:
-            guild_data = self.config.guild.defaults
-            await self.config.guild(guild).set(guild_data)
-        return guild_data
+    """Get guild data, initializing it if it doesn't exist."""
+    guild_data = await self.config.guild(guild).all()
+    if not guild_data:
+        guild_data = {
+            "active_missions": {},
+            "group_training": None,
+            "hashira_challenge": None,
+            "last_invasion": None,
+            "active_event": None,
+            "event_end_time": None,
+            "guilds": {},
+            "guild_missions": {}
+        }
+        await self.config.guild(guild).set(guild_data)
+    return guild_data
             
         self.pvp_queue = []
         
