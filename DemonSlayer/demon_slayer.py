@@ -287,7 +287,7 @@ class DemonSlayer(commands.Cog):
 
     async def add_xp(self, user, amount):
         current_xp = await self.config.user(user).experience()
-        await self.config.user(user).experience.set(current_xp + amount)t
+        await self.config.user(user).experience.set(current_xp + amount)
 
     async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
