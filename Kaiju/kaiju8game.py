@@ -104,7 +104,6 @@ class Kaiju8Game(commands.Cog):
         classes = ["Frontline Fighter", "Tactical Support", "Research & Development", "Medical Support"]
         chosen_class = random.choice(classes)
         await self.config.user(ctx.author).class.set(chosen_class)
-        
         await ctx.send(f"Welcome to the Defense Force, {ctx.author.mention}! You've been assigned to the {chosen_class} class. Your training begins now.")
 
     @df.command()
