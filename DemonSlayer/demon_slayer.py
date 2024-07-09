@@ -238,37 +238,6 @@ class DemonSlayer(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    @ds.command(name="mission")
-    async def start_mission(self, ctx):
-        """
-        Start a demon-slaying mission.
-        
-        Missions are timed events where you attempt to defeat a specific demon.
-        You can only be on one mission at a time, and missions have a cooldown period.
-        """
-        user_data = await self.config.user(ctx.author).all()
-        if not user_data['breathing_technique']:
-            return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first! Use `[p]ds assign_technique`")
-        
-        last_mission = user_data['last_mission']
-        if last_mission and datetime.now() < datetime.fromisoformat(last_mission) + timedelta(hours=4):
-            time_left = datetime.fromisoformat(last_mission) + timedelta(hours=4) - datetime.now()
-            return await ctx.send(f"{ctx.author.mention}, you're still recovering from your last mission. You can start a new one in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
-
-        mission_demon = random.choice(list(self.demons.keys()))
-        mission_duration = random.randint(1, 3)  # 1 to 3 hours
-        end_time = datetime.now() + timedelta(hours=mission_duration)
-        
-        guild_data = await self.config.guild(ctx.guild).all()
-        guild_data['active_missions'][str(ctx.author.id)] = {
-            "demon": mission_demon,
-            "end_time": end_time.isoformat()
-        }
-        await self.config.guild(ctx.guild).set(guild_data)
-        await self.config.user(ctx.author).last_mission.set(datetime.now().isoformat())
-        
-        await ctx.send(f"{ctx.author.mention}, you've started a mission to defeat {mission_demon}! The mission will last for {mission_duration} hours. Use `[p]ds complete_mission` when the time is up to claim your reward!")
-
     @ds.command(name="complete_mission")
     async def complete_mission(self, ctx):
         """
