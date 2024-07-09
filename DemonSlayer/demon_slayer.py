@@ -68,6 +68,15 @@ class DemonSlayer(commands.Cog):
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
+
+        # Initialize guild data for all guilds the bot is in
+        self.bot.loop.create_task(self.initialize_guild_data())
+
+    async def initialize_guild_data(self):
+        await self.bot.wait_until_ready()
+        for guild in self.bot.guilds:
+            await self.config.guild(guild).set(self.config.guild.default)
+            
         self.pvp_queue = []
         
         self.locations = {
@@ -1126,10 +1135,10 @@ class DemonSlayer(commands.Cog):
     async def become_demon(self, ctx):
         """Choose to become a demon with unique abilities."""
         user_data = await self.config.user(ctx.author).all()
-        if user_data["demon"]:
+        if user_data["is_demon"]:
             return await ctx.send("You're already a demon!")
         
-        await self.config.user(ctx.author).demon.set(True)
+        await self.config.user(ctx.author).is_demon.set(True)
         blood_arts = ["Blood Demon Art: Temari", "Blood Demon Art: Arrow", "Blood Demon Art: Threads"]
         chosen_art = random.choice(blood_arts)
         await self.config.user(ctx.author).demon_blood_art.set(chosen_art)
