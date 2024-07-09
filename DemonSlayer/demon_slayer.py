@@ -1089,5 +1089,67 @@ class DemonSlayer(commands.Cog):
             return self.ranks[current_index + 1]
         return current_rank  # Return current rank if it's the highes
 
+    @ds.command(name="guide")
+    async def show_guide(self, ctx):
+        """Display the Demon Slayer game guide."""
+        guide_sections = [
+            {
+                "title": "Getting Started",
+                "content": "To start your journey as a demon slayer, use `[p]ds assign_technique` to get your Breathing Technique."
+            },
+            {
+                "title": "Basic Commands",
+                "content": "• `[p]ds`: Shows all available commands\n"
+                           "• `[p]ds daily`: Claim daily rewards\n"
+                           "• `[p]ds ranking`: Check your current rank\n"
+                           "• `[p]ds mastery`: View your technique mastery"
+            },
+            {
+                "title": "Training and Progression",
+                "content": "1. Train: `[p]ds train` (2-hour cooldown)\n"
+                           "2. Daily Tasks: `[p]ds task` (24-hour cooldown)\n"
+                           "3. Missions: `[p]ds mission` (12-hour cooldown)\n"
+                           "4. Boss Battles: `[p]ds boss` (1-hour cooldown)"
+            },
+            {
+                "title": "Demon Invasions",
+                "content": "• Trigger invasion: `[p]ds invasion`\n"
+                           "• Join invasion: `[p]ds fight_invasion`\n"
+                           "Participate in server-wide events for bonus rewards!"
+            },
+            {
+                "title": "Seasonal Events",
+                "content": "• Check current event: `[p]ds event`\n"
+                           "• View event leaderboard: `[p]ds event_leaderboard`\n"
+                           "Events provide bonus multipliers and special challenges."
+            },
+            {
+                "title": "Ranking System",
+                "content": "Ranks: Mizunoto → Mizunoe → Kanoto → Kanoe → Tsuchinoto → Tsuchinoe → "
+                           "Hinoto → Hinoe → Kinoto → Kinoe → Hashira Candidate → Hashira\n\n"
+                           "Rank up by earning Slayer Points and completing missions, tasks, and training sessions."
+            },
+            {
+                "title": "Tips for Progression",
+                "content": "1. Use all commands regularly\n"
+                           "2. Prioritize missions and boss battles\n"
+                           "3. Participate in invasions and events\n"
+                           "4. Balance activities to meet rank requirements\n"
+                           "5. Stay consistent and keep training!"
+            }
+        ]
+
+        for section in guide_sections:
+            embed = discord.Embed(title=section["title"], description=section["content"], color=discord.Color.blue())
+            await ctx.send(embed=embed)
+            await asyncio.sleep(1)  # To avoid hitting rate limits
+
+        final_embed = discord.Embed(title="Become a Top Demon Slayer!", 
+                                    description="Remember, becoming a top demon slayer takes time and dedication. "
+                                                "Keep training, stay consistent, and you'll rise through the ranks "
+                                                "to become a formidable demon slayer!", 
+                                    color=discord.Color.gold())
+        await ctx.send(embed=final_embed)
+
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
