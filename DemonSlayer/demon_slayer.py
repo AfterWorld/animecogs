@@ -28,7 +28,8 @@ class DemonSlayer(commands.Cog):
             "slayer_points": 0,
             "total_concentration": 0,
             "demon_moon_rank": None,
-            "last_daily": None
+            "last_daily": None,
+            "trainings_completed": 0
         }
         default_guild = {
             "active_missions": {},
@@ -139,36 +140,38 @@ class DemonSlayer(commands.Cog):
         await self.config.user(ctx.author).nichirin_color.set(color)
         await ctx.send(f"{ctx.author.mention}, your Nichirin Blade turns **{color}**!")
 
-    @commands.cooldown(1, 1800, commands.BucketType.user)
     @ds.command(name="train")
+    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
     async def train(self, ctx):
-        """
-        Undergo a training session to improve your skills.
-        
-        Training will give you experience points and potentially help you learn new forms.
-        You can train once every 30 minutes.
-        """
+        """Undergo training to improve your skills."""
         user_data = await self.config.user(ctx.author).all()
-        user_technique = user_data['breathing_technique']
-        if not user_technique:
-            ctx.command.reset_cooldown(ctx)
-            return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first! Use `[p]ds assign_technique`")
-        
-        known_forms = user_data['known_forms']
-        form = random.choice(known_forms)
-        exercises = [
-            f"practices {form} 1000 times",
-            f"meditates under a waterfall while focusing on {user_technique} Breathing",
-            "runs up and down the mountain with a boulder strapped to your back",
-            f"spars with Tanjiro, learning the intricacies of {user_technique} Breathing",
-            "practices Total Concentration Breathing for hours"
+        breathing_technique = user_data['breathing_technique']
+
+        if not breathing_technique:
+            return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first! Use `[p]ds assign_technique` to get started!")
+
+        training_exercises = [
+            f"practice {breathing_technique} Breathing forms for hours",
+            "perform strength training with heavy weights",
+            "run laps around the entire Demon Slayer headquarters",
+            "meditate under a waterfall to improve focus",
+            f"spar with other {breathing_technique} users"
         ]
-        exercise = random.choice(exercises)
-        xp_gained = random.randint(50, 100)
-        await self.add_xp(ctx.author, xp_gained)
-        await ctx.send(f"{ctx.author.mention} {exercise}. Your {user_technique} Breathing skills have improved! You gained {xp_gained} XP!")
+
+        exercise = random.choice(training_exercises)
+        await ctx.send(f"{ctx.author.mention} begins to {exercise}.")
+        await asyncio.sleep(5)  # Simulating training time
+
+        mastery_gained = random.randint(10, 30)
+        points_earned = random.randint(5, 15)
+
+        async with self.config.user(ctx.author).all() as user_data:
+            user_data['technique_mastery'] += mastery_gained
+            user_data['slayer_points'] += points_earned
+            user_data['trainings_completed'] += 1
+
+        await ctx.send(f"Training complete! You gained {mastery_gained} Technique Mastery and {points_earned} Slayer Points.")
         await self.check_rank_up(ctx)
-        await self.check_new_form(ctx)
 
     @ds.command(name="quote")
     async def demon_quote(self, ctx):
@@ -483,6 +486,7 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Slayer Points", value=f"{user_data['slayer_points']}/{next_rank['points']}", inline=True)
         embed.add_field(name="Missions Completed", value=f"{user_data['missions_completed']}/{next_rank['missions']}", inline=True)
         embed.add_field(name="Tasks Completed", value=f"{user_data['tasks_completed']}/{next_rank['tasks']}", inline=True)
+        embed.add_field(name="Trainings Completed", value=f"{user_data['trainings_completed']}/{next_rank['trainings']}", inline=True)
 
         if current_rank['name'] != "Hashira":
             embed.add_field(name="Next Rank", value=next_rank['name'], inline=False)
@@ -490,6 +494,22 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="Status", value="You have reached the highest rank!", inline=False)
 
         await ctx.send(embed=embed)
+
+    async def check_rank_up(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        current_rank = self.calculate_rank(user_data)
+        next_rank = self.get_next_rank(current_rank)
+
+        if (user_data['slayer_points'] >= next_rank['points'] and
+            user_data['missions_completed'] >= next_rank['missions'] and
+            user_data['tasks_completed'] >= next_rank['tasks'] and
+            user_data['trainings_completed'] >= next_rank['trainings']):
+            
+            await self.config.user(ctx.author).rank.set(next_rank['name'])
+            await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {next_rank['name']}!")
+
+            if next_rank['name'] == "Hashira Candidate":
+                await ctx.send("You are now a Hashira Candidate! Complete the Hashira Trial to become a full-fledged Hashira.")
         
     @ds.command(name="task")
     @commands.cooldown(1, 86400, commands.BucketType.user)
@@ -854,7 +874,8 @@ class DemonSlayer(commands.Cog):
         for rank in reversed(self.ranks):
             if (user_data['slayer_points'] >= rank['points'] and
                 user_data['missions_completed'] >= rank['missions'] and
-                user_data['tasks_completed'] >= rank['tasks']):
+                user_data['tasks_completed'] >= rank['tasks'] and
+                user_data['trainings_completed'] >= rank['trainings']):
                 return rank
         return self.ranks[0]  # Default to lowest rank
 
