@@ -33,15 +33,12 @@ class DemonSlayer(commands.Cog):
             "event_points": 0,
             "form_mastery": {},
             "secondary_technique": None,
-            "technique_mastery": {},
             "is_demon": False,
             "demon_blood_art": None,
             "companion": None,
-            "appearance": {
-                "hair": "",
-                "eyes": "",
-                "outfit": ""
-            },
+            "appearance_hair": "",
+            "appearance_eyes": "",
+            "appearance_outfit": "",
             "background_story": "",
             "exam_status": "Not Taken",
             "current_location": "Butterfly Mansion",
@@ -239,7 +236,6 @@ class DemonSlayer(commands.Cog):
                     await announcement_channel.send(f"🎉 The {event_name} has begun! {event_data['description']} This event will last for {event_data['duration'].days} days.")
             
             await asyncio.sleep(3600)  # Check every hour
-
 
     async def migrate_user_data(self):
         await self.bot.wait_until_ready()
