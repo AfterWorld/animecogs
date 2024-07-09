@@ -32,7 +32,8 @@ class DemonSlayer(commands.Cog):
         default_guild = {
             "active_missions": {},
             "group_training": None,
-            "hashira_challenge": None
+            "hashira_challenge": None,
+            "last_invasion": None
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
@@ -475,6 +476,110 @@ class DemonSlayer(commands.Cog):
         await ctx.send(f"{ctx.author.mention}, you've successfully crafted a new Nichirin Blade!\n"
                        f"Its color is... **{new_color}**!")
 
+    @ds.command(name="mastery")
+    async def check_mastery(self, ctx):
+        """Check your breathing technique mastery level."""
+        user_data = await self.config.user(ctx.author).all()
+        technique = user_data['breathing_technique']
+        mastery = user_data['technique_mastery']
+        
+        if not technique:
+            return await ctx.send(f"{ctx.author.mention}, you haven't been assigned a breathing technique yet. Use `[p]ds assign_technique` to get started!")
+        
+        level = mastery // 100
+        progress = mastery % 100
+        
+        await ctx.send(f"{ctx.author.mention}, your {technique} Breathing mastery:\n"
+                       f"Level: {level}\n"
+                       f"Progress to next level: {progress}/100")
+
+    @ds.command(name="ranking")
+    async def show_ranking(self, ctx):
+        """Display your current demon slayer ranking."""
+        user_data = await self.config.user(ctx.author).all()
+        points = user_data['slayer_points']
+        rank = self.calculate_rank(points)
+        
+        await ctx.send(f"{ctx.author.mention}, your current Demon Slayer ranking:\n"
+                       f"Rank: {rank}\n"
+                       f"Points: {points}")
+
+    @ds.command(name="invasion")
+    @commands.guild_only()
+    @commands.cooldown(1, 3600, commands.BucketType.guild)
+    async def trigger_invasion(self, ctx):
+        """Trigger a demon invasion event in the server."""
+        guild_data = await self.config.guild(ctx.guild).all()
+        last_invasion = guild_data['last_invasion']
+        now = datetime.now()
+        
+        if last_invasion and datetime.fromisoformat(last_invasion) + timedelta(hours=6) > now:
+            time_left = datetime.fromisoformat(last_invasion) + timedelta(hours=6) - now
+            return await ctx.send(f"The demons are still regrouping. Next invasion possible in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
+        
+        await self.start_invasion(ctx.guild)
+
+    @ds.command(name="fight_invasion")
+    @commands.guild_only()
+    async def fight_invasion(self, ctx):
+        """Join the ongoing demon invasion battle."""
+        guild_data = await self.config.guild(ctx.guild).all()
+        last_invasion = guild_data['last_invasion']
+        now = datetime.now()
+        
+        if not last_invasion or datetime.fromisoformat(last_invasion) + timedelta(minutes=30) < now:
+            return await ctx.send("There's no ongoing demon invasion. Stay alert for the next one!")
+        
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data['breathing_technique']:
+            return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique to fight in the invasion! Use `[p]ds assign_technique` first.")
+        
+        await ctx.send(f"{ctx.author.mention} joins the battle against the invading demons! Fight bravely!")
+
+    async def start_invasion(self, guild):
+        channel = guild.system_channel or random.choice(guild.text_channels)
+        await channel.send("🚨 **DEMON INVASION ALERT** 🚨\n"
+                           "Demons are invading the area! All available Demon Slayers, prepare for battle!\n"
+                           "Use `[p]ds fight_invasion` to join the battle!")
+        
+        await self.config.guild(guild).last_invasion.set(datetime.now().isoformat())
+        
+        await asyncio.sleep(1800)  # Invasion lasts for 30 minutes
+        
+        participants = [member for member in guild.members if await self.config.user(member).breathing_technique()]
+        survivors = random.sample(participants, k=max(1, len(participants) * 2 // 3))
+        
+        for survivor in survivors:
+            points = random.randint(10, 50)
+            user_data = await self.config.user(survivor).all()
+            await self.config.user(survivor).slayer_points.set(user_data['slayer_points'] + points)
+            await self.config.user(survivor).technique_mastery.set(user_data['technique_mastery'] + random.randint(5, 15))
+        
+        await channel.send("The demon invasion has been repelled! Congratulations to all participants!\n"
+                           f"Survivors: {', '.join(survivor.mention for survivor in survivors)}\n"
+                           "Check your updated rankings with `[p]ds ranking`!")
+
+    def calculate_rank(self, points):
+        ranks = [
+            (0, "Mizunoto"),
+            (100, "Mizunoe"),
+            (250, "Kanoto"),
+            (500, "Kanoe"),
+            (1000, "Tsuchinoto"),
+            (2000, "Tsuchinoe"),
+            (3500, "Hinoto"),
+            (5000, "Hinoe"),
+            (7500, "Kinoto"),
+            (10000, "Kinoe"),
+            (15000, "Hashira")
+        ]
+        
+        for threshold, rank in reversed(ranks):
+            if points >= threshold:
+                return rank
+        
+        return "Unknown"
+    
     @ds.command(name="group_train")
     async def group_training(self, ctx):
         """Start or join a group training session."""
