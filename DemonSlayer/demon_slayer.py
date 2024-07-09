@@ -58,20 +58,27 @@ class DemonSlayer(commands.Cog):
             "Rui": {"difficulty": 60, "xp": 550},
             "Kyogai": {"difficulty": 55, "xp": 500}
         }
-        self.ranks = ["Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe", "Hinoto", "Hinoe", "Kinoto", "Kinoe"]
+        self.ranks = [
+            {"name": "Mizunoto", "points": 0, "missions": 0, "tasks": 0},
+            {"name": "Mizunoe", "points": 100, "missions": 5, "tasks": 10},
+            {"name": "Kanoto", "points": 250, "missions": 15, "tasks": 30},
+            {"name": "Kanoe", "points": 500, "missions": 30, "tasks": 60},
+            {"name": "Tsuchinoto", "points": 1000, "missions": 50, "tasks": 100},
+            {"name": "Tsuchinoe", "points": 2000, "missions": 75, "tasks": 150},
+            {"name": "Hinoto", "points": 3500, "missions": 100, "tasks": 200},
+            {"name": "Hinoe", "points": 5000, "missions": 150, "tasks": 300},
+            {"name": "Kinoto", "points": 7500, "missions": 200, "tasks": 400},
+            {"name": "Kinoe", "points": 10000, "missions": 250, "tasks": 500},
+            {"name": "Hashira Candidate", "points": 15000, "missions": 300, "tasks": 600},
+            {"name": "Hashira", "points": 20000, "missions": 350, "tasks": 700}
+        ]
         self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
 
-    @commands.group(invoke_without_command=True)
+    @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
-            embed = discord.Embed(title="Demon Slayer Commands", color=discord.Color.red())
-            embed.add_field(name="ds daily", value="Claim your daily reward", inline=False)
-            embed.add_field(name="ds mastery", value="Check your breathing technique mastery level", inline=False)
-            embed.add_field(name="ds ranking", value="Display your current demon slayer ranking", inline=False)
-            embed.add_field(name="ds invasion", value="Trigger a demon invasion event", inline=False)
-            embed.add_field(name="ds fight_invasion", value="Join an ongoing demon invasion battle", inline=False)
-            await ctx.send(embed=embed)
+            await ctx.send_help(ctx.command)
 
     @ds.command(name="assign_technique")
     async def assign_breathing_technique(self, ctx):
@@ -497,14 +504,49 @@ class DemonSlayer(commands.Cog):
 
     @ds.command(name="ranking")
     async def show_ranking(self, ctx):
-        """Display your current demon slayer ranking."""
+        """Display your current demon slayer ranking and progress."""
         user_data = await self.config.user(ctx.author).all()
-        points = user_data['slayer_points']
-        rank = self.calculate_rank(points)
+        current_rank = self.calculate_rank(user_data)
+        next_rank = self.get_next_rank(current_rank)
+
+        embed = discord.Embed(title=f"{ctx.author.name}'s Demon Slayer Ranking", color=discord.Color.red())
+        embed.add_field(name="Current Rank", value=current_rank['name'], inline=False)
+        embed.add_field(name="Slayer Points", value=f"{user_data['slayer_points']}/{next_rank['points']}", inline=True)
+        embed.add_field(name="Missions Completed", value=f"{user_data['missions_completed']}/{next_rank['missions']}", inline=True)
+        embed.add_field(name="Tasks Completed", value=f"{user_data['tasks_completed']}/{next_rank['tasks']}", inline=True)
+
+        if current_rank['name'] != "Hashira":
+            embed.add_field(name="Next Rank", value=next_rank['name'], inline=False)
+        else:
+            embed.add_field(name="Status", value="You have reached the highest rank!", inline=False)
+
+        await ctx.send(embed=embed)
         
-        await ctx.send(f"{ctx.author.mention}, your current Demon Slayer ranking:\n"
-                       f"Rank: {rank}\n"
-                       f"Points: {points}")
+    @ds.command(name="task")
+    @commands.cooldown(1, 86400, commands.BucketType.user)
+    async def complete_task(self, ctx):
+        """Complete a daily task to earn points and progress towards higher ranks."""
+        tasks = [
+            "Patrol the nearby forest for demon activity",
+            "Help villagers with their daily chores",
+            "Train your breathing technique for hours",
+            "Study demon weaknesses and strategies",
+            "Craft wisteria-based weapons"
+        ]
+        
+        task = random.choice(tasks)
+        points_earned = random.randint(5, 15)
+        
+        await ctx.send(f"{ctx.author.mention}, your task: {task}")
+        await asyncio.sleep(5)  # Simulating task completion time
+        
+        async with self.config.user(ctx.author).all() as user_data:
+            user_data['slayer_points'] += points_earned
+            user_data['tasks_completed'] += 1
+        
+        await ctx.send(f"Task completed! You earned {points_earned} Slayer Points.")
+        await self.check_rank_up(ctx)
+
 
     @ds.command(name="invasion")
     @commands.guild_only()
@@ -520,6 +562,48 @@ class DemonSlayer(commands.Cog):
             return await ctx.send(f"The demons are still regrouping. Next invasion possible in {time_left.seconds // 3600} hours and {(time_left.seconds // 60) % 60} minutes.")
         
         await self.start_invasion(ctx.guild)
+        
+    @ds.command(name="mission")
+    @commands.cooldown(1, 43200, commands.BucketType.user)  # 12-hour cooldown
+    async def embark_mission(self, ctx):
+        """Embark on a challenging mission to earn substantial rewards."""
+        missions = [
+            "Investigate a series of mysterious disappearances in a remote village",
+            "Protect a high-ranking official from potential demon attacks",
+            "Infiltrate a demon hideout and gather intelligence",
+            "Rescue captured civilians from a demon-infested area",
+            "Track and eliminate a powerful demon that has been terrorizing a region"
+        ]
+        
+        mission = random.choice(missions)
+        await ctx.send(f"{ctx.author.mention}, your mission: {mission}")
+        await ctx.send("This is a challenging mission. Your success depends on your skill and a bit of luck. Are you ready? (yes/no)")
+
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ['yes', 'no']
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            return await ctx.send("Mission request timed out. Try again later.")
+
+        if msg.content.lower() == 'no':
+            return await ctx.send("Mission declined. Stay vigilant for future opportunities.")
+
+        await ctx.send("Mission accepted! The outcome will be determined shortly...")
+        await asyncio.sleep(10)  # Simulating mission time
+
+        success = random.random() < 0.6  # 60% success rate
+        if success:
+            points_earned = random.randint(50, 100)
+            async with self.config.user(ctx.author).all() as user_data:
+                user_data['slayer_points'] += points_earned
+                user_data['missions_completed'] += 1
+            await ctx.send(f"Mission successful! You earned {points_earned} Slayer Points.")
+        else:
+            await ctx.send("Despite your best efforts, the mission was not successful. Keep training and try again!")
+
+        await self.check_rank_up(ctx)
 
     @ds.command(name="fight_invasion")
     @commands.guild_only()
@@ -796,6 +880,20 @@ class DemonSlayer(commands.Cog):
         known_forms.append(new_form)
         await self.config.user(ctx.author).known_forms.set(known_forms)
         await ctx.send(f"Incredible! {ctx.author.mention} has learned a new form from the rare scroll: **{new_form}**!")
+        
+    def calculate_rank(self, user_data):
+        for rank in reversed(self.ranks):
+            if (user_data['slayer_points'] >= rank['points'] and
+                user_data['missions_completed'] >= rank['missions'] and
+                user_data['tasks_completed'] >= rank['tasks']):
+                return rank
+        return self.ranks[0]  # Default to lowest rank
+
+    def get_next_rank(self, current_rank):
+        current_index = self.ranks.index(current_rank)
+        if current_index < len(self.ranks) - 1:
+            return self.ranks[current_index + 1]
+        return current_rank  # Return current rank if it's the highest
 
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
