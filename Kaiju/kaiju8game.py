@@ -138,7 +138,6 @@ class Kaiju8Game(commands.Cog):
         await self.config.guild(guild).event_participants.set([])
         await self.config.guild(guild).numbered_kaiju.set(None)
 
-
     @commands.group()
     async def df(self, ctx):
         """Defense Force game commands"""
