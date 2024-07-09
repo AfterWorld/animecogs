@@ -60,18 +60,18 @@ class DemonSlayer(commands.Cog):
             "Kyogai": {"difficulty": 55, "xp": 500}
         }
         self.ranks = [
-            {"name": "Mizunoto", "points": 0, "missions": 0, "tasks": 0},
-            {"name": "Mizunoe", "points": 100, "missions": 5, "tasks": 10},
-            {"name": "Kanoto", "points": 250, "missions": 15, "tasks": 30},
-            {"name": "Kanoe", "points": 500, "missions": 30, "tasks": 60},
-            {"name": "Tsuchinoto", "points": 1000, "missions": 50, "tasks": 100},
-            {"name": "Tsuchinoe", "points": 2000, "missions": 75, "tasks": 150},
-            {"name": "Hinoto", "points": 3500, "missions": 100, "tasks": 200},
-            {"name": "Hinoe", "points": 5000, "missions": 150, "tasks": 300},
-            {"name": "Kinoto", "points": 7500, "missions": 200, "tasks": 400},
-            {"name": "Kinoe", "points": 10000, "missions": 250, "tasks": 500},
-            {"name": "Hashira Candidate", "points": 15000, "missions": 300, "tasks": 600},
-            {"name": "Hashira", "points": 20000, "missions": 350, "tasks": 700}
+            {"name": "Mizunoto", "points": 0, "missions": 0, "tasks": 0, "trainings": 0},
+            {"name": "Mizunoe", "points": 100, "missions": 5, "tasks": 10, "trainings": 20},
+            {"name": "Kanoto", "points": 250, "missions": 15, "tasks": 30, "trainings": 50},
+            {"name": "Kanoe", "points": 500, "missions": 30, "tasks": 60, "trainings": 100},
+            {"name": "Tsuchinoto", "points": 1000, "missions": 50, "tasks": 100, "trainings": 200},
+            {"name": "Tsuchinoe", "points": 2000, "missions": 75, "tasks": 150, "trainings": 300},
+            {"name": "Hinoto", "points": 3500, "missions": 100, "tasks": 200, "trainings": 400},
+            {"name": "Hinoe", "points": 5000, "missions": 150, "tasks": 300, "trainings": 500},
+            {"name": "Kinoto", "points": 7500, "missions": 200, "tasks": 400, "trainings": 600},
+            {"name": "Kinoe", "points": 10000, "missions": 250, "tasks": 500, "trainings": 700},
+            {"name": "Hashira Candidate", "points": 15000, "missions": 300, "tasks": 600, "trainings": 800},
+            {"name": "Hashira", "points": 20000, "missions": 350, "tasks": 700, "trainings": 1000}
         ]
         self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
         
