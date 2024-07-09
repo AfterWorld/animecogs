@@ -533,6 +533,7 @@ class Kaiju8Game(commands.Cog):
                 await self.config.user(ctx.author).rank.set(new_rank)
                 await ctx.send(f"Congratulations {ctx.author.mention}! You've been promoted to {new_rank}!")
 
+    @df.command()
     @commands.command()
     async def engage(self, ctx):
         """Engage in an ongoing Kaiju battle"""
@@ -554,6 +555,7 @@ class Kaiju8Game(commands.Cog):
         else:
             await ctx.send("You're already engaged in this battle!")
 
+    @df.command()
     @commands.command()
     async def craft_weapon(self, ctx):
         """Craft a custom weapon after defeating a numbered Kaiju"""
