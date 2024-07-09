@@ -424,13 +424,13 @@ class DemonSlayer(commands.Cog):
 
         await ctx.send(embed=embed)
             
-    @ds.group(name="dexam")
+    @ds.group(name="exam")
     async def ds_exam(self, ctx):
         """Demon Slayer Exam commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
-    @ds_dexam.command(name="start")
+    @ds_exam.command(name="start")
     async def start_exam(self, ctx):
         """Start the Demon Slayer Exam"""
         user_data = await self.config.user(ctx.author).all()
@@ -542,7 +542,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You have failed the Final Selection. You can try again later.")
             await self.config.user(ctx.author).exam_status.set("Failed")
 
-    @ds_dexam.command(name="status")
+    @ds_exam.command(name="status")
     async def exam_status(self, ctx):
         """Check your Demon Slayer Exam status"""
         user_data = await self.config.user(ctx.author).all()
@@ -1166,37 +1166,6 @@ class DemonSlayer(commands.Cog):
                 appearance[aspect] = detail
         
         await ctx.send(f"Your character's {aspect} has been updated!")
-
-    @ds.command(name="exam")
-    async def demon_slayer_exam(self, ctx):
-        """Take the Demon Slayer Exam to become an official Demon Slayer."""
-        user_data = await self.config.user(ctx.author).all()
-        if user_data["exam_status"] == "Passed":
-            return await ctx.send("You've already passed the Demon Slayer Exam!")
-        
-        questions = [
-            "What is the primary weakness of demons?",
-            "Name one of the Hashira.",
-            "What is the purpose of the Demon Slayer Corps?"
-        ]
-        correct_answers = 0
-        
-        for question in questions:
-            await ctx.send(question)
-            try:
-                answer = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author, timeout=30.0)
-                # Simplified answer checking
-                if len(answer.content) > 5:  # Very basic check, just ensures some effort in answering
-                    correct_answers += 1
-            except asyncio.TimeoutError:
-                await ctx.send("You took too long to answer. The exam has ended.")
-                return
-
-        if correct_answers >= 2:
-            await self.config.user(ctx.author).exam_status.set("Passed")
-            await ctx.send("Congratulations! You've passed the Demon Slayer Exam and are now an official Demon Slayer!")
-        else:
-            await ctx.send("Unfortunately, you didn't pass the exam this time. Keep training and try again later!")
 
     @ds.command(name="travel")
     async def travel(self, ctx, *, location: str):
