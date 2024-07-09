@@ -66,11 +66,101 @@ class DemonSlayer(commands.Cog):
 
         
         self.breathing_techniques = {
-            "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
-            "Thunder": ["Thunderclap and Flash", "Rice Spirit", "Heat Lightning", "Distant Thunder", "Lightning Ball"],
-            "Flame": ["Unknowing Fire", "Rising Scorching Sun", "Blooming Flame Undulation", "Flaming Tiger", "Flame Tiger"],
-            "Wind": ["Dusty Whirlwind Cutter", "Claws-Purifying Wind", "Clean Storm Wind Tree", "Rising Dust Storm", "Purgatory Windmill"],
-            "Stone": ["Serpentine Bipedal", "Upper Smash", "Stone Skin", "Volcanic Rock", "Arrows of Stone"]
+            "Water": [
+                "First Form: Water Surface Slash",
+                "Second Form: Water Wheel",
+                "Third Form: Flowing Dance",
+                "Fourth Form: Striking Tide",
+                "Fifth Form: Blessed Rain After the Drought",
+                "Sixth Form: Whirlpool",
+                "Seventh Form: Droplet Splash Thrust",
+                "Eighth Form: Waterfall Basin",
+                "Ninth Form: Splashing Water Flow",
+                "Tenth Form: Constant Flux",
+                "Eleventh Form: Dead Calm"
+            ],
+            "Thunder": [
+                "First Form: Thunderclap and Flash",
+                "Second Form: Rice Spirit",
+                "Third Form: Thunder Swarm",
+                "Fourth Form: Distant Thunder",
+                "Fifth Form: Heat Lightning",
+                "Sixth Form: Rumble and Flash",
+                "Seventh Form: Honoikazuchi no Kami"
+            ],
+            "Flame": [
+                "First Form: Unknowing Fire",
+                "Second Form: Rising Scorching Sun",
+                "Third Form: Blazing Universe",
+                "Fourth Form: Blooming Flame Undulation",
+                "Fifth Form: Flame Tiger",
+                "Ninth Form: Rengoku"
+            ],
+            "Wind": [
+                "First Form: Dust Whirlwind Cutter",
+                "Second Form: Claws-Purifying Wind",
+                "Third Form: Clean Storm Wind Tree",
+                "Fourth Form: Rising Dust Storm",
+                "Fifth Form: Purgatory Windmill",
+                "Sixth Form: Black Wind Mountain Mist",
+                "Seventh Form: Gale - Sudden Gusts"
+            ],
+            "Stone": [
+                "First Form: Serpentine Bipedal",
+                "Second Form: Upper Smash",
+                "Third Form: Stone Skin",
+                "Fourth Form: Volcanic Rock",
+                "Fifth Form: Arcs of Justice"
+            ],
+            "Mist": [
+                "First Form: Cloudy Mist",
+                "Second Form: Layered Mist",
+                "Third Form: Scattering Mist Splash",
+                "Fourth Form: Advection Mist",
+                "Fifth Form: Sea of Clouds and Haze",
+                "Sixth Form: Moonlit Mist",
+                "Seventh Form: Haze"
+            ],
+            "Sound": [
+                "First Form: Roar",
+                "Fourth Form: Constant Resounding Slashes",
+                "Fifth Form: String Performance",
+                "Sixth Form: Constant Resounding Slashes - Explosive Flash"
+            ],
+            "Love": [
+                "First Form: Shivers of First Love",
+                "Second Form: Love Pangs",
+                "Third Form: Lovely Kitty Paws"
+            ],
+            "Serpent": [
+                "First Form: Twisting Slash",
+                "Fourth Form: Serpentine Strangle",
+                "Fifth Form: Slithering Serpent"
+            ],
+            "Flower": [
+                "First Form: Waltz of Cherry Blossoms",
+                "Second Form: Plum Spirit",
+                "Third Form: Peony of Futility",
+                "Fourth Form: Safflower Robe",
+                "Fifth Form: Peonies of Futility - Bellflower Sword"
+            ],
+            "Beast": [
+                "First Fang: Pierce",
+                "Second Fang: Rip and Tear",
+                "Third Fang: Devour",
+                "Fourth Fang: Mince to Bits",
+                "Fifth Fang: Madness"
+            ],
+            "Sun": [
+                "First Form: Dance",
+                "Second Form: Clear Blue Sky",
+                "Third Form: Fake Rainbow",
+                "Fourth Form: Burning Bones, Summer Sun",
+                "Fifth Form: Setting Sun Transformation",
+                "Sixth Form: Solar Heat Haze",
+                "Ninth Form: Dragon Sun Halo Head Dance",
+                "Thirteenth Form: Burning Bones, Summer Sun Flame Waltz"
+            ]
         }
         self.demons = {
             "Muzan Kibutsuji": {"difficulty": 100, "xp": 1000},
@@ -1088,68 +1178,6 @@ class DemonSlayer(commands.Cog):
         if current_index < len(self.ranks) - 1:
             return self.ranks[current_index + 1]
         return current_rank  # Return current rank if it's the highes
-
-    @ds.command(name="guide")
-    async def show_guide(self, ctx):
-        """Display the Demon Slayer game guide."""
-        guide_sections = [
-            {
-                "title": "Getting Started",
-                "content": "To start your journey as a demon slayer, use `[p]ds assign_technique` to get your Breathing Technique."
-            },
-            {
-                "title": "Basic Commands",
-                "content": "• `[p]ds`: Shows all available commands\n"
-                           "• `[p]ds daily`: Claim daily rewards\n"
-                           "• `[p]ds ranking`: Check your current rank\n"
-                           "• `[p]ds mastery`: View your technique mastery"
-            },
-            {
-                "title": "Training and Progression",
-                "content": "1. Train: `[p]ds train` (2-hour cooldown)\n"
-                           "2. Daily Tasks: `[p]ds task` (24-hour cooldown)\n"
-                           "3. Missions: `[p]ds mission` (12-hour cooldown)\n"
-                           "4. Boss Battles: `[p]ds boss` (1-hour cooldown)"
-            },
-            {
-                "title": "Demon Invasions",
-                "content": "• Trigger invasion: `[p]ds invasion`\n"
-                           "• Join invasion: `[p]ds fight_invasion`\n"
-                           "Participate in server-wide events for bonus rewards!"
-            },
-            {
-                "title": "Seasonal Events",
-                "content": "• Check current event: `[p]ds event`\n"
-                           "• View event leaderboard: `[p]ds event_leaderboard`\n"
-                           "Events provide bonus multipliers and special challenges."
-            },
-            {
-                "title": "Ranking System",
-                "content": "Ranks: Mizunoto → Mizunoe → Kanoto → Kanoe → Tsuchinoto → Tsuchinoe → "
-                           "Hinoto → Hinoe → Kinoto → Kinoe → Hashira Candidate → Hashira\n\n"
-                           "Rank up by earning Slayer Points and completing missions, tasks, and training sessions."
-            },
-            {
-                "title": "Tips for Progression",
-                "content": "1. Use all commands regularly\n"
-                           "2. Prioritize missions and boss battles\n"
-                           "3. Participate in invasions and events\n"
-                           "4. Balance activities to meet rank requirements\n"
-                           "5. Stay consistent and keep training!"
-            }
-        ]
-
-        for section in guide_sections:
-            embed = discord.Embed(title=section["title"], description=section["content"], color=discord.Color.blue())
-            await ctx.send(embed=embed)
-            await asyncio.sleep(1)  # To avoid hitting rate limits
-
-        final_embed = discord.Embed(title="Become a Top Demon Slayer!", 
-                                    description="Remember, becoming a top demon slayer takes time and dedication. "
-                                                "Keep training, stay consistent, and you'll rise through the ranks "
-                                                "to become a formidable demon slayer!", 
-                                    color=discord.Color.gold())
-        await ctx.send(embed=final_embed)
 
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
