@@ -74,6 +74,20 @@ class DemonSlayer(commands.Cog):
             {"name": "Hashira", "points": 20000, "missions": 350, "tasks": 700}
         ]
         self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
+        
+        self.bot.loop.create_task(self.migrate_user_data())
+
+    async def migrate_user_data(self):
+        await self.bot.wait_until_ready()
+        all_users = await self.config.all_users()
+        for user_id, user_data in all_users.items():
+            updated = False
+            for key in ['tasks_completed', 'missions_completed', 'trainings_completed']:
+                if key not in user_data:
+                    user_data[key] = 0
+                    updated = True
+            if updated:
+                await self.config.user_from_id(user_id).set(user_data)
 
     @commands.group()
     async def ds(self, ctx):
@@ -145,7 +159,7 @@ class DemonSlayer(commands.Cog):
     async def train(self, ctx):
         """Undergo training to improve your skills."""
         user_data = await self.config.user(ctx.author).all()
-        breathing_technique = user_data['breathing_technique']
+        breathing_technique = user_data.get('breathing_technique')
 
         if not breathing_technique:
             return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first! Use `[p]ds assign_technique` to get started!")
@@ -168,7 +182,7 @@ class DemonSlayer(commands.Cog):
         async with self.config.user(ctx.author).all() as user_data:
             user_data['technique_mastery'] += mastery_gained
             user_data['slayer_points'] += points_earned
-            user_data['trainings_completed'] += 1
+            user_data['trainings_completed'] = user_data.get('trainings_completed', 0) + 1
 
         await ctx.send(f"Training complete! You gained {mastery_gained} Technique Mastery and {points_earned} Slayer Points.")
         await self.check_rank_up(ctx)
@@ -483,10 +497,10 @@ class DemonSlayer(commands.Cog):
 
         embed = discord.Embed(title=f"{ctx.author.name}'s Demon Slayer Ranking", color=discord.Color.red())
         embed.add_field(name="Current Rank", value=current_rank['name'], inline=False)
-        embed.add_field(name="Slayer Points", value=f"{user_data['slayer_points']}/{next_rank['points']}", inline=True)
-        embed.add_field(name="Missions Completed", value=f"{user_data['missions_completed']}/{next_rank['missions']}", inline=True)
-        embed.add_field(name="Tasks Completed", value=f"{user_data['tasks_completed']}/{next_rank['tasks']}", inline=True)
-        embed.add_field(name="Trainings Completed", value=f"{user_data['trainings_completed']}/{next_rank['trainings']}", inline=True)
+        embed.add_field(name="Slayer Points", value=f"{user_data.get('slayer_points', 0)}/{next_rank['points']}", inline=True)
+        embed.add_field(name="Missions Completed", value=f"{user_data.get('missions_completed', 0)}/{next_rank['missions']}", inline=True)
+        embed.add_field(name="Tasks Completed", value=f"{user_data.get('tasks_completed', 0)}/{next_rank['tasks']}", inline=True)
+        embed.add_field(name="Trainings Completed", value=f"{user_data.get('trainings_completed', 0)}/{next_rank['trainings']}", inline=True)
 
         if current_rank['name'] != "Hashira":
             embed.add_field(name="Next Rank", value=next_rank['name'], inline=False)
@@ -500,10 +514,10 @@ class DemonSlayer(commands.Cog):
         current_rank = self.calculate_rank(user_data)
         next_rank = self.get_next_rank(current_rank)
 
-        if (user_data['slayer_points'] >= next_rank['points'] and
-            user_data['missions_completed'] >= next_rank['missions'] and
-            user_data['tasks_completed'] >= next_rank['tasks'] and
-            user_data['trainings_completed'] >= next_rank['trainings']):
+        if (user_data.get('slayer_points', 0) >= next_rank['points'] and
+            user_data.get('missions_completed', 0) >= next_rank['missions'] and
+            user_data.get('tasks_completed', 0) >= next_rank['tasks'] and
+            user_data.get('trainings_completed', 0) >= next_rank['trainings']):
             
             await self.config.user(ctx.author).rank.set(next_rank['name'])
             await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {next_rank['name']}!")
@@ -872,10 +886,10 @@ class DemonSlayer(commands.Cog):
         
     def calculate_rank(self, user_data):
         for rank in reversed(self.ranks):
-            if (user_data['slayer_points'] >= rank['points'] and
-                user_data['missions_completed'] >= rank['missions'] and
-                user_data['tasks_completed'] >= rank['tasks'] and
-                user_data['trainings_completed'] >= rank['trainings']):
+            if (user_data.get('slayer_points', 0) >= rank['points'] and
+                user_data.get('missions_completed', 0) >= rank['missions'] and
+                user_data.get('tasks_completed', 0) >= rank['tasks'] and
+                user_data.get('trainings_completed', 0) >= rank['trainings']):
                 return rank
         return self.ranks[0]  # Default to lowest rank
 
@@ -883,7 +897,7 @@ class DemonSlayer(commands.Cog):
         current_index = self.ranks.index(current_rank)
         if current_index < len(self.ranks) - 1:
             return self.ranks[current_index + 1]
-        return current_rank  # Return current rank if it's the highest
+        return current_rank  # Return current rank if it's the highes
 
 def setup(bot):
     bot.add_cog(DemonSlayer(bot))
