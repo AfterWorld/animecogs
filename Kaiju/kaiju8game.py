@@ -521,19 +521,7 @@ class Kaiju8Game(commands.Cog):
         await self.config.user(ctx.author).set_raw(attribute, value=user_data[attribute] + gain)
         await ctx.send(f"You completed the training drill and gained {gain} {attribute}!")
 
-    async def _check_rankup(self, ctx):
-        user_data = await self.config.user(ctx.author).all()
-        ranks = ["Trainee", "Private", "Corporal", "Sergeant", "Lieutenant", "Captain", "Major", "Colonel", "General"]
-        current_rank_index = ranks.index(user_data['rank'])
-        
-        if current_rank_index < len(ranks) - 1:
-            exp_needed = (current_rank_index + 1) * 1000
-            if user_data['exp'] >= exp_needed:
-                new_rank = ranks[current_rank_index + 1]
-                await self.config.user(ctx.author).rank.set(new_rank)
-                await ctx.send(f"Congratulations {ctx.author.mention}! You've been promoted to {new_rank}!")
-
-    @commands.command()
+    @df.command()
     async def engage(self, ctx):
         """Engage in an ongoing Kaiju battle"""
         guild_data = await self.config.guild(ctx.guild).all()
@@ -554,7 +542,7 @@ class Kaiju8Game(commands.Cog):
         else:
             await ctx.send("You're already engaged in this battle!")
 
-    @commands.command()
+    @df.command()
     async def craft_weapon(self, ctx):
         """Craft a custom weapon after defeating a numbered Kaiju"""
         user_data = await self.config.user(ctx.author).all()
@@ -583,6 +571,18 @@ class Kaiju8Game(commands.Cog):
         await self.config.user(ctx.author).custom_weapon.set(custom_weapon)
         await self.config.user(ctx.author).can_craft_weapon.set(False)
         await ctx.send(f"Congratulations! You've crafted {custom_weapon['name']}. It has a power of {custom_weapon['power']} and the special ability of {custom_weapon['special_ability']}.")
+
+    async def _check_rankup(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        ranks = ["Trainee", "Private", "Corporal", "Sergeant", "Lieutenant", "Captain", "Major", "Colonel", "General"]
+        current_rank_index = ranks.index(user_data['rank'])
+        
+        if current_rank_index < len(ranks) - 1:
+            exp_needed = (current_rank_index + 1) * 1000
+            if user_data['exp'] >= exp_needed:
+                new_rank = ranks[current_rank_index + 1]
+                await self.config.user(ctx.author).rank.set(new_rank)
+                await ctx.send(f"Congratulations {ctx.author.mention}! You've been promoted to {new_rank}!")
 
 async def setup(bot):
     await bot.add_cog(Kaiju8Game(bot))
