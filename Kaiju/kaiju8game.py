@@ -34,10 +34,13 @@ class Kaiju8Game(commands.Cog):
             "base_level": 1,
             "ongoing_event": None,
             "research_projects": {},
+            "event_participants": [],
+            "numbered_kaiju": None
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
         self.event_task = bot.loop.create_task(self.run_regular_events())
+        self.event_task = bot.loop.create_task(self.run_global_events())
 
     def cog_unload(self):
         self.event_task.cancel()
@@ -81,6 +84,60 @@ class Kaiju8Game(commands.Cog):
         await asyncio.sleep(3600)  # Event lasts 1 hour
         await self.config.guild(guild).ongoing_event.set(None)
         await channel.send("The special training drill has ended. Great effort, Defense Force!")
+
+    async def run_global_events(self):
+        while True:
+            await asyncio.sleep(3600)  # Check every hour
+            for guild in self.bot.guilds:
+                if random.random() < 0.05:  # 5% chance every hour
+                    await self.start_kaiju_event(guild)
+
+    async def start_kaiju_event(self, guild):
+        channel = guild.text_channels[0]  # Choose an appropriate channel
+        kaiju_ranks = ['F', 'E', 'D', 'C', 'B', 'A', 'S']
+        kaiju_rank = random.choice(kaiju_ranks)
+        
+        is_numbered = random.random() < 0.1  # 10% chance for a numbered Kaiju
+        if is_numbered:
+            kaiju_number = random.randint(1, 9)  # Kaiju #1 to #9
+            await self.config.guild(guild).numbered_kaiju.set(kaiju_number)
+            await channel.send(f"🚨 **ALERT: KAIJU #{kaiju_number} ATTACK!** 🚨 An S-rank Kaiju has appeared! All Defense Force members report for duty! Use `[p]df engage` to join the battle!")
+        else:
+            await channel.send(f"🚨 **ALERT: KAIJU ATTACK!** 🚨 A {kaiju_rank}-rank Kaiju has appeared! All Defense Force members report for duty! Use `[p]df engage` to join the battle!")
+
+        await self.config.guild(guild).ongoing_event.set("kaiju_attack")
+        await self.config.guild(guild).event_participants.set([])
+        await asyncio.sleep(1800)  # Event lasts 30 minutes
+        await self.end_kaiju_event(guild)
+
+    async def end_kaiju_event(self, guild):
+        channel = guild.text_channels[0]  # Choose an appropriate channel
+        participants = await self.config.guild(guild).event_participants()
+        
+        if participants:
+            winner = random.choice(participants)
+            user = self.bot.get_user(winner)
+            await channel.send(f"The Kaiju has been defeated! {user.mention} landed the final blow!")
+            
+            numbered_kaiju = await self.config.guild(guild).numbered_kaiju()
+            if numbered_kaiju:
+                await channel.send(f"Congratulations! You've defeated Kaiju #{numbered_kaiju}! You can now create a custom weapon using `[p]df craft_weapon`.")
+                await self.config.user(user).can_craft_weapon.set(True)
+            
+            # Distribute rewards to all participants
+            for participant_id in participants:
+                participant = self.bot.get_user(participant_id)
+                exp_gain = random.randint(100, 500)
+                user_data = await self.config.user(participant).all()
+                await self.config.user(participant).exp.set(user_data['exp'] + exp_gain)
+                await channel.send(f"{participant.mention} gained {exp_gain} EXP for participating in the Kaiju battle!")
+        else:
+            await channel.send("The Kaiju has retreated. No Defense Force members engaged in battle.")
+
+        await self.config.guild(guild).ongoing_event.set(None)
+        await self.config.guild(guild).event_participants.set([])
+        await self.config.guild(guild).numbered_kaiju.set(None)
+
 
     @commands.group()
     async def df(self, ctx):
@@ -475,6 +532,57 @@ class Kaiju8Game(commands.Cog):
                 new_rank = ranks[current_rank_index + 1]
                 await self.config.user(ctx.author).rank.set(new_rank)
                 await ctx.send(f"Congratulations {ctx.author.mention}! You've been promoted to {new_rank}!")
+
+    @commands.command()
+    async def engage(self, ctx):
+        """Engage in an ongoing Kaiju battle"""
+        guild_data = await self.config.guild(ctx.guild).all()
+        if guild_data['ongoing_event'] != "kaiju_attack":
+            await ctx.send("There's no ongoing Kaiju attack event.")
+            return
+
+        user_data = await self.config.user(ctx.author).all()
+        if user_data['rank'] == "Trainee":
+            await ctx.send("You need to join the Defense Force first! Use `[p]df join`")
+            return
+
+        participants = guild_data['event_participants']
+        if ctx.author.id not in participants:
+            participants.append(ctx.author.id)
+            await self.config.guild(ctx.guild).event_participants.set(participants)
+            await ctx.send(f"{ctx.author.mention} has joined the battle against the Kaiju!")
+        else:
+            await ctx.send("You're already engaged in this battle!")
+
+    @commands.command()
+    async def craft_weapon(self, ctx):
+        """Craft a custom weapon after defeating a numbered Kaiju"""
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data.get('can_craft_weapon', False):
+            await ctx.send("You haven't earned the right to craft a custom weapon yet. Defeat a numbered Kaiju to unlock this ability!")
+            return
+
+        await ctx.send("You've unlocked the ability to craft a custom weapon! What would you like to name your weapon?")
+        
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        try:
+            weapon_name = await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            await ctx.send("Weapon crafting cancelled. You took too long to respond.")
+            return
+
+        # Create the custom weapon
+        custom_weapon = {
+            "name": weapon_name.content,
+            "power": random.randint(50, 100),
+            "special_ability": random.choice(["Flame", "Ice", "Thunder", "Wind", "Earth"])
+        }
+
+        await self.config.user(ctx.author).custom_weapon.set(custom_weapon)
+        await self.config.user(ctx.author).can_craft_weapon.set(False)
+        await ctx.send(f"Congratulations! You've crafted {custom_weapon['name']}. It has a power of {custom_weapon['power']} and the special ability of {custom_weapon['special_ability']}.")
 
 async def setup(bot):
     await bot.add_cog(Kaiju8Game(bot))
