@@ -56,7 +56,7 @@ class DemonSlayer(commands.Cog):
         }
         self.ranks = ["Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe", "Hinoto", "Hinoe", "Kinoto", "Kinoe"]
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
