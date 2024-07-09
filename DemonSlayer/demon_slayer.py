@@ -30,7 +30,8 @@ class DemonSlayer(commands.Cog):
             "demon_moon_rank": None,
             "last_daily": None,
             "trainings_completed": 0,
-            "event_points": 0
+            "event_points": 0,
+            "form_mastery": {}
         }
         default_guild = {
             "active_missions": {},
@@ -232,6 +233,50 @@ class DemonSlayer(commands.Cog):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
+
+    @ds.command(name="practice_form")
+    async def practice_form(self, ctx, *, form_name: str):
+        """Practice a specific form to increase its mastery."""
+        user_data = await self.config.user(ctx.author).all()
+        technique = user_data['breathing_technique']
+        
+        if not technique:
+            return await ctx.send(f"{ctx.author.mention}, you need to be assigned a Breathing Technique first!")
+
+        forms = self.breathing_techniques.get(technique, [])
+        matching_forms = [f for f in forms if form_name.lower() in f.lower()]
+
+        if not matching_forms:
+            return await ctx.send(f"No matching form found for {technique} Breathing. Check your spelling or use `[p]ds forms` to see available forms.")
+
+        if len(matching_forms) > 1:
+            return await ctx.send(f"Multiple matching forms found. Please be more specific: {', '.join(matching_forms)}")
+
+        form = matching_forms[0]
+        
+        # Practice the form
+        mastery_gain = random.randint(1, 5)
+        async with self.config.user(ctx.author).form_mastery() as form_mastery:
+            form_mastery[form] = form_mastery.get(form, 0) + mastery_gain
+
+        await ctx.send(f"{ctx.author.mention} practiced {form}. Form mastery increased by {mastery_gain}!")
+
+    @ds.command(name="form_mastery")
+    async def show_form_mastery(self, ctx):
+        """Display your form mastery levels."""
+        user_data = await self.config.user(ctx.author).all()
+        technique = user_data['breathing_technique']
+        form_mastery = user_data['form_mastery']
+
+        if not technique:
+            return await ctx.send(f"{ctx.author.mention}, you haven't been assigned a breathing technique yet.")
+
+        embed = discord.Embed(title=f"{ctx.author.name}'s {technique} Breathing Form Mastery", color=discord.Color.blue())
+        for form, mastery in form_mastery.items():
+            if form in self.breathing_techniques.get(technique, []):
+                embed.add_field(name=form, value=f"Mastery Level: {mastery}", inline=False)
+
+        await ctx.send(embed=embed)
             
     @ds.command(name="event")
     async def check_event(self, ctx):
