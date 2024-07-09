@@ -24,13 +24,15 @@ class DemonSlayer(commands.Cog):
             "experience": 0,
             "known_forms": [],
             "last_mission": None,
-            "last_daily": None,
-            "nichirin_materials": {"steel": 0, "scarlet_ore": 0},
-            "boss_cooldown": None
+            "technique_mastery": 0,
+            "slayer_points": 0,
+            "total_concentration": 0,
+            "demon_moon_rank": None
         }
         default_guild = {
             "active_missions": {},
-            "group_training": None
+            "group_training": None,
+            "hashira_challenge": None
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
@@ -55,8 +57,9 @@ class DemonSlayer(commands.Cog):
             "Kyogai": {"difficulty": 55, "xp": 500}
         }
         self.ranks = ["Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe", "Hinoto", "Hinoe", "Kinoto", "Kinoe"]
+        self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
 
-    @commands.group(invoke_without_command=True)
+    @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
@@ -523,6 +526,145 @@ class DemonSlayer(commands.Cog):
         await ctx.send(f"{ctx.author.mention}, your crafting materials:\n"
                        f"• Steel: {materials['steel']}\n"
                        f"• Scarlet Ore: {materials['scarlet_ore']}")
+        
+    @ds.command(name="hashira_challenge")
+    @commands.guild_only()
+    @commands.cooldown(1, 86400, commands.BucketType.user)
+    async def hashira_challenge(self, ctx):
+        """Challenge a Hashira to a duel and test your skills."""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data['rank'] != 'Kinoe':
+            return await ctx.send(f"{ctx.author.mention}, only Kinoe rank slayers can challenge a Hashira!")
+
+        hashira = random.choice(self.hashiras)
+        await ctx.send(f"{ctx.author.mention} challenges the {hashira} Hashira to a duel!")
+
+        # Simulating the duel
+        user_score = user_data['technique_mastery'] + random.randint(1, 100)
+        hashira_score = random.randint(800, 1000)
+
+        await asyncio.sleep(2)
+        if user_score > hashira_score:
+            await ctx.send(f"Incredible! {ctx.author.mention} has defeated the {hashira} Hashira!")
+            await self.config.user(ctx.author).rank.set("Hashira")
+            await ctx.send(f"Congratulations! You have been promoted to the rank of Hashira!")
+        else:
+            await ctx.send(f"{ctx.author.mention} fought valiantly but was defeated by the {hashira} Hashira. Keep training and try again!")
+
+    @ds.command(name="demon_moon")
+    @commands.cooldown(1, 3600, commands.BucketType.user)
+    async def challenge_demon_moon(self, ctx):
+        """Challenge a Demon Moon to increase your demon moon rank."""
+        user_data = await self.config.user(ctx.author).all()
+        current_rank = user_data['demon_moon_rank']
+
+        if current_rank is None:
+            target_rank = "Lower Moon Six"
+        elif current_rank.startswith("Lower Moon"):
+            current_number = int(current_rank.split()[-1])
+            target_rank = f"Lower Moon {current_number - 1}" if current_number > 1 else "Upper Moon Six"
+        elif current_rank.startswith("Upper Moon"):
+            current_number = int(current_rank.split()[-1])
+            target_rank = f"Upper Moon {current_number - 1}" if current_number > 1 else "Upper Moon One"
+        else:
+            return await ctx.send(f"{ctx.author.mention}, you've already reached the highest demon moon rank!")
+
+        await ctx.send(f"{ctx.author.mention} challenges {target_rank} to a battle!")
+
+        # Simulating the battle
+        user_score = user_data['technique_mastery'] + user_data['total_concentration'] + random.randint(1, 200)
+        demon_score = random.randint(700, 1000)
+
+        await asyncio.sleep(2)
+        if user_score > demon_score:
+            await self.config.user(ctx.author).demon_moon_rank.set(target_rank)
+            await ctx.send(f"Victory! {ctx.author.mention} has defeated {target_rank} and taken their position!")
+        else:
+            await ctx.send(f"{ctx.author.mention} was overwhelmed by {target_rank}'s power. Train harder and try again!")
+
+    @ds.command(name="concentrate")
+    @commands.cooldown(1, 3600, commands.BucketType.user)
+    async def total_concentration_training(self, ctx):
+        """Undergo Total Concentration Breathing training to enhance your abilities."""
+        user_data = await self.config.user(ctx.author).all()
+        
+        training_result = random.randint(1, 10)
+        await self.config.user(ctx.author).total_concentration.set(user_data['total_concentration'] + training_result)
+
+        await ctx.send(f"{ctx.author.mention} undergoes intense Total Concentration Breathing training!")
+        await asyncio.sleep(2)
+        await ctx.send(f"Your Total Concentration has increased by {training_result} points!")
+
+    @ds.command(name="forge_quest")
+    @commands.cooldown(1, 604800, commands.BucketType.user)  # Once per week
+    async def nichirin_forge_quest(self, ctx):
+        """Embark on a quest to forge a new Nichirin Blade."""
+        tasks = [
+            "Climbing Mt. Sagiri to obtain rare ore",
+            "Meditating under a waterfall to purify your spirit",
+            "Battling a powerful demon to obtain a special alloy",
+            "Studying ancient forging techniques",
+            "Assisting the swordsmith in the forging process"
+        ]
+
+        await ctx.send(f"{ctx.author.mention} embarks on a quest to forge a new Nichirin Blade!")
+        
+        for task in tasks:
+            await ctx.send(f"Task: {task}")
+            await asyncio.sleep(3)
+            success = random.choice([True, False])
+            if success:
+                await ctx.send("Success!")
+            else:
+                await ctx.send("The quest has failed. Try again next week!")
+                return
+
+        new_color = random.choice(["Crimson", "Navy", "Emerald", "Golden", "Violet", "Silver"])
+        await self.config.user(ctx.author).nichirin_color.set(new_color)
+        await ctx.send(f"Congratulations! You've successfully forged a new {new_color} Nichirin Blade!")
+
+    @ds.command(name="corps_mission")
+    @commands.cooldown(1, 43200, commands.BucketType.user)  # Twice per day
+    async def demon_slayer_corps_mission(self, ctx):
+        """Accept a mission from the Demon Slayer Corps."""
+        missions = [
+            "Investigate strange disappearances in a remote village",
+            "Protect a important figure from potential demon attacks",
+            "Track down and eliminate a demon that's been terrorizing a town",
+            "Escort a group of civilians through demon-infested territory",
+            "Retrieve a valuable artifact from a demon's lair"
+        ]
+
+        mission = random.choice(missions)
+        await ctx.send(f"{ctx.author.mention}, your mission from the Demon Slayer Corps:\n{mission}")
+
+        await ctx.send("Do you accept this mission? (yes/no)")
+
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ['yes', 'no']
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            return await ctx.send("Mission request timed out. Try again later.")
+
+        if msg.content.lower() == 'no':
+            return await ctx.send("Mission declined. The Demon Slayer Corps will find another slayer for this task.")
+
+        await ctx.send("Mission accepted! You have 1 hour to complete the mission.")
+        await asyncio.sleep(5)  # In a real scenario, this would be much longer
+
+        success = random.random() < 0.7  # 70% success rate
+        if success:
+            reward = random.randint(50, 200)
+            await self.add_xp(ctx.author, reward)
+            await ctx.send(f"Mission completed successfully! You've earned {reward} XP.")
+        else:
+            await ctx.send("Despite your best efforts, the mission was not successful. Keep training and try again!")
+
+    async def add_xp(self, user, amount):
+        async with self.config.user(user).experience() as xp:
+            xp += amount
 
     async def extra_training(self, ctx):
         await self.add_xp(ctx.author, 200)
