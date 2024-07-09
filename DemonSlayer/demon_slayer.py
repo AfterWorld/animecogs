@@ -61,11 +61,17 @@ class DemonSlayer(commands.Cog):
         self.ranks = ["Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe", "Hinoto", "Hinoe", "Kinoto", "Kinoe"]
         self.hashiras = ["Water", "Flame", "Wind", "Stone", "Love", "Mist", "Sound", "Flower", "Serpent"]
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+            embed = discord.Embed(title="Demon Slayer Commands", color=discord.Color.red())
+            embed.add_field(name="ds daily", value="Claim your daily reward", inline=False)
+            embed.add_field(name="ds mastery", value="Check your breathing technique mastery level", inline=False)
+            embed.add_field(name="ds ranking", value="Display your current demon slayer ranking", inline=False)
+            embed.add_field(name="ds invasion", value="Trigger a demon invasion event", inline=False)
+            embed.add_field(name="ds fight_invasion", value="Join an ongoing demon invasion battle", inline=False)
+            await ctx.send(embed=embed)
 
     @ds.command(name="assign_technique")
     async def assign_breathing_technique(self, ctx):
