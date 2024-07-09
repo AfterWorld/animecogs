@@ -31,7 +31,18 @@ class DemonSlayer(commands.Cog):
             "last_daily": None,
             "trainings_completed": 0,
             "event_points": 0,
-            "form_mastery": {}
+            "form_mastery": {},
+            "secondary_technique": None,
+            "technique_mastery": {},
+            "demon": False,
+            "demon_blood_art": None,
+            "companion": None,
+            "appearance": {},
+            "background_story": "",
+            "exam_status": "Not Taken",
+            "current_location": "Butterfly Mansion",
+            "guild": None,
+            "pvp_rating": 1000
         }
         default_guild = {
             "active_missions": {},
@@ -39,10 +50,20 @@ class DemonSlayer(commands.Cog):
             "hashira_challenge": None,
             "last_invasion": None,
             "active_event": None,
-            "event_end_time": None
+            "event_end_time": None,
+            "guilds": {},
+            "guild_missions": {}
         }
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
+        
+        self.locations = {
+            "Butterfly Mansion": {"demons": ["Lower Moon Six", "Swamp Demon"], "activities": ["Medical Training", "Rehabilitation"]},
+            "Mt. Sagiri": {"demons": ["Hand Demon", "Tongue Demon"], "activities": ["Survival Training", "Demon Hunting"]},
+            "Asakusa": {"demons": ["Susamaru", "Yahaba"], "activities": ["City Patrol", "Information Gathering"]},
+            "Natagumo Mountain": {"demons": ["Mother Spider Demon", "Father Spider Demon"], "activities": ["Forest Navigation", "Trap Evasion"]},
+            "Demon Slayer Corps HQ": {"demons": [], "activities": ["Strategy Meeting", "Advanced Training"]}
+        }
         
         self.seasonal_events = {
             "Blood Moon Festival": {
@@ -233,6 +254,158 @@ class DemonSlayer(commands.Cog):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
+            
+    @ds.command(name="fuse_techniques")
+    async def fuse_techniques(self, ctx):
+        """Fuse two breathing techniques to create a unique hybrid form."""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["technique_mastery"].get(user_data["breathing_technique"], 0) < 1000:
+            return await ctx.send("You need at least 1000 mastery in your primary technique to fuse techniques.")
+        
+        techniques = list(self.breathing_techniques.keys())
+        secondary = random.choice([t for t in techniques if t != user_data["breathing_technique"]])
+        new_form = f"{user_data['breathing_technique']}-{secondary} Hybrid: {random.choice(self.breathing_techniques[user_data['breathing_technique']])} {random.choice(self.breathing_techniques[secondary])}"
+        
+        await self.config.user(ctx.author).secondary_technique.set(secondary)
+        await ctx.send(f"You've successfully fused {user_data['breathing_technique']} and {secondary} techniques! You can now use: {new_form}")
+
+    @ds.group(name="guild")
+    async def guild(self, ctx):
+        """Guild-related commands"""
+        pass
+
+    @guild.command(name="create")
+    async def create_guild(self, ctx, *, name: str):
+        """Create a new guild."""
+        async with self.config.guild(ctx.guild).guilds() as guilds:
+            if name in guilds:
+                return await ctx.send("A guild with that name already exists.")
+            guilds[name] = {"members": [ctx.author.id], "leader": ctx.author.id}
+        await self.config.user(ctx.author).guild.set(name)
+        await ctx.send(f"Guild '{name}' has been created with you as the leader!")
+
+    @guild.command(name="join")
+    async def join_guild(self, ctx, *, name: str):
+        """Join an existing guild."""
+        async with self.config.guild(ctx.guild).guilds() as guilds:
+            if name not in guilds:
+                return await ctx.send("That guild doesn't exist.")
+            if ctx.author.id in guilds[name]["members"]:
+                return await ctx.send("You're already in this guild.")
+            guilds[name]["members"].append(ctx.author.id)
+        await self.config.user(ctx.author).guild.set(name)
+        await ctx.send(f"You've joined the guild '{name}'!")
+
+    @ds.command(name="recruit_companion")
+    async def recruit_companion(self, ctx):
+        """Recruit a companion to assist you in battles."""
+        companions = ["Kasugai Crow", "Kakushi"]
+        companion = random.choice(companions)
+        await self.config.user(ctx.author).companion.set(companion)
+        await ctx.send(f"You've recruited a {companion} as your companion!")
+
+    @ds.command(name="duel")
+    async def pvp_duel(self, ctx, opponent: discord.Member):
+        """Challenge another player to a duel."""
+        if opponent == ctx.author:
+            return await ctx.send("You can't duel yourself!")
+        
+        await ctx.send(f"{opponent.mention}, you've been challenged to a duel! Do you accept? (yes/no)")
+        
+        def check(m):
+            return m.author == opponent and m.channel == ctx.channel and m.content.lower() in ['yes', 'no']
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            return await ctx.send("The duel request has timed out.")
+
+        if msg.content.lower() == 'no':
+            return await ctx.send("The duel has been declined.")
+
+        # Simplified duel logic
+        player1_score = random.randint(1, 100) + (await self.config.user(ctx.author).technique_mastery.get(await self.config.user(ctx.author).breathing_technique(), 0))
+        player2_score = random.randint(1, 100) + (await self.config.user(opponent).technique_mastery.get(await self.config.user(opponent).breathing_technique(), 0))
+
+        winner = ctx.author if player1_score > player2_score else opponent
+        loser = opponent if winner == ctx.author else ctx.author
+
+        await ctx.send(f"{winner.mention} has won the duel!")
+
+        # Update PvP ratings
+        async with self.config.user(winner).pvp_rating() as rating:
+            rating += 10
+        async with self.config.user(loser).pvp_rating() as rating:
+            rating = max(0, rating - 10)
+
+    @ds.command(name="become_demon")
+    async def become_demon(self, ctx):
+        """Choose to become a demon with unique abilities."""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["demon"]:
+            return await ctx.send("You're already a demon!")
+        
+        await self.config.user(ctx.author).demon.set(True)
+        blood_arts = ["Blood Demon Art: Temari", "Blood Demon Art: Arrow", "Blood Demon Art: Threads"]
+        chosen_art = random.choice(blood_arts)
+        await self.config.user(ctx.author).demon_blood_art.set(chosen_art)
+        await ctx.send(f"You've transformed into a demon! Your Blood Demon Art is: {chosen_art}")
+
+    @ds.command(name="customize")
+    async def customize_character(self, ctx, aspect: str, *, detail: str):
+        """Customize your character's appearance or background story."""
+        if aspect not in ["hair", "eyes", "outfit", "story"]:
+            return await ctx.send("Valid aspects are: hair, eyes, outfit, story")
+        
+        if aspect == "story":
+            await self.config.user(ctx.author).background_story.set(detail)
+        else:
+            async with self.config.user(ctx.author).appearance() as appearance:
+                appearance[aspect] = detail
+        
+        await ctx.send(f"Your character's {aspect} has been updated!")
+
+    @ds.command(name="exam")
+    async def demon_slayer_exam(self, ctx):
+        """Take the Demon Slayer Exam to become an official Demon Slayer."""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["exam_status"] == "Passed":
+            return await ctx.send("You've already passed the Demon Slayer Exam!")
+        
+        questions = [
+            "What is the primary weakness of demons?",
+            "Name one of the Hashira.",
+            "What is the purpose of the Demon Slayer Corps?"
+        ]
+        correct_answers = 0
+        
+        for question in questions:
+            await ctx.send(question)
+            try:
+                answer = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author, timeout=30.0)
+                # Simplified answer checking
+                if len(answer.content) > 5:  # Very basic check, just ensures some effort in answering
+                    correct_answers += 1
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to answer. The exam has ended.")
+                return
+
+        if correct_answers >= 2:
+            await self.config.user(ctx.author).exam_status.set("Passed")
+            await ctx.send("Congratulations! You've passed the Demon Slayer Exam and are now an official Demon Slayer!")
+        else:
+            await ctx.send("Unfortunately, you didn't pass the exam this time. Keep training and try again later!")
+
+    @ds.command(name="travel")
+    async def travel(self, ctx, *, location: str):
+        """Travel to a different location for unique activities and demons."""
+        if location not in self.locations:
+            return await ctx.send(f"Invalid location. Available locations: {', '.join(self.locations.keys())}")
+        
+        await self.config.user(ctx.author).current_location.set(location)
+        demons = ', '.join(self.locations[location]["demons"])
+        activities = ', '.join(self.locations[location]["activities"])
+        await ctx.send(f"You've traveled to {location}!\nDemons you might encounter: {demons}\nAvailable activities: {activities}")
 
     @ds.command(name="practice_form")
     async def practice_form(self, ctx, *, form_name: str):
