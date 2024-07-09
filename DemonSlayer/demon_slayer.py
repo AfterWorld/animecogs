@@ -76,6 +76,14 @@ class DemonSlayer(commands.Cog):
         await self.bot.wait_until_ready()
         for guild in self.bot.guilds:
             await self.config.guild(guild).set(self.config.guild.default)
+
+    async def get_guild_data(self, guild):
+        """Get guild data, initializing it if it doesn't exist."""
+        guild_data = await self.config.guild(guild).all()
+        if not guild_data:
+            guild_data = self.config.guild.defaults
+            await self.config.guild(guild).set(guild_data)
+        return guild_data
             
         self.pvp_queue = []
         
@@ -1755,19 +1763,19 @@ class DemonSlayer(commands.Cog):
         task = random.choice(tasks)
         points_earned = random.randint(5, 15)
         
-        guild_data = await self.config.guild(ctx.guild).all()
-        active_event = guild_data['active_event']
+        guild_data = await self.get_guild_data(ctx.guild)
+        active_event = guild_data.get('active_event')
         
         if active_event:
-            event_data = self.seasonal_events[active_event]
-            points_earned = int(points_earned * event_data['bonus_multiplier'])
+            event_data = self.seasonal_events.get(active_event, {})
+            points_earned = int(points_earned * event_data.get('bonus_multiplier', 1))
         
         await ctx.send(f"{ctx.author.mention}, your task: {task}")
         await asyncio.sleep(5)  # Simulating task completion time
         
         async with self.config.user(ctx.author).all() as user_data:
-            user_data['slayer_points'] += points_earned
-            user_data['tasks_completed'] += 1
+            user_data['slayer_points'] = user_data.get('slayer_points', 0) + points_earned
+            user_data['tasks_completed'] = user_data.get('tasks_completed', 0) + 1
             if active_event:
                 user_data['event_points'] = user_data.get('event_points', 0) + points_earned
         
