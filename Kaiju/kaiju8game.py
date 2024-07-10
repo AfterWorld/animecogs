@@ -19,6 +19,7 @@ class Kaiju8Game(commands.Cog):
             "intelligence": 1,
             "is_kaiju": False,
             "kaiju_revealed": False,
+            "character_class": None,  # Add this line
             "missions_completed": 0,
             "weapon_specialization": None,
             "squad": None,
@@ -117,7 +118,7 @@ class Kaiju8Game(commands.Cog):
         await self.config.guild(guild).event_participants.set([])
         await asyncio.sleep(1800)  # Event lasts 30 minutes
         await self.end_kaiju_event(guild)
-
+        
     async def end_kaiju_event(self, guild):
         event_channel_id = await self.config.guild(guild).event_channel_id()
         if event_channel_id is None:
@@ -179,13 +180,15 @@ class Kaiju8Game(commands.Cog):
 
         is_kaiju = random.random() < 0.05
         kaiju_compatibility = random.randint(1, 100) if is_kaiju else 0
-        await self.config.user(ctx.author).is_kaiju.set(is_kaiju)
-        await self.config.user(ctx.author).kaiju_compatibility.set(kaiju_compatibility)
-        
         classes = ["Frontline Fighter", "Tactical Support", "Research & Development", "Medical Support"]
         chosen_class = random.choice(classes)
-        await self.config.user(ctx.author).character_class.set(chosen_class)
-        
+
+        async with self.config.user(ctx.author).all() as user_data:
+            user_data['is_kaiju'] = is_kaiju
+            user_data['kaiju_compatibility'] = kaiju_compatibility
+            user_data['character_class'] = chosen_class
+            user_data['rank'] = "Private"  # Set initial rank to Private
+
         await ctx.send(f"Welcome to the Defense Force, {ctx.author.mention}! You've been assigned to the {chosen_class} class. Your training begins now.")
 
     @df.command()
