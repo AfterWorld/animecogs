@@ -47,6 +47,7 @@ class DemonSlayer(commands.Cog):
             "nickname": None,
             "background_story": "",
             "exam_status": "Not Taken",
+            "character_class": None,  # Add this line
             "current_location": "Butterfly Mansion",
             "locations_visited": ["Butterfly Mansion"],
             "guild_name": None,
@@ -313,6 +314,15 @@ class DemonSlayer(commands.Cog):
         
         self.bot.loop.create_task(self.migrate_user_data())
         self.bg_task = self.bot.loop.create_task(self.event_background_task())
+        self.bot.loop.create_task(self.initialize_config())
+
+
+    async def initialize_config(self):
+    all_users = await self.config.all_users()
+    for user_id, user_data in all_users.items():
+        if "character_class" not in user_data:
+            async with self.config.user_from_id(user_id).all() as user_data:
+                user_data["character_class"] = None
         
         def cog_unload(self):
             self.bg_task.cancel()
