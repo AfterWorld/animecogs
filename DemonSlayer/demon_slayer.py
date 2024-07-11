@@ -984,13 +984,6 @@ class DemonSlayer(commands.Cog):
     async def initialize_guild_data(self):
         for guild in self.bot.guilds:
             guild_data = await self.config.guild(guild).all()
-            if "seasonal_event" not in guild_data:
-                guild_data["seasonal_event"] = None
-                await self.config.guild(guild).set(guild_data)
-                
-    async def initialize_guild_data(self):
-        for guild in self.bot.guilds:
-            guild_data = await self.config.guild(guild).all()
             if "active_tournament" not in guild_data:
                 guild_data["active_tournament"] = None
                 await self.config.guild(guild).set(guild_data)
