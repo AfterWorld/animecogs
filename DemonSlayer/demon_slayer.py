@@ -173,7 +173,7 @@ class DemonSlayer(commands.Cog):
                 else:
                     await ctx.send("There's no active global event to join right now.")
             else:
-                await ctx.send_help(ctx.command)
+                pass
 
     @ds.command(name="start")
     async def start_journey(self, ctx):
