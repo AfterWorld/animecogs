@@ -964,11 +964,11 @@ class DemonSlayer(commands.Cog):
     @commands.is_owner()
     async def start_seasonal_event(self, ctx, duration: int = 7):
         """Start a seasonal event (Owner only)"""
-        guild_data = await self.config.guild(ctx.guild).all()
-        if guild_data["seasonal_event"]:
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        if guild_data.get("seasonal_event", None):
             await ctx.send("A seasonal event is already active!")
             return
-
+    
         events = [
             {"name": "Blood Moon Festival", "bonus": "double_xp"},
             {"name": "Wisteria Bloom", "bonus": "weaker_demons"},
@@ -980,26 +980,26 @@ class DemonSlayer(commands.Cog):
             "bonus": event["bonus"],
             "end_time": (datetime.now() + timedelta(days=duration)).isoformat()
         }
-        await self.config.guild(ctx.guild).set(guild_data)
-
+        await self.config.custom("guild", ctx.guild.id).set(guild_data)
+    
         embed = discord.Embed(title=f"Seasonal Event: {event['name']}", color=discord.Color.gold())
         embed.description = f"A special event has started! Enjoy {event['bonus']} for the next {duration} days!"
         await ctx.send(embed=embed)
-
+    
         # Schedule event end
         await asyncio.sleep(duration * 86400)  # Convert days to seconds
         await self.end_seasonal_event(ctx)
 
     async def end_seasonal_event(self, ctx):
-        guild_data = await self.config.guild(ctx.guild).all()
-        if not guild_data["seasonal_event"]:
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        if not guild_data.get("seasonal_event", None):
             return
-
+    
         embed = discord.Embed(title="Seasonal Event Ended", color=discord.Color.blue())
         embed.description = f"The {guild_data['seasonal_event']['name']} has ended. We hope you enjoyed the {guild_data['seasonal_event']['bonus']}!"
         await ctx.send(embed=embed)
         guild_data["seasonal_event"] = None
-        await self.config.guild(ctx.guild).set(guild_data)
+        await self.config.custom("guild", ctx.guild.id).set(guild_data)
 
     @ds.command(name="set_event_channel")
     @commands.admin()
