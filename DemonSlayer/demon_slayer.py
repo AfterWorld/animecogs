@@ -91,6 +91,92 @@ class DemonSlayer(commands.Cog):
                        f"Your Nichirin Blade is: {color}\n"
                        f"You've learned your first form: {first_form}")
 
+    @ds.command(name="hashira_training")
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 30-minute cooldown
+    async def hashira_training(self, ctx):
+        """Undergo Hashira training for a chance at significant XP gain"""
+        user_data = await self.config.user(ctx.author).all()
+        
+        if user_data["rank"] == "Hashira":
+            await ctx.send("You are already a Hashira. Your training now focuses on mentoring others.")
+            return
+
+        embed = discord.Embed(title="Hashira Training", color=discord.Color.gold())
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+        embed.description = f"{ctx.author.mention} begins intense Hashira training..."
+        message = await ctx.send(embed=embed)
+
+        await asyncio.sleep(5)  # Simulating training time
+
+        success = random.random() < 0.4  # 40% success rate
+        xp_gained = random.randint(100, 500) if success else random.randint(10, 50)
+
+        await self.config.user(ctx.author).experience.set(user_data["experience"] + xp_gained)
+
+        if success:
+            embed.description += f"\n\nTraining successful! You gained {xp_gained} XP!"
+            embed.color = discord.Color.green()
+        else:
+            embed.description += f"\n\nTraining was tough. You gained {xp_gained} XP. Keep trying!"
+            embed.color = discord.Color.red()
+
+        await message.edit(embed=embed)
+        await self.check_rank_up(ctx)
+
+    @ds.command(name="global_event")
+    @commands.is_owner()  # Only the bot owner can trigger global events
+    async def trigger_global_event(self, ctx, channel: discord.TextChannel = None):
+        """Trigger a global demon attack event"""
+        if channel is None:
+            channel = ctx.channel
+
+        demon = random.choice(["Lower Moon Six", "Lower Moon Three", "Upper Moon Six", "Upper Moon Three"])
+        demon_strength = {"Lower Moon Six": 500, "Lower Moon Three": 1000, "Upper Moon Six": 2000, "Upper Moon Three": 3000}
+
+        embed = discord.Embed(title="Global Demon Attack!", color=discord.Color.dark_red())
+        embed.description = f"A {demon} has appeared! Type `.ds join` to join the battle!"
+        embed.add_field(name="Demon Strength", value=demon_strength[demon])
+        embed.add_field(name="Participants", value="None yet")
+        message = await channel.send(embed=embed)
+
+        participants = []
+        total_strength = 0
+        battle_duration = 60  # 1 minute for the battle
+
+        def check(m):
+            return m.content.lower() == '.ds join' and m.channel == channel
+
+        end_time = datetime.now() + timedelta(seconds=battle_duration)
+
+        while datetime.now() < end_time:
+            try:
+                join_msg = await self.bot.wait_for('message', check=check, timeout=(end_time - datetime.now()).total_seconds())
+                user_data = await self.config.user(join_msg.author).all()
+                if join_msg.author not in participants and user_data["breathing_technique"]:
+                    participants.append(join_msg.author)
+                    total_strength += user_data["experience"]
+                    embed.set_field_at(1, name="Participants", value="\n".join([p.mention for p in participants]))
+                    await message.edit(embed=embed)
+            except asyncio.TimeoutError:
+                break
+
+        # Battle resolution
+        victory = total_strength > demon_strength[demon]
+
+        if victory:
+            embed.color = discord.Color.green()
+            embed.description = f"The {demon} has been defeated!"
+            xp_reward = demon_strength[demon] // len(participants)
+            for participant in participants:
+                user_data = await self.config.user(participant).all()
+                await self.config.user(participant).experience.set(user_data["experience"] + xp_reward)
+            embed.add_field(name="Reward", value=f"Each participant gains {xp_reward} XP!")
+        else:
+            embed.color = discord.Color.red()
+            embed.description = f"The {demon} was too powerful and escaped..."
+
+        await message.edit(embed=embed)
+
     @ds.command(name="profile")
     async def show_profile(self, ctx, user: discord.Member = None):
         """Display your Demon Slayer profile"""
