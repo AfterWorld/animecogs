@@ -3,11 +3,17 @@ from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
+import json
 
 class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.quest = self.load_quests()
+        
+        def load_quests(self):
+            with open("quest.json") as f:
+                return json.load(f)
         
         default_user = {
             "breathing_technique": None,
@@ -22,6 +28,9 @@ class DemonSlayer(commands.Cog):
             "slayer_points": 0,
             "companion": None,
             "companion_level": 1,
+            "companion_loyalty": 0,
+            "companion_friendship": 0,
+            "companion_abilities": [],
             "nichirin_blade_level": 1,
             "nichirin_blade_ability": None,
             "materials": {"steel": 0, "wisteria": 0, "scarlet_ore": 0},
@@ -37,6 +46,10 @@ class DemonSlayer(commands.Cog):
             "last_hunt": None,
             "guild": None,
             "secondary_breathing": None,
+            "active_quest": None,
+            "completed_quests": [],
+            "skills": {},
+            "demon_allies": [],
         }
         
         default_guild = {
@@ -72,24 +85,42 @@ class DemonSlayer(commands.Cog):
         ]
 
         self.demons = {
-            "Lower Moon Six": {"difficulty": 60, "xp": 100},
-            "Lower Moon Five": {"difficulty": 65, "xp": 120},
-            "Lower Moon Four": {"difficulty": 70, "xp": 140},
-            "Lower Moon Three": {"difficulty": 75, "xp": 160},
-            "Lower Moon Two": {"difficulty": 80, "xp": 180},
-            "Lower Moon One": {"difficulty": 85, "xp": 200},
-            "Upper Moon Six": {"difficulty": 90, "xp": 250},
-            "Upper Moon Five": {"difficulty": 92, "xp": 300},
-            "Upper Moon Four": {"difficulty": 94, "xp": 350},
-            "Upper Moon Three": {"difficulty": 96, "xp": 400},
-            "Upper Moon Two": {"difficulty": 98, "xp": 450},
-            "Upper Moon One": {"difficulty": 99, "xp": 500}
+            "Lower Moon Six": {"difficulty": 60, "xp": 100, "strength": 500, "abilities": ["Blood Boost"]},
+            "Lower Moon Five": {"difficulty": 65, "xp": 120, "strength": 550, "abilities": ["Swift Strike"]},
+            "Lower Moon Four": {"difficulty": 70, "xp": 140, "strength": 600, "abilities": ["Poison Mist"]},
+            "Lower Moon Three": {"difficulty": 75, "xp": 160, "strength": 650, "abilities": ["Regeneration"]},
+            "Lower Moon Two": {"difficulty": 80, "xp": 180, "strength": 700, "abilities": ["Illusionary Arts"]},
+            "Lower Moon One": {"difficulty": 85, "xp": 200, "strength": 750, "abilities": ["Blood Blades"]},
+            "Upper Moon Six": {"difficulty": 90, "xp": 250, "strength": 800, "abilities": ["Sonic Scream"]},
+            "Upper Moon Five": {"difficulty": 92, "xp": 300, "strength": 850, "abilities": ["Elemental Control"]},
+            "Upper Moon Four": {"difficulty": 94, "xp": 350, "strength": 900, "abilities": ["Shapeshifting"]},
+            "Upper Moon Three": {"difficulty": 96, "xp": 400, "strength": 950, "abilities": ["Blood Demon Art: Compass Needle"]},
+            "Upper Moon Two": {"difficulty": 98, "xp": 450, "strength": 1000, "abilities": ["Demon King's Aura"]},
+            "Upper Moon One": {"difficulty": 99, "xp": 500, "strength": 1050, "abilities": ["Demon Moon Halo"]}
         }
         
         self.companions = {
-            "Kasugai Crow": {"bonus": "communication", "strength": 50},
-            "Nichirin Ore Fox": {"bonus": "sensing", "strength": 75},
-            "Demon Slayer Cat": {"bonus": "agility", "strength": 100}
+            "Kasugai Crow": {
+                "bonus": "communication",
+                "strength": 50,
+                "loyalty": 0,
+                "friendship": 0,
+                "abilities": ["Scouting", "Message Delivery"]
+            },
+            "Nichirin Ore Fox": {
+                "bonus": "sensing",
+                "strength": 75,
+                "loyalty": 0,
+                "friendship": 0,
+                "abilities": ["Ore Detection", "Stealth"]
+            },
+            "Demon Slayer Cat": {
+                "bonus": "agility",
+                "strength": 100,
+                "loyalty": 0,
+                "friendship": 0,
+                "abilities": ["Night Vision", "Swift Strike"]
+            }
         }
         
         self.corps_divisions = {
@@ -226,14 +257,31 @@ class DemonSlayer(commands.Cog):
             # Chance to learn a new form
             if random.random() < 0.2:  # 20% chance to learn a new form
                 await self.learn_new_form(ctx, user_data, embed)
-            
+
             # Increase breathing mastery
             mastery_gain = random.randint(1, 5)
             user_data["breathing_mastery"] += mastery_gain
             embed.add_field(name="Breathing Mastery", value=f"+{mastery_gain} (Total: {user_data['breathing_mastery']})", inline=False)
-            
+
             # Check for new special abilities
             await self.check_special_abilities(ctx, user_data, embed)
+
+            # Mentor guidance
+            if random.random() < 0.2:  # 20% chance
+                hashira = random.choice(["Giyu Tomioka", "Shinobu Kocho", "Kyojuro Rengoku", "Muichiro Tokito"])
+                await ctx.send(f"You receive guidance from {hashira} during your training!")
+                # Apply additional benefits or unlock advanced techniques
+                if user_data["rank"] >= "Kinoe":
+                    # Unlock advanced techniques for Kinoe rank and above
+                    techniques = ["Water Breathing: Eleventh Form - Dead Calm", "Insect Breathing: Dance of the Butterflies", "Flame Breathing: Ninth Form - Rengoku", "Mist Breathing: Seventh Form - Obscuring Clouds"]
+                    unlocked_technique = random.choice(techniques)
+                    user_data["known_forms"].append(unlocked_technique)
+                    embed.add_field(name="Advanced Technique Unlocked!", value=unlocked_technique, inline=False)
+                else:
+                    # Provide additional benefits for lower ranks
+                    additional_xp = random.randint(20, 50)
+                    user_data["experience"] += additional_xp
+                    embed.add_field(name="Mentor Guidance Bonus", value=f"You gain an additional {additional_xp} experience!", inline=False)
         else:
             # Demon-specific training results
             blood_art_mastery = random.randint(1, 5)
@@ -270,6 +318,81 @@ class DemonSlayer(commands.Cog):
             user_data["special_abilities"].append("Total Concentration: Constant")
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
+    @ds.command(name="bond")
+    @commands.cooldown(1, 10800, commands.BucketType.user)  # 3-hour cooldown
+    async def bond_with_companion(self, ctx):
+        """Bond with your companion to increase loyalty and friendship"""
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["companion"]:
+            await ctx.send(f"{ctx.author.mention}, you don't have a companion yet!")
+            return
+
+        companion_data = self.companions[user_data["companion"]]
+        loyalty_gain = random.randint(1, 5)
+        friendship_gain = random.randint(1, 5)
+
+        companion_data["loyalty"] += loyalty_gain
+        companion_data["friendship"] += friendship_gain
+
+        embed = discord.Embed(title="Companion Bonding", color=discord.Color.green())
+        embed.description = f"{ctx.author.mention}, you spent some quality time with your {user_data['companion']}!"
+        embed.add_field(name="Loyalty Gain", value=loyalty_gain)
+        embed.add_field(name="Friendship Gain", value=friendship_gain)
+        await ctx.send(embed=embed)
+
+    @ds.command(name="recruit_demon")
+    async def recruit_demon(self, ctx, demon_name: str):
+        """Attempt to recruit a defeated demon as an ally"""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["is_demon"]:
+            await ctx.send(f"{ctx.author.mention}, demons cannot recruit other demons!")
+            return
+
+        if demon_name not in user_data["defeated_demons"]:
+            await ctx.send(f"{ctx.author.mention}, you haven't defeated {demon_name} yet!")
+            return
+
+        success_chance = 0.3  # 30% chance of successful recruitment
+        if random.random() < success_chance:
+            user_data["demon_allies"].append(demon_name)
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"{ctx.author.mention}, you successfully recruited {demon_name} as an ally!")
+        else:
+            await ctx.send(f"{ctx.author.mention}, your attempt to recruit {demon_name} failed. Try again later!")
+    
+    @ds.command(name="train_skill")
+    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
+    async def train_skill(self, ctx, skill: str):
+        """Train a specific skill to improve mastery"""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["is_demon"]:
+            await ctx.send(f"{ctx.author.mention}, demons cannot train skills!")
+            return
+
+        if skill not in user_data["skills"]:
+            await ctx.send(f"{ctx.author.mention}, you haven't unlocked the {skill} skill yet!")
+            return
+
+        mastery_level = user_data["skills"][skill]["mastery"]
+        if mastery_level >= 100:
+            await ctx.send(f"{ctx.author.mention}, you have already mastered the {skill} skill!")
+            return
+
+        xp_cost = (mastery_level + 1) * 10
+        if user_data["experience"] < xp_cost:
+            await ctx.send(f"{ctx.author.mention}, you need {xp_cost} XP to train this skill. Keep gaining experience!")
+            return
+
+        user_data["experience"] -= xp_cost
+        user_data["skills"][skill]["mastery"] += 1
+        await self.config.user(ctx.author).set(user_data)
+
+        embed = discord.Embed(title="Skill Training", color=discord.Color.blue())
+        embed.description = f"{ctx.author.mention}, you have trained the {skill} skill!"
+        embed.add_field(name="Mastery Level", value=user_data["skills"][skill]["mastery"])
+        embed.add_field(name="XP Cost", value=xp_cost)
+        await ctx.send(embed=embed)
+    
     @ds.command(name="train_form")
     @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
     async def train_form(self, ctx, form: str):
@@ -316,7 +439,7 @@ class DemonSlayer(commands.Cog):
 
         guild_data = await self.config.custom("guild", ctx.guild.id).all()
         print(f"Guild data: {guild_data}")  # Debug logging statement
-    
+
         demon_types = ["Lesser Demon", "Stronger Demon", "Lower Moon", "Upper Moon"]
         weights = [0.4, 0.3, 0.2, 0.1]
         demon_type = random.choices(demon_types, weights=weights)[0]
@@ -338,6 +461,19 @@ class DemonSlayer(commands.Cog):
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url)
         embed.description = f"{ctx.author.mention} encounters {demon}! The battle begins..."
         embed.add_field(name="Demon Strength", value=strength)
+
+        # Companion abilities
+        companion = user_data["companion"]
+        if companion:
+            companion_data = self.companions[companion]
+            if "Scouting" in companion_data["abilities"]:
+                demon_weakness = random.choice(["Sunlight", "Wisteria Poison", "Nichirin Blade"])
+                embed.add_field(name="Companion Scouting", value=f"Your {companion} has scouted the area and reveals that the {demon}'s weakness is {demon_weakness}.")
+            if "Ore Detection" in companion_data["abilities"]:
+                ore_found = random.choice(["Scarlet Ore", "Mist Ore", "Frost Ore"])
+                user_data["materials"][ore_found.lower().replace(" ", "_")] += 1
+                embed.add_field(name="Ore Detection", value=f"Your {companion} has detected a rare {ore_found} in the vicinity. You collect it for later use.")
+
         message = await ctx.send(embed=embed)
 
         await asyncio.sleep(5)  # Simulating battle time
@@ -375,12 +511,41 @@ class DemonSlayer(commands.Cog):
             embed.color = discord.Color.red()
             embed.description += f"\n\nDefeat... {demon} was too powerful. You gained {xp_gained} XP from the experience."
 
+        # Update quest progress
+        if user_data.get("active_quest"):
+            quest_data = user_data["active_quest"]
+            if "demons_slayed" in quest_data.get("requirements", {}):
+                quest_data["requirements"]["demons_slayed"] -= 1
+                if quest_data["requirements"]["demons_slayed"] <= 0:
+                    await ctx.send(f"Quest '{quest_data['name']}' completed!")
+                    user_data["completed_quests"].append(quest_data["id"])
+                    user_data["active_quest"] = None
+                    user_data["experience"] += quest_data["rewards"]["experience"]
+                    await ctx.send(f"Rewards: {quest_data['rewards']['experience']} XP")
+                    for item in quest_data["rewards"].get("items", []):
+                        user_data["inventory"].append(item)
+                        await ctx.send(f"Obtained: {item}")
+                else:
+                    await ctx.send(f"Quest '{quest_data['name']}' progress: {quest_data['requirements']['demons_slayed']} demons remaining")
+                await self.config.user(ctx.author).set(user_data)
+
+        # Demon ally assistance
+        if user_data["demon_allies"]:
+            demon_ally = random.choice(user_data["demon_allies"])
+            demon_strength = self.demons[demon_ally]["strength"]
+            if "Swift Strike" in self.demons[demon_ally].get("abilities", []):
+                demon_strength *= 1.2
+            if "Blood Boost" in self.demons[demon_ally].get("abilities", []):
+                user_strength *= 1.1
+            user_strength += demon_strength
+            await ctx.send(f"Your demon ally, {demon_ally}, joins the battle!")
+                
         await self.config.user(ctx.author).set(user_data)
         await message.edit(embed=embed)
         await self.check_rank_up(ctx)
 
-        def calculate_strength(self, user_data):
-            base_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
+    def calculate_strength(self, user_data):
+        base_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
 
         if user_data["is_demon"]:
             base_strength *= (1 + (user_data["demon_stage"] * 0.2))  # Each demon stage increases strength by 20%
@@ -409,8 +574,16 @@ class DemonSlayer(commands.Cog):
             elif event_bonus == "increased_rewards":
                 base_strength *= 1.15
 
-        return base_strength
+        # Apply skill mastery bonus
+        skill_bonus = 1
+        for skill, data in user_data["skills"].items():
+            mastery_level = data["mastery"]
+            skill_bonus += mastery_level * 0.01
 
+        base_strength *= skill_bonus
+
+        return base_strength
+    
     @ds.command(name="transform")
     async def demon_transform(self, ctx):
         """Transform into a demon or advance demon stage"""
