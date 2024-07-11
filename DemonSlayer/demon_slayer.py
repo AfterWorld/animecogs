@@ -241,6 +241,17 @@ class DemonSlayer(commands.Cog):
         await ctx.send(embed=embed)
         await self.check_rank_up(ctx)
 
+    async def check_rank_up(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        current_rank_index = self.ranks.index(user_data["rank"])
+        xp_threshold = (current_rank_index + 1) * 1000
+
+        if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
+            new_rank = self.ranks[current_rank_index + 1]
+            await self.config.user(ctx.author).rank.set(new_rank)
+            await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {new_rank}!")
+
+
     async def learn_new_form(self, ctx, user_data, embed):
         technique = user_data["breathing_technique"]
         known_forms = user_data["known_forms"]
