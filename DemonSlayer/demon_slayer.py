@@ -14,6 +14,9 @@ class DemonSlayer(commands.Cog):
             "breathing_technique": None,
             "secondary_breathing": None,
             "nichirin_color": None,
+            "nichirin_blade_level": 1,
+            "nichirin_blade_appearance": "Standard",
+            "nichirin_blade_ability": None,
             "demons_slayed": 0,
             "rank": "Mizunoto",
             "experience": 0,
@@ -24,9 +27,6 @@ class DemonSlayer(commands.Cog):
             "guild": None,
             "companion": None,
             "companion_level": 1,
-            "nichirin_blade_level": 1,
-            "nichirin_blade_appearance": "Standard",
-            "nichirin_blade_ability": None,
             "materials": {"steel": 0, "wisteria": 0, "scarlet_ore": 0},
             "completed_missions": {"daily": [], "weekly": [], "rank": []},
             "last_hunt": None,
@@ -36,6 +36,9 @@ class DemonSlayer(commands.Cog):
             "corps_division": None,
             "breathing_mastery": 0,
             "special_abilities": [],
+            "active_daily_mission": None,
+            "active_weekly_mission": None,
+            "demon_transformation_pending": False,
         }
         
         default_guild = {
@@ -135,7 +138,7 @@ class DemonSlayer(commands.Cog):
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
-            pass
+            await ctx.send_help(ctx.command)
 
     @ds.command(name="start")
     async def start_journey(self, ctx):
@@ -203,83 +206,6 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="Special Abilities", value=", ".join(user_data["special_abilities"]), inline=False)
 
         await ctx.send(embed=embed)
-        
-    @ds.command(name="boss_raid")
-    @commands.admin()
-    async def start_boss_raid(self, ctx, duration: int = 30):
-        """Start a boss raid event (Admin only)"""
-        guild_data = await self.config.guild(ctx.guild).all()
-        if guild_data["active_boss_raid"]:
-            await ctx.send("A boss raid is already active!")
-            return
-
-        boss = random.choice(["Muzan Kibutsuji", "Kokushibo", "Doma", "Akaza", "Hantengu", "Gyokko"])
-        strength = random.randint(5000, 10000)
-        guild_data["active_boss_raid"] = {
-            "boss": boss,
-            "strength": strength,
-            "participants": [],
-            "total_strength": 0,
-            "end_time": (datetime.now() + timedelta(minutes=duration)).isoformat()
-        }
-        await self.config.guild(ctx.guild).set(guild_data)
-
-        embed = discord.Embed(title="Boss Raid Event", color=discord.Color.dark_red())
-        embed.description = f"A powerful demon, {boss}, has appeared! Join forces to defeat it!\n"
-        embed.description += f"Use `{ctx.prefix}ds join_raid` to participate.\n"
-        embed.description += f"Event ends in {duration} minutes."
-        embed.add_field(name="Boss Strength", value=strength)
-
-        await ctx.send(embed=embed)
-        await asyncio.sleep(duration * 60)
-        await self.end_boss_raid(ctx)
-
-    @ds.command(name="join_raid")
-    async def join_boss_raid(self, ctx):
-        """Join the active boss raid"""
-        guild_data = await self.config.guild(ctx.guild).all()
-        if not guild_data["active_boss_raid"]:
-            await ctx.send("There's no active boss raid right now.")
-            return
-
-        user_data = await self.config.user(ctx.author).all()
-        if ctx.author.id not in guild_data["active_boss_raid"]["participants"]:
-            guild_data["active_boss_raid"]["participants"].append(ctx.author.id)
-            user_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
-            if user_data["companion"]:
-                user_strength += self.companions[user_data["companion"]]["strength"]
-            guild_data["active_boss_raid"]["total_strength"] += user_strength
-            await self.config.guild(ctx.guild).set(guild_data)
-            await ctx.send(f"{ctx.author.mention} has joined the raid against {guild_data['active_boss_raid']['boss']}!")
-        else:
-            await ctx.send("You're already participating in this raid!")
-
-    async def end_boss_raid(self, ctx):
-        guild_data = await self.config.guild(ctx.guild).all()
-        if not guild_data["active_boss_raid"]:
-            return
-
-        victory = guild_data["active_boss_raid"]["total_strength"] > guild_data["active_boss_raid"]["strength"]
-        embed = discord.Embed(title="Boss Raid Results", color=discord.Color.green() if victory else discord.Color.red())
-        
-        if victory:
-            embed.description = f"The raid against {guild_data['active_boss_raid']['boss']} was successful!"
-            xp_reward = guild_data["active_boss_raid"]["strength"] // len(guild_data["active_boss_raid"]["participants"])
-            for participant_id in guild_data["active_boss_raid"]["participants"]:
-                user = self.bot.get_user(participant_id)
-                if user:
-                    user_data = await self.config.user(user).all()
-                    user_data["experience"] += xp_reward
-                    user_data["demons_slayed"] += 1
-                    await self.config.user(user).set(user_data)
-            embed.add_field(name="Reward", value=f"Each participant gains {xp_reward} XP and 1 powerful demon slayed!")
-        else:
-            embed.description = f"The raid against {guild_data['active_boss_raid']['boss']} has failed. The demon escaped."
-
-        await ctx.send(embed=embed)
-        guild_data["active_boss_raid"] = None
-        await self.config.guild(ctx.guild).set(guild_data)
-
 
     @ds.command(name="train")
     @commands.cooldown(1, 3600, commands.BucketType.user)
@@ -318,17 +244,6 @@ class DemonSlayer(commands.Cog):
         await ctx.send(embed=embed)
         await self.check_rank_up(ctx)
 
-    async def check_rank_up(self, ctx):
-        user_data = await self.config.user(ctx.author).all()
-        current_rank_index = self.ranks.index(user_data["rank"])
-        xp_threshold = (current_rank_index + 1) * 1000
-
-        if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
-            new_rank = self.ranks[current_rank_index + 1]
-            await self.config.user(ctx.author).rank.set(new_rank)
-            await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {new_rank}!")
-
-
     async def learn_new_form(self, ctx, user_data, embed):
         technique = user_data["breathing_technique"]
         known_forms = user_data["known_forms"]
@@ -356,7 +271,7 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
     @ds.command(name="hunt")
-    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
     async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
@@ -496,30 +411,6 @@ class DemonSlayer(commands.Cog):
 
         await self.config.user(ctx.author).set(user_data)
         await message.edit(embed=embed)
-
-    @ds.command(name="demon_ability")
-    @commands.cooldown(1, 43200, commands.BucketType.user)  # 12-hour cooldown
-    async def train_demon_ability(self, ctx):
-        """Train your demon abilities"""
-        user_data = await self.config.user(ctx.author).all()
-        if not user_data["is_demon"]:
-            await ctx.send("Only demons can train demon abilities.")
-            return
-
-        xp_gained = random.randint(50, 200)
-        user_data["experience"] += xp_gained
-
-        embed = discord.Embed(title="Demon Ability Training", color=discord.Color.dark_purple())
-        embed.description = f"{ctx.author.mention} trains their demon abilities and gains {xp_gained} XP!"
-
-        # Chance to enhance Blood Demon Art
-        if random.random() < 0.1:  # 10% chance
-            enhancement = random.choice(["Increased Power", "Extended Range", "Faster Activation"])
-            user_data["blood_demon_art"] += f" ({enhancement})"
-            embed.add_field(name="Blood Demon Art Enhanced!", value=f"Your {user_data['blood_demon_art']} has evolved!", inline=False)
-
-        await self.config.user(ctx.author).set(user_data)
-        await ctx.send(embed=embed)
 
     @ds.command(name="customize_blade")
     async def customize_nichirin_blade(self, ctx, appearance: str = None, ability: str = None):
@@ -829,52 +720,127 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Bonus", value=f"You now have a {self.corps_divisions[division]['bonus']} bonus!")
         await ctx.send(embed=embed)
 
-    @ds.command(name="division_mission")
-    @commands.cooldown(1, 43200, commands.BucketType.user)  # 12-hour cooldown
-    async def division_mission(self, ctx):
-        """Undertake a mission specific to your division"""
+    @ds.command(name="daily_mission")
+    @commands.cooldown(1, 86400, commands.BucketType.user)
+    async def daily_mission(self, ctx):
+        """Get a daily mission"""
         user_data = await self.config.user(ctx.author).all()
-        if not user_data["corps_division"]:
-            await ctx.send("You must join a division before undertaking division-specific missions!")
+        if not user_data["breathing_technique"] and not user_data["is_demon"]:
+            await ctx.send(f"{ctx.author.mention}, you need to start your journey first!")
             return
 
-        division = user_data["corps_division"]
-        mission_type = self.corps_divisions[division]["bonus"]
+        if user_data["active_daily_mission"]:
+            await ctx.send("You already have an active daily mission. Complete it first!")
+            return
 
-        missions = {
-            "stealth": "Infiltrate a demon hideout without being detected",
-            "herbs": "Collect rare medicinal herbs from a dangerous area",
-            "information": "Gather intelligence on demon movement in a specific region",
-            "hunting": "Track and eliminate a group of demons that have been evading other slayers",
-            "combat": "Defeat a particularly strong demon that has been terrorizing a village"
-        }
+        mission = random.choice(self.missions["daily"])
+        user_data["active_daily_mission"] = mission
+        await self.config.user(ctx.author).set(user_data)
 
-        mission = missions[mission_type]
-        difficulty = random.randint(1, 5)
+        embed = discord.Embed(title="Daily Mission", color=discord.Color.blue())
+        embed.description = f"Your daily mission: {mission}"
+        embed.set_footer(text="Complete this mission for bonus XP and rewards!")
+        await ctx.send(embed=embed)
 
-        embed = discord.Embed(title=f"{division} Division Mission", color=discord.Color.green())
-        embed.description = f"Mission: {mission}"
-        embed.add_field(name="Difficulty", value="⭐" * difficulty)
-        message = await ctx.send(embed=embed)
+    @ds.command(name="weekly_mission")
+    @commands.cooldown(1, 604800, commands.BucketType.user)
+    async def weekly_mission(self, ctx):
+        """Get a weekly mission"""
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["breathing_technique"] and not user_data["is_demon"]:
+            await ctx.send(f"{ctx.author.mention}, you need to start your journey first!")
+            return
 
-        await asyncio.sleep(10)  # Simulating mission time
+        if user_data["active_weekly_mission"]:
+            await ctx.send("You already have an active weekly mission. Complete it first!")
+            return
 
-        success = random.random() > (difficulty * 0.15)
-        if success:
-            xp_gained = 500 * difficulty
-            user_data["experience"] += xp_gained
-            embed.add_field(name="Result", value=f"Mission Successful! You gained {xp_gained} XP.", inline=False)
+        mission = random.choice(self.missions["weekly"])
+        user_data["active_weekly_mission"] = mission
+        await self.config.user(ctx.author).set(user_data)
 
-            if random.random() < 0.1:  # 10% chance for a special reward
-                special_reward = random.choice(["rare material", "new technique scroll", "demon blood sample"])
-                embed.add_field(name="Special Reward", value=f"You obtained a {special_reward}!", inline=False)
-        else:
-            xp_gained = 100 * difficulty
-            user_data["experience"] += xp_gained
-            embed.add_field(name="Result", value=f"Mission Failed. You gained {xp_gained} XP from the experience.", inline=False)
+        embed = discord.Embed(title="Weekly Mission", color=discord.Color.purple())
+        embed.description = f"Your weekly mission: {mission}"
+        embed.set_footer(text="Complete this mission for significant XP and special rewards!")
+        await ctx.send(embed=embed)
+
+    @ds.command(name="check_mission")
+    async def check_mission(self, ctx, mission_type: str):
+        """Check the status of your daily or weekly mission"""
+        user_data = await self.config.user(ctx.author).all()
+        if mission_type not in ["daily", "weekly"]:
+            await ctx.send("Invalid mission type. Choose 'daily' or 'weekly'.")
+            return
+
+        mission = user_data[f"active_{mission_type}_mission"]
+        if not mission:
+            await ctx.send(f"You don't have an active {mission_type} mission. Use `[p]ds {mission_type}_mission` to get one.")
+            return
+
+        embed = discord.Embed(title=f"Active {mission_type.capitalize()} Mission", color=discord.Color.gold())
+        embed.description = mission
+        embed.set_footer(text="Use `[p]ds complete_mission {daily/weekly}` when you've finished the mission.")
+        await ctx.send(embed=embed)
+
+    @ds.command(name="complete_mission")
+    async def complete_mission(self, ctx, mission_type: str):
+        """Mark your daily or weekly mission as complete"""
+        user_data = await self.config.user(ctx.author).all()
+        if mission_type not in ["daily", "weekly"]:
+            await ctx.send("Invalid mission type. Choose 'daily' or 'weekly'.")
+            return
+
+        mission = user_data[f"active_{mission_type}_mission"]
+        if not mission:
+            await ctx.send(f"You don't have an active {mission_type} mission to complete.")
+            return
+
+        # Here you would normally check if the mission conditions are actually met
+        # For simplicity, we'll assume the user has completed the mission
+
+        xp_reward = 100 if mission_type == "daily" else 500
+        user_data["experience"] += xp_reward
+        user_data[f"active_{mission_type}_mission"] = None
+        user_data["completed_missions"][mission_type].append(mission)
 
         await self.config.user(ctx.author).set(user_data)
-        await message.edit(embed=embed)
+
+        embed = discord.Embed(title="Mission Completed", color=discord.Color.green())
+        embed.description = f"Congratulations! You've completed your {mission_type} mission: {mission}"
+        embed.add_field(name="Reward", value=f"{xp_reward} XP")
+        await ctx.send(embed=embed)
+
+        await self.check_rank_up(ctx)
+
+    async def check_rank_up(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        current_rank_index = self.ranks.index(user_data["rank"])
+        xp_threshold = (current_rank_index + 1) * 1000
+
+        if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
+            new_rank = self.ranks[current_rank_index + 1]
+            user_data["rank"] = new_rank
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {new_rank}!")
+
+    @ds.command(name="leaderboard")
+    async def show_leaderboard(self, ctx, category: str = "experience"):
+        """Show the leaderboard for a specific category"""
+        valid_categories = ["experience", "demons_slayed", "rank"]
+        if category not in valid_categories:
+            await ctx.send(f"Invalid category. Please choose from: {', '.join(valid_categories)}")
+            return
+
+        all_users = await self.config.all_users()
+        sorted_users = sorted(all_users.items(), key=lambda x: x[1].get(category, 0), reverse=True)[:10]
+
+        embed = discord.Embed(title=f"Demon Slayer Leaderboard - {category.capitalize()}", color=discord.Color.gold())
+        for i, (user_id, data) in enumerate(sorted_users, start=1):
+            user = self.bot.get_user(user_id)
+            if user:
+                embed.add_field(name=f"{i}. {user.name}", value=f"{data.get(category, 0)} {category}", inline=False)
+
+        await ctx.send(embed=embed)
 
     @ds.command(name="status")
     async def check_status(self, ctx):
@@ -903,24 +869,11 @@ class DemonSlayer(commands.Cog):
         if guild_data["active_tournament"]:
             embed.add_field(name="Tournament", value=f"Round {guild_data['active_tournament']['round']}", inline=True)
 
-        await ctx.send(embed=embed)
-
-    @ds.command(name="leaderboard")
-    async def show_leaderboard(self, ctx, category: str = "experience"):
-        """Show the leaderboard for a specific category"""
-        valid_categories = ["experience", "demons_slayed", "rank"]
-        if category not in valid_categories:
-            await ctx.send(f"Invalid category. Please choose from: {', '.join(valid_categories)}")
-            return
-
-        all_users = await self.config.all_users()
-        sorted_users = sorted(all_users.items(), key=lambda x: x[1].get(category, 0), reverse=True)[:10]
-
-        embed = discord.Embed(title=f"Demon Slayer Leaderboard - {category.capitalize()}", color=discord.Color.gold())
-        for i, (user_id, data) in enumerate(sorted_users, start=1):
-            user = self.bot.get_user(user_id)
-            if user:
-                embed.add_field(name=f"{i}. {user.name}", value=f"{data.get(category, 0)} {category}", inline=False)
+        # Active Missions
+        if user_data["active_daily_mission"]:
+            embed.add_field(name="Active Daily Mission", value=user_data["active_daily_mission"], inline=False)
+        if user_data["active_weekly_mission"]:
+            embed.add_field(name="Active Weekly Mission", value=user_data["active_weekly_mission"], inline=False)
 
         await ctx.send(embed=embed)
 
@@ -941,8 +894,16 @@ class DemonSlayer(commands.Cog):
             embed = discord.Embed(title="Demon Types", color=discord.Color.red())
             for demon, info in self.demons.items():
                 embed.add_field(name=demon, value=f"Difficulty: {info['difficulty']}, XP: {info['xp']}", inline=False)
+        elif subject == "ranks":
+            embed = discord.Embed(title="Demon Slayer Ranks", color=discord.Color.gold())
+            for rank in self.ranks:
+                embed.add_field(name=rank, value="‎", inline=True)  # Using an invisible character for value
+        elif subject == "demon ranks":
+            embed = discord.Embed(title="Demon Ranks", color=discord.Color.purple())
+            for rank in self.demon_ranks:
+                embed.add_field(name=rank, value="‎", inline=True)  # Using an invisible character for value
         else:
-            await ctx.send("Subject not found. Try breathing techniques, divisions, or demons.")
+            await ctx.send("Subject not found. Try breathing techniques, divisions, demons, ranks, or demon ranks.")
             return
         await ctx.send(embed=embed)
 
@@ -959,20 +920,23 @@ class DemonSlayer(commands.Cog):
             ("hunt", "Hunt for demons"),
             ("daily_mission", "Get a daily mission"),
             ("weekly_mission", "Get a weekly mission"),
+            ("check_mission", "Check the status of your active mission"),
+            ("complete_mission", "Mark your mission as complete"),
             ("customize_blade", "Customize your Nichirin Blade"),
             ("tournament", "Start or join a PvE tournament"),
             ("fuse_breathing", "Attempt to fuse breathing techniques"),
             ("train_companion", "Train your companion"),
             ("hashira_training", "Participate in Hashira training"),
             ("join_division", "Join a Demon Slayer Corps division"),
-            ("division_mission", "Undertake a division-specific mission"),
+            ("transform", "Accept or deny demon transformation"),
+            ("demon_rank", "Challenge for a higher demon rank (for demons)"),
             ("status", "Check your current status and cooldowns"),
             ("leaderboard", "View the leaderboard"),
             ("info", "Get information about game aspects")
         ]
 
         for name, description in commands:
-            embed.add_field(name=f".ds {name}", value=description, inline=False)
+            embed.add_field(name=f"[p]ds {name}", value=description, inline=False)
 
         embed.set_footer(text="Replace [p] with your server's command prefix.")
         await ctx.send(embed=embed)
@@ -996,5 +960,14 @@ class DemonSlayer(commands.Cog):
         else:
             await ctx.send(f"An error occurred: {error}")
 
+    async def initialize_guild_data(self):
+        for guild in self.bot.guilds:
+            guild_data = await self.config.guild(guild).all()
+            if "seasonal_event" not in guild_data:
+                guild_data["seasonal_event"] = None
+                await self.config.guild(guild).set(guild_data)
+
 def setup(bot):
-    bot.add_cog(DemonSlayer(bot))
+    cog = DemonSlayer(bot)
+    bot.add_cog(cog)
+    bot.loop.create_task(cog.initialize_guild_data())
