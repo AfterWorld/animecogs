@@ -128,6 +128,12 @@ class DemonSlayer(commands.Cog):
             guild_data = await self.config.guild(guild).all()
             if "blood_moon_active" not in guild_data:
                 await self.config.guild(guild).set(self.config.guild.defaults)
+
+            # Initialize user data for all users in the guild
+            for member in guild.members:
+                user_data = await self.config.user(member).all()
+                if not user_data:
+                    await self.config.user(member).set(self.config.user.defaults)
                 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -145,6 +151,11 @@ class DemonSlayer(commands.Cog):
     async def start_journey(self, ctx):
         """Begin your journey as a Demon Slayer"""
         user_data = await self.config.user(ctx.author).all()
+        if not user_data:
+            # Initialize user data if it doesn't exist
+            await self.config.user(ctx.author).set(self.config.user.defaults)
+            user_data = await self.config.user(ctx.author).all()
+
         if user_data["breathing_technique"]:
             await ctx.send(f"{ctx.author.mention}, you've already begun your journey!")
             return
@@ -166,6 +177,7 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Nichirin Blade Color", value=color, inline=False)
         embed.add_field(name="First Form", value=first_form, inline=False)
         await ctx.send(embed=embed)
+
 
     @ds.command(name="profile")
     async def show_profile(self, ctx, user: discord.Member = None):
@@ -272,7 +284,7 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
     @ds.command(name="hunt")
-    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 
     async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
