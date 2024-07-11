@@ -884,7 +884,7 @@ class DemonSlayer(commands.Cog):
         ]
 
         for name, description in commands:
-            embed.add_field(name=f"[p]ds {name}", value=description, inline=False)
+            embed.add_field(name=f".ds {name}", value=description, inline=False)
 
         embed.set_footer(text="Replace [p] with your server's command prefix.")
         await ctx.send(embed=embed)
