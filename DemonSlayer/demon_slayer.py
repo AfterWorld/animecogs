@@ -28,7 +28,7 @@ class DemonSlayer(commands.Cog):
             "companion_abilities": [],
             "nichirin_blade_level": 1,
             "nichirin_blade_ability": None,
-            "materials": {"steel": 0, "wisteria": 0, "scarlet_ore": 0},
+            "materials": {},
             "is_demon": False,
             "demon_stage": 0,
             "blood_demon_art": None,
@@ -473,7 +473,7 @@ class DemonSlayer(commands.Cog):
                 embed.add_field(name="Companion Scouting", value=f"Your {companion} has scouted the area and reveals that the {demon}'s weakness is {demon_weakness}.")
             if "Ore Detection" in companion_data["abilities"]:
                 ore_found = random.choice(["Scarlet Ore", "Mist Ore", "Frost Ore"])
-                user_data["materials"][ore_found.lower().replace(" ", "_")] += 1
+                user_data["materials"][ore_found.lower().replace(" ", "_")] = user_data["materials"].get(ore_found.lower().replace(" ", "_"), 0) + 1
                 embed.add_field(name="Ore Detection", value=f"Your {companion} has detected a rare {ore_found} in the vicinity. You collect it for later use.")
 
         message = await ctx.send(embed=embed)
