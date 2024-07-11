@@ -1,4 +1,5 @@
 from .onepiece import OnePieceBattle
 
-def setup(bot):
-    bot.add_cog(OnePieceBattle(bot))
+async def setup(bot):
+    cog = OnePieceBattle(bot)
+    await bot.add_cog(cog)
