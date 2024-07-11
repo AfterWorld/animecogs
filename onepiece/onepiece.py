@@ -88,7 +88,7 @@ class OnePieceBattle(commands.Cog):
         user_data["bounty"] = 0
         await self.config.user(ctx.author).set(user_data)
         
-        await ctx.send(f"{ctx.author.mention}, you have begun your journey as a {user_data['fighting_style']} {f'with the {user_data["devil_fruit"]} Devil Fruit' if user_data['devil_fruit'] else 'without a Devil Fruit'}! Your initial Doriki is {user_data['doriki']}. Train hard and make a name for yourself!")
+        await ctx.send(f"{ctx.author.mention}, you have begun your journey as a {user_data['fighting_style']} {'with the ' + user_data['devil_fruit'] + ' Devil Fruit' if user_data['devil_fruit'] else 'without a Devil Fruit'}! Your initial Doriki is {user_data['doriki']}. Train hard and make a name for yourself!")    
     
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
