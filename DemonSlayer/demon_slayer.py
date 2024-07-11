@@ -914,7 +914,7 @@ class DemonSlayer(commands.Cog):
     @ds.command(name="join_raid")
     async def join_boss_raid(self, ctx):
         """Join the active boss raid"""
-        guild_data = await self.config.guild(ctx.guild).all()
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
         if not guild_data["active_boss_raid"]:
             await ctx.send("There's no active boss raid right now.")
             return
