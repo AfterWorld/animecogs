@@ -480,7 +480,7 @@ class DemonSlayer(commands.Cog):
 
         await asyncio.sleep(5)  # Simulating battle time
 
-        user_strength = await self.calculate_strength(user_data, ctx)
+        user_strength = await self.calculate_strength(user_data)
 
         # Apply Blood Moon effects
         if guild_data.get("blood_moon_active", False):  # Check if key exists
