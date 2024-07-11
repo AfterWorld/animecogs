@@ -251,10 +251,11 @@ class DemonSlayer(commands.Cog):
         unknown_forms = [form for form in all_forms if form not in known_forms]
         if unknown_forms:
             new_form = random.choice(unknown_forms)
-            known_forms.append(new_form)
-            user_data["known_forms"] = known_forms
-            user_data["form_levels"][new_form] = 1
-            embed.add_field(name="New Form Learned!", value=f"You've learned {new_form}!")
+            if new_form not in known_forms:  # Check for duplicates
+                known_forms.append(new_form)
+                user_data["known_forms"] = known_forms
+                user_data["form_levels"][new_form] = 1
+                embed.add_field(name="New Form Learned!", value=f"You've learned {new_form}!")
         else:
             embed.add_field(name="Mastery", value="You've mastered all forms of your breathing technique!")
 
@@ -269,6 +270,39 @@ class DemonSlayer(commands.Cog):
             user_data["special_abilities"].append("Total Concentration: Constant")
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
+    @ds.command(name="train_form")
+    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
+    async def train_form(self, ctx, form: str):
+        """Train a specific breathing form to level it up"""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data["is_demon"]:
+            await ctx.send(f"{ctx.author.mention}, demons cannot train breathing forms!")
+            return
+
+        if form not in user_data["known_forms"]:
+            await ctx.send(f"{ctx.author.mention}, you haven't learned the {form} form yet!")
+            return
+
+        current_level = user_data["form_levels"][form]
+        if current_level >= 5:  # Assuming maximum form level is 5
+            await ctx.send(f"{ctx.author.mention}, you have already mastered the {form} form!")
+            return
+
+        xp_cost = (current_level + 1) * 100
+        if user_data["experience"] < xp_cost:
+            await ctx.send(f"{ctx.author.mention}, you need {xp_cost} XP to train this form. Keep gaining experience!")
+            return
+
+        user_data["experience"] -= xp_cost
+        user_data["form_levels"][form] += 1
+        await self.config.user(ctx.author).set(user_data)
+
+        embed = discord.Embed(title="Form Training", color=discord.Color.blue())
+        embed.description = f"{ctx.author.mention}, you have successfully trained the {form} form!"
+        embed.add_field(name="Current Level", value=user_data["form_levels"][form])
+        embed.add_field(name="XP Cost", value=xp_cost)
+        await ctx.send(embed=embed)
+    
     @ds.command(name="hunt")
     @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
     async def hunt(self, ctx):
@@ -345,8 +379,8 @@ class DemonSlayer(commands.Cog):
         await message.edit(embed=embed)
         await self.check_rank_up(ctx)
 
-    def calculate_strength(self, user_data):
-        base_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
+        def calculate_strength(self, user_data):
+            base_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
 
         if user_data["is_demon"]:
             base_strength *= (1 + (user_data["demon_stage"] * 0.2))  # Each demon stage increases strength by 20%
@@ -363,6 +397,17 @@ class DemonSlayer(commands.Cog):
 
         if user_data["companion"]:
             base_strength += self.companions[user_data["companion"]]["strength"] * user_data["companion_level"]
+
+        # Apply seasonal event bonus
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        if guild_data.get("seasonal_event", None):
+            event_bonus = guild_data["seasonal_event"]["bonus"]
+            if event_bonus == "double_xp":
+                base_strength *= 1.2
+            elif event_bonus == "weaker_demons":
+                base_strength *= 1.1
+            elif event_bonus == "increased_rewards":
+                base_strength *= 1.15
 
         return base_strength
 
@@ -500,17 +545,17 @@ class DemonSlayer(commands.Cog):
     @commands.is_owner()
     async def trigger_blood_moon(self, ctx, duration: int = 60):
         """Trigger a Blood Moon event (Owner only)"""
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
-        if guild_data.get("blood_moon_active", False):
+        guild_data = await self.config.guild(ctx.guild).all()
+        if guild_data["blood_moon_active"]:
             await ctx.send("A Blood Moon event is already active!")
             return
-    
+
         guild_data["blood_moon_active"] = True
         guild_data["blood_moon_end"] = (datetime.now() + timedelta(minutes=duration)).isoformat()
-        await self.config.custom("guild", ctx.guild.id).set(guild_data)
-    
+        await self.config.guild(ctx.guild).set(guild_data)
+
         await ctx.send(f"🔴 A Blood Moon has risen! Demons are stronger, but rewards for slaying them have increased! This event will last for {duration} minutes.")
-    
+
         # Schedule end of Blood Moon
         await asyncio.sleep(duration * 60)
         await self.end_blood_moon(ctx)
@@ -526,10 +571,10 @@ class DemonSlayer(commands.Cog):
     async def check_status(self, ctx):
         """Check your current status and progress"""
         user_data = await self.config.user(ctx.author).all()
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
-    
+        guild_data = await self.config.guild(ctx.guild).all()
+
         embed = discord.Embed(title=f"{ctx.author.name}'s Status", color=discord.Color.blue())
-    
+        
         if user_data["is_demon"]:
             embed.add_field(name="Type", value="Demon", inline=True)
             embed.add_field(name="Stage", value=self.demon_stages[user_data["demon_stage"]], inline=True)
@@ -542,29 +587,28 @@ class DemonSlayer(commands.Cog):
                 embed.add_field(name="Evolved Breathing", value="Yes", inline=True)
             if user_data["demon_slayer_mark"]:
                 embed.add_field(name="Demon Slayer Mark", value="Awakened", inline=True)
-    
+
         embed.add_field(name="Experience", value=user_data["experience"], inline=True)
         embed.add_field(name="Demons Slayed", value=user_data["demons_slayed"], inline=True)
-    
+
         if user_data["companion"]:
             embed.add_field(name="Companion", value=f"{user_data['companion']} (Level {user_data['companion_level']})", inline=True)
-    
+
         if not user_data["is_demon"]:
             embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_color']} (Level {user_data['nichirin_blade_level']})", inline=True)
             if user_data["nichirin_blade_ability"]:
                 embed.add_field(name="Blade Ability", value=user_data["nichirin_blade_ability"], inline=True)
-    
+
         materials = ", ".join([f"{k}: {v}" for k, v in user_data["materials"].items()])
         embed.add_field(name="Materials", value=materials, inline=False)
-    
-        if guild_data.get("blood_moon_active", False):
-            blood_moon_end = datetime.fromisoformat(guild_data.get("blood_moon_end", ""))
-            if blood_moon_end:
-                time_left = blood_moon_end - datetime.now()
-                embed.add_field(name="Blood Moon", value=f"Active for {time_left.seconds // 60} more minutes", inline=False)
-    
+
+        if guild_data["blood_moon_active"]:
+            blood_moon_end = datetime.fromisoformat(guild_data["blood_moon_end"])
+            time_left = blood_moon_end - datetime.now()
+            embed.add_field(name="Blood Moon", value=f"Active for {time_left.seconds // 60} more minutes", inline=False)
+
         await ctx.send(embed=embed)
-    
+
     @ds.command(name="leaderboard")
     async def show_leaderboard(self, ctx, category: str = "experience"):
         """Show the leaderboard for a specific category"""
@@ -885,11 +929,11 @@ class DemonSlayer(commands.Cog):
     @commands.cooldown(1, 86400, commands.BucketType.guild)
     async def start_boss_raid(self, ctx, duration: int = 30):
         """Start a boss raid event"""
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
-        if guild_data.get("active_boss_raid", None):
+        guild_data = await self.config.guild(ctx.guild).all()
+        if guild_data["active_boss_raid"]:
             await ctx.send("A boss raid is already active!")
             return
-    
+
         boss = random.choice(["Muzan Kibutsuji", "Kokushibo", "Doma", "Akaza", "Hantengu", "Gyokko"])
         strength = random.randint(5000, 10000)
         guild_data["active_boss_raid"] = {
@@ -899,23 +943,23 @@ class DemonSlayer(commands.Cog):
             "total_strength": 0,
             "end_time": (datetime.now() + timedelta(minutes=duration)).isoformat()
         }
-        await self.config.custom("guild", ctx.guild.id).set(guild_data)
-    
+        await self.config.guild(ctx.guild).set(guild_data)
+
         embed = discord.Embed(title="Boss Raid Event", color=discord.Color.dark_red())
         embed.description = f"A powerful demon, {boss}, has appeared! Join forces to defeat it!\n"
         embed.description += f"Use `[p]ds join_raid` to participate.\n"
         embed.description += f"Event ends in {duration} minutes."
         embed.add_field(name="Boss Strength", value=strength)
-    
+
         await ctx.send(embed=embed)
         await asyncio.sleep(duration * 60)
         await self.end_boss_raid(ctx)
-        
+
     @ds.command(name="join_raid")
     async def join_boss_raid(self, ctx):
         """Join the active boss raid"""
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
-        if not guild_data.get("active_boss_raid", None):
+        guild_data = await self.config.guild(ctx.guild).all()
+        if not guild_data["active_boss_raid"]:
             await ctx.send("There's no active boss raid right now.")
             return
 
@@ -935,8 +979,8 @@ class DemonSlayer(commands.Cog):
         await ctx.send(f"{ctx.author.mention} has joined the raid against {guild_data['active_boss_raid']['boss']}!")
 
     async def end_boss_raid(self, ctx):
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
-        if not guild_data.get("active_boss_raid", None):
+        guild_data = await self.config.guild(ctx.guild).all()
+        if not guild_data["active_boss_raid"]:
             return
 
         victory = guild_data["active_boss_raid"]["total_strength"] > guild_data["active_boss_raid"]["strength"]
@@ -968,7 +1012,7 @@ class DemonSlayer(commands.Cog):
         if guild_data.get("seasonal_event", None):
             await ctx.send("A seasonal event is already active!")
             return
-    
+
         events = [
             {"name": "Blood Moon Festival", "bonus": "double_xp"},
             {"name": "Wisteria Bloom", "bonus": "weaker_demons"},
@@ -981,11 +1025,11 @@ class DemonSlayer(commands.Cog):
             "end_time": (datetime.now() + timedelta(days=duration)).isoformat()
         }
         await self.config.custom("guild", ctx.guild.id).set(guild_data)
-    
+
         embed = discord.Embed(title=f"Seasonal Event: {event['name']}", color=discord.Color.gold())
         embed.description = f"A special event has started! Enjoy {event['bonus']} for the next {duration} days!"
         await ctx.send(embed=embed)
-    
+
         # Schedule event end
         await asyncio.sleep(duration * 86400)  # Convert days to seconds
         await self.end_seasonal_event(ctx)
@@ -994,7 +1038,7 @@ class DemonSlayer(commands.Cog):
         guild_data = await self.config.custom("guild", ctx.guild.id).all()
         if not guild_data.get("seasonal_event", None):
             return
-    
+
         embed = discord.Embed(title="Seasonal Event Ended", color=discord.Color.blue())
         embed.description = f"The {guild_data['seasonal_event']['name']} has ended. We hope you enjoyed the {guild_data['seasonal_event']['bonus']}!"
         await ctx.send(embed=embed)
