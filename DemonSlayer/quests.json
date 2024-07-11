@@ -1,0 +1,36 @@
+{
+  "quest_1": {
+    "name": "Demon Slayer Initiation",
+    "description": "Complete the Demon Slayer initiation test.",
+    "requirements": {
+      "min_level": 1,
+      "breathing_technique": true
+    },
+    "rewards": {
+      "experience": 100,
+      "items": ["Nichirin Blade"]
+    },
+    "dialogue": [
+      "Welcome to the Demon Slayer Corps!",
+      "Your first task is to complete the initiation test.",
+      "Prove your worth and become a true Demon Slayer!"
+    ]
+  },
+  "quest_2": {
+    "name": "First Mission",
+    "description": "Embark on your first mission as a Demon Slayer.",
+    "requirements": {
+      "min_level": 5,
+      "completed_quests": ["quest_1"]
+    },
+    "rewards": {
+      "experience": 250,
+      "items": ["Demon Slayer Uniform"]
+    },
+    "dialogue": [
+      "Congratulations on completing the initiation!",
+      "Your first mission awaits. Be prepared for intense battles.",
+      "Remember your training and trust in your abilities."
+    ]
+  }
+}
