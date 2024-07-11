@@ -234,10 +234,5 @@ class OnePieceBattle(commands.Cog):
         
         await ctx.send(f"{winner.mention} has defeated {loser.mention} in battle! They gain {doriki_gain} Doriki, {haki_gain} Haki, and {bounty_gain:,} bounty!")
     
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.0f} seconds.")
-
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
