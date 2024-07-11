@@ -526,7 +526,7 @@ class DemonSlayer(commands.Cog):
     async def check_status(self, ctx):
         """Check your current status and progress"""
         user_data = await self.config.user(ctx.author).all()
-        guild_data = await self.config.guild(ctx.guild).all()
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
 
         embed = discord.Embed(title=f"{ctx.author.name}'s Status", color=discord.Color.blue())
         
