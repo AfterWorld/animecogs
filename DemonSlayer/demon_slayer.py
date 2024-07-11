@@ -262,7 +262,7 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
     @ds.command(name="hunt")
-    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 30-minutes cooldown
     async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
@@ -289,6 +289,13 @@ class DemonSlayer(commands.Cog):
             demon = f"Upper Moon {random.randint(1, 6)}"
             strength = random.randint(1000, 2000)
 
+        # Apply Blood Moon effects if active
+        if guild_data.get("blood_moon_active", False):
+            strength *= 1.5  # Demons are 50% stronger
+            xp_multiplier = 2  # Double XP
+        else:
+            xp_multiplier = 1
+
         embed = discord.Embed(title="Demon Hunt", color=discord.Color.dark_red())
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url)
         embed.description = f"{ctx.author.mention} encounters {demon}! The battle begins..."
@@ -298,13 +305,6 @@ class DemonSlayer(commands.Cog):
         await asyncio.sleep(5)  # Simulating battle time
 
         user_strength = self.calculate_strength(user_data)
-
-        # Apply Blood Moon effects
-        if guild_data["blood_moon_active"]:
-            strength *= 1.5  # Demons are 50% stronger
-            xp_multiplier = 2  # Double XP
-        else:
-            xp_multiplier = 1
 
         victory = user_strength > strength
 
