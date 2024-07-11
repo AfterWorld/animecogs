@@ -151,6 +151,7 @@ class DemonSlayer(commands.Cog):
 
         self.event_task = None
         self.quests = self.load_quests()
+        self.config.register_guild(event_channel=None)
     
     def load_quests(self):
         try:
@@ -1221,16 +1222,17 @@ class DemonSlayer(commands.Cog):
     @commands.admin()
     async def set_event_channel(self, ctx, channel: discord.TextChannel):
         """Set the channel for global demon events"""
-        await self.config.guild(ctx.guild).event_channel.set(channel.id)
+        await self.config.custom("guild", ctx.guild.id).event_channel.set(channel.id)
         await ctx.send(f"Global demon events will now occur in {channel.mention}")
         if self.event_task:
             self.event_task.cancel()
         self.event_task = self.bot.loop.create_task(self.event_loop(ctx.guild))
 
+
     async def event_loop(self, guild):
         while True:
             await asyncio.sleep(random.randint(3600, 7200))  # Random time between 1-2 hours
-            channel_id = await self.config.guild(guild).event_channel()
+            channel_id = await self.config.custom("guild", guild.id).event_channel()
             if channel_id:
                 channel = guild.get_channel(channel_id)
                 if channel:
