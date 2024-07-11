@@ -500,17 +500,17 @@ class DemonSlayer(commands.Cog):
     @commands.is_owner()
     async def trigger_blood_moon(self, ctx, duration: int = 60):
         """Trigger a Blood Moon event (Owner only)"""
-        guild_data = await self.config.guild(ctx.guild).all()
-        if guild_data["blood_moon_active"]:
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        if guild_data.get("blood_moon_active", False):
             await ctx.send("A Blood Moon event is already active!")
             return
-
+    
         guild_data["blood_moon_active"] = True
         guild_data["blood_moon_end"] = (datetime.now() + timedelta(minutes=duration)).isoformat()
-        await self.config.guild(ctx.guild).set(guild_data)
-
+        await self.config.custom("guild", ctx.guild.id).set(guild_data)
+    
         await ctx.send(f"🔴 A Blood Moon has risen! Demons are stronger, but rewards for slaying them have increased! This event will last for {duration} minutes.")
-
+    
         # Schedule end of Blood Moon
         await asyncio.sleep(duration * 60)
         await self.end_blood_moon(ctx)
