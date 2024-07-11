@@ -66,7 +66,9 @@ class DemonSlayer(commands.Cog):
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+            # Remove or comment out the following line:
+            # await ctx.send_help(ctx.command)
+            pass  # Do nothing if no subcommand is invoked
 
     @ds.command(name="start")
     async def start_journey(self, ctx):
