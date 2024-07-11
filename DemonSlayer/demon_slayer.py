@@ -44,10 +44,10 @@ class DemonSlayer(commands.Cog):
             "blood_moon_end": None,
             "active_boss_raid": None,
             "seasonal_event": None,
-            "guilds": {},
             "active_hashira_trial": None,
             "active_tournament": None,
             "event_channel": None,
+            "active_global_event": None,
         }
         
         self.config.register_user(**default_user)
@@ -122,6 +122,16 @@ class DemonSlayer(commands.Cog):
         }
 
         self.event_task = None
+        
+    async def initialize_guild_data(self):
+        for guild in self.bot.guilds:
+            guild_data = await self.config.guild(guild).all()
+            if "blood_moon_active" not in guild_data:
+                await self.config.guild(guild).set(self.config.guild.defaults)
+                
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.initialize_guild_data()
 
     def cog_unload(self):
         if self.event_task:
@@ -262,7 +272,7 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
     @ds.command(name="hunt")
-    @commands.cooldown(1, 1800, commands.BucketType.user)  # 30-minutes cooldown
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
     async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
@@ -289,13 +299,6 @@ class DemonSlayer(commands.Cog):
             demon = f"Upper Moon {random.randint(1, 6)}"
             strength = random.randint(1000, 2000)
 
-        # Apply Blood Moon effects if active
-        if guild_data.get("blood_moon_active", False):
-            strength *= 1.5  # Demons are 50% stronger
-            xp_multiplier = 2  # Double XP
-        else:
-            xp_multiplier = 1
-
         embed = discord.Embed(title="Demon Hunt", color=discord.Color.dark_red())
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url)
         embed.description = f"{ctx.author.mention} encounters {demon}! The battle begins..."
@@ -305,6 +308,13 @@ class DemonSlayer(commands.Cog):
         await asyncio.sleep(5)  # Simulating battle time
 
         user_strength = self.calculate_strength(user_data)
+
+        # Apply Blood Moon effects
+        if guild_data["blood_moon_active"]:
+            strength *= 1.5  # Demons are 50% stronger
+            xp_multiplier = 2  # Double XP
+        else:
+            xp_multiplier = 1
 
         victory = user_strength > strength
 
@@ -1081,4 +1091,6 @@ class DemonSlayer(commands.Cog):
         await self.config.guild(guild).set(guild_data)
 
 def setup(bot):
-    bot.add_cog(DemonSlayer(bot))
+    cog = DemonSlayer(bot)
+    bot.add_cog(cog)
+    bot.loop.create_task(cog.initialize_guild_data())
