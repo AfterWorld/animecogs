@@ -1,0 +1,14 @@
+{
+  "author": ["UltPanda"],
+  "description": "A One Piece battle simulation cog for Discord.",
+  "disabled": false,
+  "end_user_data_statement": "This cog stores user data including their fighting style, devil fruit, haki levels, doriki, bounty, battles won, last training time, and stamina.",
+  "hidden": false,
+  "install_msg": "Thanks for installing the One Piece Battle cog! Use `.op begin` to start your journey!",
+  "name": "OnePieceBattle",
+  "requirements": [],
+  "short": "One Piece battle simulation",
+  "tags": ["game", "rpg", "onepiece"],
+  "type": "COG",
+  "permissions": ["embed_links", "add_reactions", "manage_messages"]
+}
