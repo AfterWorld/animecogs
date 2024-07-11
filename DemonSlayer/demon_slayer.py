@@ -62,6 +62,7 @@ class DemonSlayer(commands.Cog):
         self.config.register_user(**default_user)
         self.config.init_custom("guild", 2)
         self.config.register_custom("guild", **default_guild)
+        self.config.register_custom("guild", event_channel=None)
         
         self.breathing_techniques = {
             "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
