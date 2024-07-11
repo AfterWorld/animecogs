@@ -478,7 +478,7 @@ class DemonSlayer(commands.Cog):
 
         await asyncio.sleep(5)  # Simulating battle time
 
-        user_strength = self.calculate_strength(user_data)
+        user_strength = await self.calculate_strength(user_data, ctx)
 
         # Apply Blood Moon effects
         if guild_data.get("blood_moon_active", False):  # Check if key exists
@@ -564,7 +564,7 @@ class DemonSlayer(commands.Cog):
             base_strength += self.companions[user_data["companion"]]["strength"] * user_data["companion_level"]
 
         # Apply seasonal event bonus
-        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        guild_data = self.config.custom("guild", ctx.guild.id).all()
         if guild_data.get("seasonal_event", None):
             event_bonus = guild_data["seasonal_event"]["bonus"]
             if event_bonus == "double_xp":
