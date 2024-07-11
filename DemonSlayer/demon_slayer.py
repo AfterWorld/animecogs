@@ -137,7 +137,6 @@ class DemonSlayer(commands.Cog):
     @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
-        if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
     @ds.command(name="start")
