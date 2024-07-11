@@ -45,6 +45,7 @@ class DemonSlayer(commands.Cog):
             "completed_quests": [],
             "skills": {},
             "demon_allies": [],
+            "guild_id": None,
         }
         
         default_guild = {
@@ -170,11 +171,6 @@ class DemonSlayer(commands.Cog):
     async def start_journey(self, ctx):
         """Begin your journey as a Demon Slayer"""
         user_data = await self.config.user(ctx.author).all()
-        if not user_data:
-            # Initialize user data if it doesn't exist
-            await self.config.user(ctx.author).set(self.config.user.defaults)
-            user_data = await self.config.user(ctx.author).all()
-
         if user_data["breathing_technique"]:
             await ctx.send(f"{ctx.author.mention}, you've already begun your journey!")
             return
@@ -187,6 +183,7 @@ class DemonSlayer(commands.Cog):
         user_data["nichirin_color"] = color
         user_data["known_forms"] = [first_form]
         user_data["form_levels"] = {first_form: 1}
+        user_data["guild_id"] = ctx.guild.id  # Store the guild ID in user data
         
         await self.config.user(ctx.author).set(user_data)
 
