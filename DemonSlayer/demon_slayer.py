@@ -66,10 +66,15 @@ class DemonSlayer(commands.Cog):
     async def ds(self, ctx):
         """Demon Slayer commands"""
         if ctx.invoked_subcommand is None:
-            # Remove or comment out the following line:
-            # await ctx.send_help(ctx.command)
-            pass  # Do nothing if no subcommand is invoked
-
+            if ctx.message.content.lower().strip() == f"{ctx.prefix}ds join":
+                # Check if there's an active global event
+                if hasattr(self, 'active_global_event') and self.active_global_event:
+                    await self.join_global_event(ctx)
+                else:
+                    await ctx.send("There's no active global event to join right now.")
+            else:
+                await ctx.send_help(ctx.command)
+            
     @ds.command(name="start")
     async def start_journey(self, ctx):
         """Begin your journey as a Demon Slayer"""
@@ -100,9 +105,9 @@ class DemonSlayer(commands.Cog):
         if user_data["rank"] == "Hashira":
             await ctx.send("You are already a Hashira. Your training now focuses on mentoring others.")
             return
-
+    
         embed = discord.Embed(title="Hashira Training", color=discord.Color.gold())
-        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url)
         embed.description = f"{ctx.author.mention} begins intense Hashira training..."
         message = await ctx.send(embed=embed)
 
@@ -129,53 +134,67 @@ class DemonSlayer(commands.Cog):
         """Trigger a global demon attack event"""
         if channel is None:
             channel = ctx.channel
-
+    
         demon = random.choice(["Lower Moon Six", "Lower Moon Three", "Upper Moon Six", "Upper Moon Three"])
         demon_strength = {"Lower Moon Six": 500, "Lower Moon Three": 1000, "Upper Moon Six": 2000, "Upper Moon Three": 3000}
-
+    
         embed = discord.Embed(title="Global Demon Attack!", color=discord.Color.dark_red())
         embed.description = f"A {demon} has appeared! Type `.ds join` to join the battle!"
         embed.add_field(name="Demon Strength", value=demon_strength[demon])
         embed.add_field(name="Participants", value="None yet")
         message = await channel.send(embed=embed)
-
-        participants = []
-        total_strength = 0
-        battle_duration = 60  # 1 minute for the battle
-
-        def check(m):
-            return m.content.lower() == '.ds join' and m.channel == channel
-
-        end_time = datetime.now() + timedelta(seconds=battle_duration)
-
-        while datetime.now() < end_time:
-            try:
-                join_msg = await self.bot.wait_for('message', check=check, timeout=(end_time - datetime.now()).total_seconds())
-                user_data = await self.config.user(join_msg.author).all()
-                if join_msg.author not in participants and user_data["breathing_technique"]:
-                    participants.append(join_msg.author)
-                    total_strength += user_data["experience"]
-                    embed.set_field_at(1, name="Participants", value="\n".join([p.mention for p in participants]))
-                    await message.edit(embed=embed)
-            except asyncio.TimeoutError:
-                break
-
+    
+        self.active_global_event = {
+            'channel_id': channel.id,
+            'demon': demon,
+            'strength': demon_strength[demon],
+            'participants': [],
+            'total_strength': 0,
+            'embed': embed,
+            'message': message
+        }
+    
+        await asyncio.sleep(60)  # 1 minute for the battle
+    
         # Battle resolution
-        victory = total_strength > demon_strength[demon]
-
+        victory = self.active_global_event['total_strength'] > self.active_global_event['strength']
+    
         if victory:
             embed.color = discord.Color.green()
             embed.description = f"The {demon} has been defeated!"
-            xp_reward = demon_strength[demon] // len(participants)
-            for participant in participants:
+            xp_reward = self.active_global_event['strength'] // len(self.active_global_event['participants']) if self.active_global_event['participants'] else 0
+            for participant in self.active_global_event['participants']:
                 user_data = await self.config.user(participant).all()
                 await self.config.user(participant).experience.set(user_data["experience"] + xp_reward)
             embed.add_field(name="Reward", value=f"Each participant gains {xp_reward} XP!")
         else:
             embed.color = discord.Color.red()
             embed.description = f"The {demon} was too powerful and escaped..."
-
+    
         await message.edit(embed=embed)
+        self.active_global_event = None  # Clear the active event
+
+    async def join_global_event(self, ctx):
+        """Handle joining a global event"""
+        if ctx.channel.id != self.active_global_event['channel_id']:
+            return  # Ignore if not in the correct channel
+    
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["breathing_technique"]:
+            await ctx.send(f"{ctx.author.mention}, you need to start your journey first!")
+            return
+    
+        if ctx.author not in self.active_global_event['participants']:
+            self.active_global_event['participants'].append(ctx.author)
+            self.active_global_event['total_strength'] += user_data["experience"]
+    
+            embed = self.active_global_event['embed']
+            embed.set_field_at(1, name="Participants", value="\n".join([p.mention for p in self.active_global_event['participants']]))
+            await self.active_global_event['message'].edit(embed=embed)
+    
+            await ctx.send(f"{ctx.author.mention} has joined the battle!", delete_after=5)
+        else:
+            await ctx.send(f"{ctx.author.mention}, you've already joined this battle!", delete_after=5)
 
     @ds.command(name="profile")
     async def show_profile(self, ctx, user: discord.Member = None):
