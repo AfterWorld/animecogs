@@ -396,7 +396,7 @@ class DemonSlayer(commands.Cog):
         await ctx.send(embed=embed)
     
     @ds.command(name="train_form")
-    @commands.cooldown(1, 7200, commands.BucketType.user)  # 2-hour cooldown
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
     async def train_form(self, ctx, form: str):
         """Train a specific breathing form to level it up"""
         user_data = await self.config.user(ctx.author).all()
@@ -546,7 +546,7 @@ class DemonSlayer(commands.Cog):
         await message.edit(embed=embed)
         await self.check_rank_up(ctx)
 
-    def calculate_strength(self, user_data):
+    async def calculate_strength(self, user_data):
         base_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
 
         if user_data["is_demon"]:
@@ -566,7 +566,7 @@ class DemonSlayer(commands.Cog):
             base_strength += self.companions[user_data["companion"]]["strength"] * user_data["companion_level"]
 
         # Apply seasonal event bonus
-        guild_data = self.config.custom("guild", ctx.guild.id).all()
+        guild_data = self.config.custom("guild", user_data["guild_id"]).all()
         if guild_data.get("seasonal_event", None):
             event_bonus = guild_data["seasonal_event"]["bonus"]
             if event_bonus == "double_xp":
