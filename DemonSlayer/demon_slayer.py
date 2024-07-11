@@ -137,7 +137,6 @@ class DemonSlayer(commands.Cog):
     @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
-        await ctx.send_help(ctx.command)
 
     @ds.command(name="start")
     async def start_journey(self, ctx):
