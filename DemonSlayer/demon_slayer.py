@@ -126,9 +126,11 @@ class DemonSlayer(commands.Cog):
     async def initialize_guild_data(self):
         for guild in self.bot.guilds:
             guild_data = await self.config.guild(guild).all()
-            if "blood_moon_active" not in guild_data:
-                await self.config.guild(guild).set(default_guild)
-
+            for key, value in default_guild.items():
+                if key not in guild_data:
+                    guild_data[key] = value
+            await self.config.guild(guild).set(guild_data)
+    
             # Initialize user data for all users in the guild
             for member in guild.members:
                 user_data = await self.config.user(member).all()
