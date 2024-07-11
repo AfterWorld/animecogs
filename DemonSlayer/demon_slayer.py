@@ -120,10 +120,10 @@ class DemonSlayer(commands.Cog):
         if not user_data["breathing_technique"]:
             await ctx.send(f"{ctx.author.mention}, you need to start your journey first!")
             return
-    
+
         xp_gained = random.randint(10, 50)
         await self.config.user(ctx.author).experience.set(user_data["experience"] + xp_gained)
-    
+
         await ctx.send(f"{ctx.author.mention} trains intensively and gains {xp_gained} experience!")
         
         # Chance to learn a new form
@@ -132,21 +132,21 @@ class DemonSlayer(commands.Cog):
         
         await self.check_rank_up(ctx)
 
-async def learn_new_form(self, ctx):
-    user_data = await self.config.user(ctx.author).all()
-    technique = user_data["breathing_technique"]
-    known_forms = user_data["known_forms"]
-    all_forms = self.breathing_techniques[technique]
-    
-    unknown_forms = [form for form in all_forms if form not in known_forms]
-    
-    if unknown_forms:
-        new_form = random.choice(unknown_forms)
-        known_forms.append(new_form)
-        await self.config.user(ctx.author).known_forms.set(known_forms)
-        await ctx.send(f"Breakthrough! {ctx.author.mention} has learned a new form: **{new_form}**!")
-    else:
-        await ctx.send(f"{ctx.author.mention} has mastered all forms of {technique} Breathing!")
+    async def learn_new_form(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        technique = user_data["breathing_technique"]
+        known_forms = user_data["known_forms"]
+        all_forms = self.breathing_techniques[technique]
+        
+        unknown_forms = [form for form in all_forms if form not in known_forms]
+        
+        if unknown_forms:
+            new_form = random.choice(unknown_forms)
+            known_forms.append(new_form)
+            await self.config.user(ctx.author).known_forms.set(known_forms)
+            await ctx.send(f"Breakthrough! {ctx.author.mention} has learned a new form: **{new_form}**!")
+        else:
+            await ctx.send(f"{ctx.author.mention} has mastered all forms of {technique} Breathing!")
 
     @ds.command(name="slay")
     @commands.cooldown(1, 3600, commands.BucketType.user)
