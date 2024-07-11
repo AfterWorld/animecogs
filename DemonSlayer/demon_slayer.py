@@ -137,6 +137,7 @@ class DemonSlayer(commands.Cog):
     @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
+        await ctx.send_help(ctx.command)
 
     @ds.command(name="start")
     async def start_journey(self, ctx):
@@ -452,6 +453,11 @@ class DemonSlayer(commands.Cog):
     async def start_tournament(self, ctx):
         """Start a PvE tournament"""
         guild_data = await self.config.guild(ctx.guild).all()
+        
+        # Initialize guild_data if it doesn't exist
+        if "active_tournament" not in guild_data:
+            guild_data["active_tournament"] = None
+
         if guild_data["active_tournament"]:
             await ctx.send("A tournament is already in progress!")
             return
@@ -471,6 +477,12 @@ class DemonSlayer(commands.Cog):
     async def join_tournament(self, ctx):
         """Join the active tournament"""
         guild_data = await self.config.guild(ctx.guild).all()
+        
+        # Initialize guild_data if it doesn't exist
+        if "active_tournament" not in guild_data:
+            guild_data["active_tournament"] = None
+            await self.config.guild(ctx.guild).set(guild_data)
+
         if not guild_data["active_tournament"]:
             await ctx.send("There's no active tournament to join!")
             return
@@ -490,8 +502,20 @@ class DemonSlayer(commands.Cog):
 
     async def start_tournament_rounds(self, ctx):
         guild_data = await self.config.guild(ctx.guild).all()
+        
+        # Initialize guild_data if it doesn't exist
+        if "active_tournament" not in guild_data:
+            guild_data["active_tournament"] = None
+            await self.config.guild(ctx.guild).set(guild_data)
+            await ctx.send("There's no active tournament.")
+            return
+
         tournament = guild_data["active_tournament"]
         
+        if not tournament:
+            await ctx.send("There's no active tournament.")
+            return
+
         if len(tournament["participants"]) < 2:
             await ctx.send("Not enough participants. The tournament has been cancelled.")
             guild_data["active_tournament"] = None
@@ -963,6 +987,13 @@ class DemonSlayer(commands.Cog):
             guild_data = await self.config.guild(guild).all()
             if "seasonal_event" not in guild_data:
                 guild_data["seasonal_event"] = None
+                await self.config.guild(guild).set(guild_data)
+                
+    async def initialize_guild_data(self):
+        for guild in self.bot.guilds:
+            guild_data = await self.config.guild(guild).all()
+            if "active_tournament" not in guild_data:
+                guild_data["active_tournament"] = None
                 await self.config.guild(guild).set(guild_data)
 
 def setup(bot):
