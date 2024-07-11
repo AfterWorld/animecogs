@@ -284,15 +284,18 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="New Ability Unlocked!", value="Total Concentration: Constant", inline=False)
 
     @ds.command(name="hunt")
-    @commands.cooldown(1, 1800, commands.BucketType.user)  # 
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # 2-hour cooldown
     async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
-        guild_data = await self.config.guild(ctx.guild).all()
+        print(f"User data: {user_data}")  # Debug logging statement
 
         if user_data["is_demon"]:
             await ctx.send(f"{ctx.author.mention}, as a demon, you cannot hunt other demons!")
             return
+
+        guild_data = await self.config.guild(ctx.guild).all()
+        print(f"Guild data: {guild_data}")  # Debug logging statement
 
         demon_types = ["Lesser Demon", "Stronger Demon", "Lower Moon", "Upper Moon"]
         weights = [0.4, 0.3, 0.2, 0.1]
@@ -322,7 +325,7 @@ class DemonSlayer(commands.Cog):
         user_strength = self.calculate_strength(user_data)
 
         # Apply Blood Moon effects
-        if guild_data["blood_moon_active"]:
+        if guild_data.get("blood_moon_active", False):  # Check if key exists
             strength *= 1.5  # Demons are 50% stronger
             xp_multiplier = 2  # Double XP
         else:
