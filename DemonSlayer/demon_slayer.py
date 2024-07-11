@@ -1130,8 +1130,8 @@ class DemonSlayer(commands.Cog):
     @ds.command(name="join_raid")
     async def join_boss_raid(self, ctx):
         """Join the active boss raid"""
-        guild_data = await self.config.guild(ctx.guild).all()
-        if not guild_data["active_boss_raid"]:
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
+        if not guild_data.get("active_boss_raid", None):
             await ctx.send("There's no active boss raid right now.")
             return
 
@@ -1144,10 +1144,10 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You've already joined this raid!")
             return
 
-        user_strength = self.calculate_strength(user_data)
+        user_strength = await self.calculate_strength(user_data)  # Await the calculate_strength method
         guild_data["active_boss_raid"]["participants"].append(ctx.author.id)
         guild_data["active_boss_raid"]["total_strength"] += user_strength
-        await self.config.guild(ctx.guild).set(guild_data)
+        await self.config.custom("guild", ctx.guild.id).set(guild_data)
         await ctx.send(f"{ctx.author.mention} has joined the raid against {guild_data['active_boss_raid']['boss']}!")
 
     async def end_boss_raid(self, ctx):
