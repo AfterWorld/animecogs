@@ -885,7 +885,7 @@ class DemonSlayer(commands.Cog):
     @commands.cooldown(1, 86400, commands.BucketType.guild)
     async def start_boss_raid(self, ctx, duration: int = 30):
         """Start a boss raid event"""
-        guild_data = await self.config.guild(ctx.guild).all()
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
         if guild_data["active_boss_raid"]:
             await ctx.send("A boss raid is already active!")
             return
