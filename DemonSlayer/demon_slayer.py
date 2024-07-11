@@ -527,9 +527,9 @@ class DemonSlayer(commands.Cog):
         """Check your current status and progress"""
         user_data = await self.config.user(ctx.author).all()
         guild_data = await self.config.custom("guild", ctx.guild.id).all()
-
+    
         embed = discord.Embed(title=f"{ctx.author.name}'s Status", color=discord.Color.blue())
-        
+    
         if user_data["is_demon"]:
             embed.add_field(name="Type", value="Demon", inline=True)
             embed.add_field(name="Stage", value=self.demon_stages[user_data["demon_stage"]], inline=True)
@@ -542,28 +542,29 @@ class DemonSlayer(commands.Cog):
                 embed.add_field(name="Evolved Breathing", value="Yes", inline=True)
             if user_data["demon_slayer_mark"]:
                 embed.add_field(name="Demon Slayer Mark", value="Awakened", inline=True)
-
+    
         embed.add_field(name="Experience", value=user_data["experience"], inline=True)
         embed.add_field(name="Demons Slayed", value=user_data["demons_slayed"], inline=True)
-
+    
         if user_data["companion"]:
             embed.add_field(name="Companion", value=f"{user_data['companion']} (Level {user_data['companion_level']})", inline=True)
-
+    
         if not user_data["is_demon"]:
             embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_color']} (Level {user_data['nichirin_blade_level']})", inline=True)
             if user_data["nichirin_blade_ability"]:
                 embed.add_field(name="Blade Ability", value=user_data["nichirin_blade_ability"], inline=True)
-
+    
         materials = ", ".join([f"{k}: {v}" for k, v in user_data["materials"].items()])
         embed.add_field(name="Materials", value=materials, inline=False)
-
-        if guild_data["blood_moon_active"]:
-            blood_moon_end = datetime.fromisoformat(guild_data["blood_moon_end"])
-            time_left = blood_moon_end - datetime.now()
-            embed.add_field(name="Blood Moon", value=f"Active for {time_left.seconds // 60} more minutes", inline=False)
-
+    
+        if guild_data.get("blood_moon_active", False):
+            blood_moon_end = datetime.fromisoformat(guild_data.get("blood_moon_end", ""))
+            if blood_moon_end:
+                time_left = blood_moon_end - datetime.now()
+                embed.add_field(name="Blood Moon", value=f"Active for {time_left.seconds // 60} more minutes", inline=False)
+    
         await ctx.send(embed=embed)
-
+    
     @ds.command(name="leaderboard")
     async def show_leaderboard(self, ctx, category: str = "experience"):
         """Show the leaderboard for a specific category"""
