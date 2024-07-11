@@ -203,6 +203,83 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="Special Abilities", value=", ".join(user_data["special_abilities"]), inline=False)
 
         await ctx.send(embed=embed)
+        
+    @ds.command(name="boss_raid")
+    @commands.admin()
+    async def start_boss_raid(self, ctx, duration: int = 30):
+        """Start a boss raid event (Admin only)"""
+        guild_data = await self.config.guild(ctx.guild).all()
+        if guild_data["active_boss_raid"]:
+            await ctx.send("A boss raid is already active!")
+            return
+
+        boss = random.choice(["Muzan Kibutsuji", "Kokushibo", "Doma", "Akaza", "Hantengu", "Gyokko"])
+        strength = random.randint(5000, 10000)
+        guild_data["active_boss_raid"] = {
+            "boss": boss,
+            "strength": strength,
+            "participants": [],
+            "total_strength": 0,
+            "end_time": (datetime.now() + timedelta(minutes=duration)).isoformat()
+        }
+        await self.config.guild(ctx.guild).set(guild_data)
+
+        embed = discord.Embed(title="Boss Raid Event", color=discord.Color.dark_red())
+        embed.description = f"A powerful demon, {boss}, has appeared! Join forces to defeat it!\n"
+        embed.description += f"Use `{ctx.prefix}ds join_raid` to participate.\n"
+        embed.description += f"Event ends in {duration} minutes."
+        embed.add_field(name="Boss Strength", value=strength)
+
+        await ctx.send(embed=embed)
+        await asyncio.sleep(duration * 60)
+        await self.end_boss_raid(ctx)
+
+    @ds.command(name="join_raid")
+    async def join_boss_raid(self, ctx):
+        """Join the active boss raid"""
+        guild_data = await self.config.guild(ctx.guild).all()
+        if not guild_data["active_boss_raid"]:
+            await ctx.send("There's no active boss raid right now.")
+            return
+
+        user_data = await self.config.user(ctx.author).all()
+        if ctx.author.id not in guild_data["active_boss_raid"]["participants"]:
+            guild_data["active_boss_raid"]["participants"].append(ctx.author.id)
+            user_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
+            if user_data["companion"]:
+                user_strength += self.companions[user_data["companion"]]["strength"]
+            guild_data["active_boss_raid"]["total_strength"] += user_strength
+            await self.config.guild(ctx.guild).set(guild_data)
+            await ctx.send(f"{ctx.author.mention} has joined the raid against {guild_data['active_boss_raid']['boss']}!")
+        else:
+            await ctx.send("You're already participating in this raid!")
+
+    async def end_boss_raid(self, ctx):
+        guild_data = await self.config.guild(ctx.guild).all()
+        if not guild_data["active_boss_raid"]:
+            return
+
+        victory = guild_data["active_boss_raid"]["total_strength"] > guild_data["active_boss_raid"]["strength"]
+        embed = discord.Embed(title="Boss Raid Results", color=discord.Color.green() if victory else discord.Color.red())
+        
+        if victory:
+            embed.description = f"The raid against {guild_data['active_boss_raid']['boss']} was successful!"
+            xp_reward = guild_data["active_boss_raid"]["strength"] // len(guild_data["active_boss_raid"]["participants"])
+            for participant_id in guild_data["active_boss_raid"]["participants"]:
+                user = self.bot.get_user(participant_id)
+                if user:
+                    user_data = await self.config.user(user).all()
+                    user_data["experience"] += xp_reward
+                    user_data["demons_slayed"] += 1
+                    await self.config.user(user).set(user_data)
+            embed.add_field(name="Reward", value=f"Each participant gains {xp_reward} XP and 1 powerful demon slayed!")
+        else:
+            embed.description = f"The raid against {guild_data['active_boss_raid']['boss']} has failed. The demon escaped."
+
+        await ctx.send(embed=embed)
+        guild_data["active_boss_raid"] = None
+        await self.config.guild(ctx.guild).set(guild_data)
+
 
     @ds.command(name="train")
     @commands.cooldown(1, 3600, commands.BucketType.user)
