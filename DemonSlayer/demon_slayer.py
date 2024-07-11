@@ -9,11 +9,6 @@ class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
-        self.quest = self.load_quests()
-        
-        def load_quests(self):
-            with open("quest.json") as f:
-                return json.load(f)
         
         default_user = {
             "breathing_technique": None,
@@ -154,7 +149,14 @@ class DemonSlayer(commands.Cog):
         }
 
         self.event_task = None
-                
+        self.quests = self.load_quests()
+    
+    def load_quests(self):
+        try:
+            with open("quests.json") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
 
     def cog_unload(self):
         if self.event_task:
