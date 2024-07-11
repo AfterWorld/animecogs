@@ -51,7 +51,8 @@ class DemonSlayer(commands.Cog):
         }
         
         self.config.register_user(**default_user)
-        self.config.register_guild(**default_guild)
+        self.config.init_custom("guild", 2)
+        self.config.register_custom("guild", **default_guild)
         
         self.breathing_techniques = {
             "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
@@ -122,24 +123,7 @@ class DemonSlayer(commands.Cog):
         }
 
         self.event_task = None
-        
-    async def initialize_guild_data(self):
-        for guild in self.bot.guilds:
-            guild_data = await self.config.guild(guild).all()
-            for key, value in default_guild.items():
-                if key not in guild_data:
-                    guild_data[key] = value
-            await self.config.guild(guild).set(guild_data)
-    
-            # Initialize user data for all users in the guild
-            for member in guild.members:
-                user_data = await self.config.user(member).all()
-                if not user_data:
-                    await self.config.user(member).set(default_user)
                 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        await self.initialize_guild_data()
 
     def cog_unload(self):
         if self.event_task:
@@ -296,9 +280,9 @@ class DemonSlayer(commands.Cog):
             await ctx.send(f"{ctx.author.mention}, as a demon, you cannot hunt other demons!")
             return
 
-        guild_data = await self.config.guild(ctx.guild).all()
+        guild_data = await self.config.custom("guild", ctx.guild.id).all()
         print(f"Guild data: {guild_data}")  # Debug logging statement
-
+    
         demon_types = ["Lesser Demon", "Stronger Demon", "Lower Moon", "Upper Moon"]
         weights = [0.4, 0.3, 0.2, 0.1]
         demon_type = random.choices(demon_types, weights=weights)[0]
