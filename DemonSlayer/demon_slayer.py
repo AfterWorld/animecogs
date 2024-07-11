@@ -566,7 +566,7 @@ class DemonSlayer(commands.Cog):
             base_strength += self.companions[user_data["companion"]]["strength"] * user_data["companion_level"]
 
         # Apply seasonal event bonus
-        guild_data = self.config.custom("guild", user_data["guild_id"]).all()
+        guild_data = self.config.custom("guild", user_data).all()
         if guild_data.get("seasonal_event", None):
             event_bonus = guild_data["seasonal_event"]["bonus"]
             if event_bonus == "double_xp":
