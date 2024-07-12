@@ -550,16 +550,20 @@ class OnePieceBattle(commands.Cog):
             await ctx.send(f"🎉 Congratulations! You've unlocked new Devil Fruit abilities: {abilities_str}")
 
     def generate_attack(self, user, user_data, base_strength):
-        if random.random() < self.combo_chance and user_data["fighting_style"] in self.combo_attacks and user_data["devil_fruit"] in self.combo_attacks[user_data["fighting_style"]]:
+        if random.random() < self.combo_chance and user_data.get("fighting_style") in self.combo_attacks and user_data.get("devil_fruit") in self.combo_attacks.get(user_data.get("fighting_style", {}), {}):
             technique = self.combo_attacks[user_data["fighting_style"]][user_data["devil_fruit"]]
             attack_power = random.randint(int(base_strength * 1.5), int(base_strength * 2))
             return attack_power, technique
         
-        if user_data["devil_fruit"] and user_data["unlocked_abilities"]:
+        if user_data.get("devil_fruit") and user_data.get("unlocked_abilities"):
             technique = random.choice(user_data["unlocked_abilities"])
             attack_power = random.randint(int(base_strength * 1.2), int(base_strength * 1.8))
+        elif user_data.get("devil_fruit") and user_data["devil_fruit"] in self.devil_fruit_abilities:
+            # If no unlocked abilities, use a random ability from the devil fruit
+            technique = random.choice([ability["name"] for ability in self.devil_fruit_abilities[user_data["devil_fruit"]]])
+            attack_power = random.randint(int(base_strength * 1.2), int(base_strength * 1.8))
         else:
-            technique = random.choice(user_data["learned_techniques"]) if user_data["learned_techniques"] else "Basic Attack"
+            technique = random.choice(user_data.get("learned_techniques", [])) if user_data.get("learned_techniques") else "Basic Attack"
             attack_power = random.randint(1, max(1, int(base_strength))) * (1.5 if technique != "Basic Attack" else 1)
         
         return attack_power, technique
@@ -568,11 +572,12 @@ class OnePieceBattle(commands.Cog):
         ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
         opponent_name = random.choice(ai_names)
         ai_fighting_style = random.choice(list(self.techniques.keys()))
+        ai_devil_fruit = random.choice(list(self.devil_fruits.keys()))
         
         opponent_data = {
             "name": opponent_name,
             "fighting_style": ai_fighting_style,
-            "devil_fruit": random.choice(list(self.devil_fruits.keys())),
+            "devil_fruit": ai_devil_fruit,
             "haki": {
                 "observation": random.randint(50, 100),
                 "armament": random.randint(50, 100),
@@ -585,7 +590,9 @@ class OnePieceBattle(commands.Cog):
             "learned_techniques": random.sample(self.techniques[ai_fighting_style], min(5, len(self.techniques[ai_fighting_style]))),
             "equipped_items": random.sample(list(self.equipment.keys()), 3),
             "stamina": 150,
-            "bounty": random.randint(500000000, 1500000000)
+            "bounty": random.randint(500000000, 1500000000),
+            "unlocked_abilities": [ability["name"] for ability in self.devil_fruit_abilities[ai_devil_fruit] if ability["mastery_required"] <= 50],  # Assuming AI has mastery up to 50
+            "devil_fruit_mastery": 50
         }
         return opponent_data
 
