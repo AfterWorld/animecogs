@@ -11,6 +11,9 @@ class OnePieceBattle(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         self.spawn_channel_id = None
         self.logger = logging.getLogger("red.onepiecebattle")
+        self.awakening_chance = 0.05  # 5% chance each turn
+        self.awakening_boost = 1.5  # 50% power boost when awakened
+        self.combo_chance = 0.15  # 15% chance to perform a combo attack
 
         default_user = {
             "fighting_style": None,
@@ -32,9 +35,16 @@ class OnePieceBattle(commands.Cog):
             "speed": 1,
             "defense": 1,
             "learned_techniques": [],
-            "equipped_items": []
+            "equipped_items": [],
+            "fatigue": 0,
+            "last_rest_time": None,
+            "devil_fruit_mastery": 0,
+            "unlocked_abilities": []
         }
         self.config.register_user(**default_user)
+        self.max_fatigue = 100
+        self.fatigue_per_battle = 10
+        self.fatigue_recovery_rate = 5  # Amount of fatigue recovered per hour of rest
         
         self.battle_environments = {
             "Calm Belt": "The oppressive silence amplifies every move!",
@@ -45,6 +55,72 @@ class OnePieceBattle(commands.Cog):
             "Punk Hazard": "Half-frozen, half-ablaze, this island is a battleground of extremes!"
         }
 
+        self.environments = {
+            "Sea": {
+                "description": "Surrounded by water, Devil Fruit users are weakened.",
+                "df_modifier": 0.8,
+                "non_df_modifier": 1.1
+            },
+            "Island": {
+                "description": "A balanced environment for all fighters.",
+                "df_modifier": 1.0,
+                "non_df_modifier": 1.0
+            },
+            "City": {
+                "description": "Urban terrain provides cover and mobility advantages.",
+                "df_modifier": 1.1,
+                "non_df_modifier": 1.1
+            },
+            "Volcano": {
+                "description": "Intense heat boosts fire-based abilities but challenges others.",
+                "df_modifier": 1.2,
+                "non_df_modifier": 0.9
+            }
+        }
+        
+        self.devil_fruit_abilities = {
+            "Gomu Gomu no Mi": [
+                {"name": "Gum-Gum Pistol", "mastery_required": 0},
+                {"name": "Gum-Gum Bazooka", "mastery_required": 10},
+                {"name": "Gum-Gum Gatling", "mastery_required": 20},
+                {"name": "Gear Second", "mastery_required": 30},
+                {"name": "Gear Third", "mastery_required": 40},
+                {"name": "Gear Fourth", "mastery_required": 50}
+            ],
+            "Mera Mera no Mi": [
+                {"name": "Fire Fist", "mastery_required": 0},
+                {"name": "Fire Gun", "mastery_required": 10},
+                {"name": "Flame Commandment", "mastery_required": 20},
+                {"name": "Firefly", "mastery_required": 30},
+                {"name": "Great Flame Commandment", "mastery_required": 40},
+                {"name": "Flame Emperor", "mastery_required": 50}
+            ],
+            "Hie Hie no Mi": [
+                {"name": "Ice Age", "mastery_required": 0},
+                {"name": "Ice Saber", "mastery_required": 10},
+                {"name": "Ice Time", "mastery_required": 20},
+                {"name": "Ice Block: Pheasant Beak", "mastery_required": 30},
+                {"name": "Ice Time Capsule", "mastery_required": 40},
+                {"name": "Ice Age: Eternal Freeze", "mastery_required": 50}
+            ],
+            "Gura Gura no Mi": [
+                {"name": "Shock Wave", "mastery_required": 0},
+                {"name": "Seaquake", "mastery_required": 10},
+                {"name": "Island Quake", "mastery_required": 20},
+                {"name": "Tilting", "mastery_required": 30},
+                {"name": "Tsunami", "mastery_required": 40},
+                {"name": "Shattering", "mastery_required": 50}
+            ],
+            "Yami Yami no Mi": [
+                {"name": "Black Hole", "mastery_required": 0},
+                {"name": "Liberation", "mastery_required": 10},
+                {"name": "Kurouzu", "mastery_required": 20},
+                {"name": "Blackbeard Whirlpool", "mastery_required": 30},
+                {"name": "Black World", "mastery_required": 40},
+                {"name": "Dark End", "mastery_required": 50}
+            ]
+        }
+        
         self.devil_fruits = {
             "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2},
             "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3},
@@ -63,6 +139,30 @@ class OnePieceBattle(commands.Cog):
             "Brawler": ["Gomu Gomu no Pistol", "Gomu Gomu no Bazooka", "Gear Second"],
             "Tactician": ["Mirage Tempo", "Thunderbolt Tempo", "Weather Egg"]
         }
+        
+        self.environments = {
+            "Sea": {"description": "Surrounded by water, Devil Fruit users are weakened.", "df_modifier": 0.8},
+            "Island": {"description": "A balanced environment for all fighters.", "df_modifier": 1.0},
+            "City": {"description": "Urban terrain provides cover and mobility advantages.", "df_modifier": 1.1},
+            "Volcano": {"description": "Intense heat boosts fire-based abilities.", "df_modifier": 1.2}
+        }
+        
+        self.elemental_interactions = {
+            "Fire": {"strong_against": ["Ice", "Plant"], "weak_against": ["Water", "Earth"]},
+            "Water": {"strong_against": ["Fire", "Lightning"], "weak_against": ["Plant", "Ice"]},
+            "Earth": {"strong_against": ["Lightning", "Fire"], "weak_against": ["Water", "Plant"]},
+            "Ice": {"strong_against": ["Water", "Plant"], "weak_against": ["Fire", "Earth"]},
+            "Lightning": {"strong_against": ["Water", "Metal"], "weak_against": ["Earth", "Rubber"]},
+            "Plant": {"strong_against": ["Earth", "Water"], "weak_against": ["Fire", "Ice"]},
+            "Metal": {"strong_against": ["Ice", "Rock"], "weak_against": ["Lightning", "Fire"]},
+            "Rubber": {"strong_against": ["Lightning", "Impact"], "weak_against": ["Fire", "Cutting"]}
+        }
+        
+        self.legendary_weapons = {
+            "Yoru": {"type": "Sword", "boost": 50, "description": "One of the 12 Supreme Grade Swords"},
+            "Kabuto": {"type": "Slingshot", "boost": 40, "description": "Usopp's ultimate weapon"},
+            "Clima-Tact": {"type": "Staff", "boost": 45, "description": "Weather-controlling weapon"}
+        }
 
         self.equipment = {
             "Sword": {"strength": 20, "speed": 10},
@@ -70,6 +170,37 @@ class OnePieceBattle(commands.Cog):
             "Armor": {"defense": 30},
             "Boots": {"speed": 20},
             "Gloves": {"strength": 10, "speed": 10}
+        }
+        
+        self.combo_attacks = {
+            "Swordsman": {
+                "Gomu Gomu no Mi": "Gum-Gum Sword Whip",
+                "Mera Mera no Mi": "Flame-Edged Blade Dance",
+                "Hie Hie no Mi": "Frozen Sword Barrage",
+                "Yami Yami no Mi": "Dark Matter Slash",
+                "Gura Gura no Mi": "Tremor Blade Quake"
+            },
+            "Martial Artist": {
+                "Gomu Gomu no Mi": "Elastic Fist Gatling",
+                "Mera Mera no Mi": "Blazing Kick Tempest",
+                "Hie Hie no Mi": "Frost-Knuckle Assault",
+                "Yami Yami no Mi": "Gravity Well Throw",
+                "Gura Gura no Mi": "Seismic Shockwave Punch"
+            },
+            "Sniper": {
+                "Gomu Gomu no Mi": "Rubber Bullet Barrage",
+                "Mera Mera no Mi": "Inferno Snipe",
+                "Hie Hie no Mi": "Absolute Zero Shot",
+                "Yami Yami no Mi": "Black Hole Projectile",
+                "Gura Gura no Mi": "Shatterpoint Precision Shot"
+            },
+            "Tactician": {
+                "Gomu Gomu no Mi": "Elastic Trap Network",
+                "Mera Mera no Mi": "Firewall Strategy",
+                "Hie Hie no Mi": "Cryo-Lockdown Maneuver",
+                "Yami Yami no Mi": "Void Field Tactics",
+                "Gura Gura no Mi": "Tectonic Battlefield Control"
+            }
         }
 
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
@@ -167,10 +298,13 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(f"{ctx.author.mention}, you have begun your journey as a {user_data['fighting_style']}! Your initial Doriki is {user_data['doriki']}. Train hard and make a name for yourself!")
     
     @op.command(name="battle")
-    async def op_battle(self, ctx, opponent: discord.Member = None):
+    async def battle(self, ctx, opponent: discord.Member = None):
         """Start a battle with another user or a strong AI opponent"""
         user_data = await self.config.user(ctx.author).all()
-        self.logger.info(f"Battle initiated by {ctx.author.id}")
+
+        if user_data["fatigue"] >= self.max_fatigue:
+            await ctx.send(f"{ctx.author.mention}, you're too fatigued to battle! You need to rest first.")
+            return
 
         if not user_data["fighting_style"]:
             await ctx.send("You need to begin your journey first!")
@@ -185,18 +319,37 @@ class OnePieceBattle(commands.Cog):
             opponent = ctx.author  # This is just to reuse the existing logic
             opponent_data = self.create_ai_opponent()
 
+        battle_env = random.choice(list(self.environments.keys()))
+        env_effect = self.environments[battle_env]
+
         battle_embed = discord.Embed(
             title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_data['name'] if 'name' in opponent_data else opponent.name}**__ ⚔️",
-            description="*The seas tremble as two mighty warriors clash!*",
+            description=f"*{env_effect['description']} The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
 
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
 
+        # Apply fatigue penalty to user's strength
+        fatigue_penalty = 1 - (user_data["fatigue"] / self.max_fatigue) * 0.5  # Max 50% penalty at full fatigue
+        user_strength *= fatigue_penalty
+
+        # Apply environment effects
+        if user_data["devil_fruit"]:
+            user_strength *= env_effect["df_modifier"]
+        else:
+            user_strength *= env_effect["non_df_modifier"]
+        
+        if opponent_data["devil_fruit"]:
+            opp_strength *= env_effect["df_modifier"]
+        else:
+            opp_strength *= env_effect["non_df_modifier"]
+
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
 
+        # Apply equipment bonuses
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -236,7 +389,7 @@ class OnePieceBattle(commands.Cog):
             return f"{color * fill}{'⬜' * (bar_length - fill)}"
 
         async def update_battle_embed():
-            battle_embed.description = "*" + "\n".join(battle_log[-3:]) + "*"
+            battle_embed.description = f"*{env_effect['description']}*\n" + "*" + "\n".join(battle_log[-3:]) + "*"
             user_health = get_health_bar(user_hp, user_strength * 20)
             opp_health = get_health_bar(opp_hp, opp_strength * 20)
             
@@ -248,20 +401,36 @@ class OnePieceBattle(commands.Cog):
             await battle_message.edit(embed=battle_embed)
 
         battle_embed.add_field(name="__Health Status__", value="", inline=False)
+        battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
+
+        user_awakened = False
+        opp_awakened = False
 
         turn_counter = 0
         while user_hp > 0 and opp_hp > 0:
             turn_counter += 1
-            user_technique = random.choice(user_data["learned_techniques"]) if user_data["learned_techniques"] else "Basic Attack"
-            opp_technique = random.choice(opponent_data["learned_techniques"]) if opponent_data["learned_techniques"] else "Basic Attack"
             
-            user_attack = random.randint(1, max(1, int(user_strength))) * (1.5 if user_technique != "Basic Attack" else 1)
-            opp_attack = random.randint(1, max(1, int(opp_strength))) * (1.5 if opp_technique != "Basic Attack" else 1)
+            # Generate attacks
+            user_attack, user_technique = self.generate_attack(ctx.author, user_data, user_strength)
+            opp_attack, opp_technique = self.generate_attack(opponent, opponent_data, opp_strength)
 
+            # Devil Fruit Awakening
+            if not user_awakened and user_data["devil_fruit"] and random.random() < self.awakening_chance:
+                user_strength *= self.awakening_boost
+                user_awakened = True
+                battle_log.append(f"💥 {ctx.author.name}'s Devil Fruit has awakened, boosting their power!")
+
+            if not opp_awakened and opponent_data["devil_fruit"] and random.random() < self.awakening_chance:
+                opp_strength *= self.awakening_boost
+                opp_awakened = True
+                battle_log.append(f"💥 {opponent_data['name']}'s Devil Fruit has awakened, boosting their power!")
+
+            # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
                 battle_log.append(f"💥 **CRITICAL HIT!** {ctx.author.name}'s attack devastates the opponent!")
 
+            # Dodge chance
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
@@ -281,6 +450,12 @@ class OnePieceBattle(commands.Cog):
             if turn_counter >= 30:
                 battle_log.append("⏱️ The battle has reached its time limit!")
                 break
+
+        # Reset awakening boost after battle
+        if user_awakened:
+            user_strength /= self.awakening_boost
+        if opp_awakened:
+            opp_strength /= self.awakening_boost
 
         if user_hp > opp_hp:
             winner = ctx.author
@@ -306,17 +481,28 @@ class OnePieceBattle(commands.Cog):
             user_data["battles_won"] = user_data.get("battles_won", 0) + 1
             user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
 
+            # Increase fatigue after battle
+            user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
+
+            # Increase Devil Fruit mastery
+            if user_data["devil_fruit"]:
+                mastery_gain = random.randint(1, 5)
+                user_data["devil_fruit_mastery"] += mastery_gain
+                await self.check_new_abilities(ctx, user_data)
+
             await self.config.user(ctx.author).set(user_data)
-            self.logger.info(f"Updated data for user {ctx.author.id} after winning battle")
 
             result_embed = discord.Embed(
                 title="🏆 __**Battle Conclusion**__ 🏆",
-                description=f"***In an epic clash, {winner.name} emerges victorious!***",
+                description=f"***In an epic clash on {battle_env}, {winner.name} emerges victorious!***",
                 color=discord.Color.gold()
             )
             result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
             result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
             result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
+            result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
+            if user_data["devil_fruit"]:
+                result_embed.add_field(name="🍎 Devil Fruit Mastery", value=f"+{mastery_gain} (Total: {user_data['devil_fruit_mastery']})", inline=True)
 
             if random.random() < 0.3:
                 reward, description = self.generate_post_battle_reward()
@@ -324,12 +510,42 @@ class OnePieceBattle(commands.Cog):
         else:
             result_embed = discord.Embed(
                 title="💀 __**Battle Conclusion**__ 💀",
-                description=f"***In a fierce battle, {winner.name} has defeated {ctx.author.name}!***",
+                description=f"***In a fierce battle on {battle_env}, {winner.name} has defeated {ctx.author.name}!***",
                 color=discord.Color.red()
             )
-            self.logger.info(f"User {ctx.author.id} lost battle against {'AI' if opponent == ctx.author else opponent.id}")
+            result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
 
         await battle_message.edit(embed=result_embed)
+
+    async def check_new_abilities(self, ctx, user_data):
+        if user_data["devil_fruit"] not in self.devil_fruit_abilities:
+            return
+
+        new_abilities = []
+        for ability in self.devil_fruit_abilities[user_data["devil_fruit"]]:
+            if ability["mastery_required"] <= user_data["devil_fruit_mastery"] and ability["name"] not in user_data["unlocked_abilities"]:
+                user_data["unlocked_abilities"].append(ability["name"])
+                new_abilities.append(ability["name"])
+
+        if new_abilities:
+            await self.config.user(ctx.author).set(user_data)
+            abilities_str = ", ".join(new_abilities)
+            await ctx.send(f"🎉 Congratulations! You've unlocked new Devil Fruit abilities: {abilities_str}")
+
+    def generate_attack(self, user, user_data, base_strength):
+        if random.random() < self.combo_chance and user_data["fighting_style"] in self.combo_attacks and user_data["devil_fruit"] in self.combo_attacks[user_data["fighting_style"]]:
+            technique = self.combo_attacks[user_data["fighting_style"]][user_data["devil_fruit"]]
+            attack_power = random.randint(int(base_strength * 1.5), int(base_strength * 2))
+            return attack_power, technique
+        
+        if user_data["devil_fruit"] and user_data["unlocked_abilities"]:
+            technique = random.choice(user_data["unlocked_abilities"])
+            attack_power = random.randint(int(base_strength * 1.2), int(base_strength * 1.8))
+        else:
+            technique = random.choice(user_data["learned_techniques"]) if user_data["learned_techniques"] else "Basic Attack"
+            attack_power = random.randint(1, max(1, int(base_strength))) * (1.5 if technique != "Basic Attack" else 1)
+        
+        return attack_power, technique
 
     def create_ai_opponent(self):
         ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
@@ -455,17 +671,37 @@ class OnePieceBattle(commands.Cog):
     @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)  # Once per 30 minutes
     async def rest(self, ctx):
-        """Rest to recover stamina"""
+        """Rest to recover from fatigue"""
         user_data = await self.config.user(ctx.author).all()
-        
-        if not user_data["fighting_style"]:
-            await ctx.send("You need to begin your journey first!")
-            return
+        current_time = ctx.message.created_at.timestamp()
 
-        stamina_gain = random.randint(30, 50)
-        user_data["stamina"] = min(100, user_data["stamina"] + stamina_gain)
+        if user_data["last_rest_time"] is not None:
+            hours_passed = (current_time - user_data["last_rest_time"]) / 3600
+            fatigue_recovery = int(hours_passed * self.fatigue_recovery_rate)
+            user_data["fatigue"] = max(0, user_data["fatigue"] - fatigue_recovery)
+
+        user_data["last_rest_time"] = current_time
         await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You've rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}/100")
+
+        embed = discord.Embed(
+            title="🛌 Rest",
+            description=f"{ctx.author.mention} has rested and recovered from fatigue.",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Current Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}")
+        await ctx.send(embed=embed)
+        
+    @op.command()
+    async def fatigue(self, ctx):
+        """Check your current fatigue level"""
+        user_data = await self.config.user(ctx.author).all()
+        embed = discord.Embed(
+            title="😓 Fatigue Status",
+            description=f"{ctx.author.mention}'s current fatigue level.",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}")
+        await ctx.send(embed=embed)
 
     @op.command(name="leaderboard")
     async def op_leaderboard(self, ctx, category: str = "bounty"):
@@ -568,16 +804,26 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(embed=embed)
 
     @op.command()
-    async def devil_fruit_info(self, ctx, *, devil_fruit: str):
-        """Get information about a specific Devil Fruit"""
-        if devil_fruit not in self.devil_fruits:
-            await ctx.send("Invalid Devil Fruit. Please provide a valid Devil Fruit name.")
+    async def devil_fruit_info(self, ctx):
+        """Display information about your Devil Fruit and mastery"""
+        user_data = await self.config.user(ctx.author).all()
+
+        if not user_data["devil_fruit"]:
+            await ctx.send("You don't have a Devil Fruit power yet!")
             return
 
-        fruit_info = self.devil_fruits[devil_fruit]
-        embed = discord.Embed(title=devil_fruit, color=discord.Color.blue())
-        embed.add_field(name="Ability", value=fruit_info["ability"], inline=False)
-        embed.add_field(name="Strength Modifier", value=fruit_info["modifier"], inline=False)
+        embed = discord.Embed(
+            title=f"🍎 Devil Fruit: {user_data['devil_fruit']}",
+            description=f"Mastery Level: {user_data['devil_fruit_mastery']}",
+            color=discord.Color.orange()
+        )
+
+        unlocked = user_data["unlocked_abilities"]
+        all_abilities = self.devil_fruit_abilities.get(user_data["devil_fruit"], [])
+
+        for ability in all_abilities:
+            status = "✅ Unlocked" if ability["name"] in unlocked else f"🔒 Locked (Requires Mastery {ability['mastery_required']})"
+            embed.add_field(name=ability["name"], value=status, inline=False)
 
         await ctx.send(embed=embed)
         
