@@ -11,6 +11,7 @@ class OnePieceBattle(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         self.spawn_channel_id = None
+        self.spawn_task = None
         self.logger = logging.getLogger("red.onepiecebattle")
         self.awakening_chance = 0.05  # 5% chance each turn
         self.awakening_boost = 1.5  # 50% power boost when awakened
@@ -243,21 +244,27 @@ class OnePieceBattle(commands.Cog):
             ]
         }
 
-    def cog_unload(self):
-        self.spawn_task.cancel()
-
     def get_awakening_level(self, mastery):
         for level, data in sorted(self.awakening_levels.items(), reverse=True):
             if mastery >= level:
                 return data
         return self.awakening_levels[0]
 
-    async def devil_fruit_spawn(self, channel_id):
+    async def devil_fruit_spawn(self):
         await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
-            await asyncio.sleep(random.randint(3600, 7200))  # Random spawn time between 1-2 hours
-            channel = self.bot.get_channel(channel_id)
-            if channel:
+        while True:
+            try:
+                await asyncio.sleep(random.randint(3600, 7200))  # Random spawn time between 1-2 hours
+                channel_id = await self.config.spawn_channel_id()
+                if not channel_id:
+                    self.logger.warning("No spawn channel set. Skipping spawn.")
+                    continue
+
+                channel = self.bot.get_channel(channel_id)
+                if not channel:
+                    self.logger.error(f"Could not find channel with ID {channel_id}")
+                    continue
+
                 devil_fruit = random.choice(list(self.devil_fruits.keys()))
                 embed = discord.Embed(
                     title="Devil Fruit Spawn!",
@@ -268,12 +275,13 @@ class OnePieceBattle(commands.Cog):
                 await message.add_reaction("🍎")
 
                 def check(reaction, user):
-                    return str(reaction.emoji) == "🍎" and user != self.bot.user
+                    return str(reaction.emoji) == "🍎" and user != self.bot.user and reaction.message.id == message.id
 
                 try:
                     reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=60.0)
                 except asyncio.TimeoutError:
                     await message.delete()
+                    self.logger.info("Devil Fruit spawn timed out")
                 else:
                     user_data = await self.config.user(user).all()
                     if user_data["devil_fruit"]:
@@ -282,6 +290,11 @@ class OnePieceBattle(commands.Cog):
                         user_data["devil_fruit"] = devil_fruit
                         await self.config.user(user).set(user_data)
                         await channel.send(f"Congratulations {user.mention}! You have claimed the {devil_fruit}!")
+                        self.logger.info(f"User {user.id} claimed the {devil_fruit}")
+
+            except Exception as e:
+                self.logger.error(f"Error in devil_fruit_spawn: {str(e)}", exc_info=True)
+                await asyncio.sleep(300)  # Wait 5 minutes before trying again
 
     async def handle_gear_stamina(self, user_data):
         if "active_gear" in user_data:
@@ -292,6 +305,10 @@ class OnePieceBattle(commands.Cog):
                 await self.config.user(user_data["_id"]).set(user_data)
                 return "Your Gear has deactivated due to stamina depletion!"
         return None
+
+    def cog_unload(self):
+        if self.spawn_task:
+            self.spawn_task.cancel()
 
     @commands.group()
     async def op(self, ctx):
@@ -905,11 +922,20 @@ class OnePieceBattle(commands.Cog):
     @commands.is_owner()
     async def set_devil_fruit_channel(self, ctx, channel: discord.TextChannel):
         """Set the channel for Devil Fruit spawns"""
-        self.spawn_channel_id = channel.id
+        await self.config.spawn_channel_id.set(channel.id)
         await ctx.send(f"Devil Fruits will now spawn in {channel.mention}")
-        if self.spawn_task:
+        
+        if self.spawn_task and not self.spawn_task.done():
             self.spawn_task.cancel()
-        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
+        
+        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn())
+        self.logger.info(f"Devil Fruit spawn task started for channel {channel.id}")
+
+    async def initialize(self):
+        channel_id = await self.config.spawn_channel_id()
+        if channel_id:
+            self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn())
+            self.logger.info(f"Devil Fruit spawn task started for channel {channel_id}")
 
     @op.command(name="reset")
     @commands.is_owner()
