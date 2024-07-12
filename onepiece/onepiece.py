@@ -78,49 +78,6 @@ class OnePieceBattle(commands.Cog):
             }
         }
         
-        self.devil_fruit_abilities = {
-            "Gomu Gomu no Mi": [
-                {"name": "Gum-Gum Pistol", "mastery_required": 0},
-                {"name": "Gum-Gum Bazooka", "mastery_required": 10},
-                {"name": "Gum-Gum Gatling", "mastery_required": 20},
-                {"name": "Gear Second", "mastery_required": 30},
-                {"name": "Gear Third", "mastery_required": 40},
-                {"name": "Gear Fourth", "mastery_required": 50}
-            ],
-            "Mera Mera no Mi": [
-                {"name": "Fire Fist", "mastery_required": 0},
-                {"name": "Fire Gun", "mastery_required": 10},
-                {"name": "Flame Commandment", "mastery_required": 20},
-                {"name": "Firefly", "mastery_required": 30},
-                {"name": "Great Flame Commandment", "mastery_required": 40},
-                {"name": "Flame Emperor", "mastery_required": 50}
-            ],
-            "Hie Hie no Mi": [
-                {"name": "Ice Age", "mastery_required": 0},
-                {"name": "Ice Saber", "mastery_required": 10},
-                {"name": "Ice Time", "mastery_required": 20},
-                {"name": "Ice Block: Pheasant Beak", "mastery_required": 30},
-                {"name": "Ice Time Capsule", "mastery_required": 40},
-                {"name": "Ice Age: Eternal Freeze", "mastery_required": 50}
-            ],
-            "Gura Gura no Mi": [
-                {"name": "Shock Wave", "mastery_required": 0},
-                {"name": "Seaquake", "mastery_required": 10},
-                {"name": "Island Quake", "mastery_required": 20},
-                {"name": "Tilting", "mastery_required": 30},
-                {"name": "Tsunami", "mastery_required": 40},
-                {"name": "Shattering", "mastery_required": 50}
-            ],
-            "Yami Yami no Mi": [
-                {"name": "Black Hole", "mastery_required": 0},
-                {"name": "Liberation", "mastery_required": 10},
-                {"name": "Kurouzu", "mastery_required": 20},
-                {"name": "Blackbeard Whirlpool", "mastery_required": 30},
-                {"name": "Black World", "mastery_required": 40},
-                {"name": "Dark End", "mastery_required": 50}
-            ]
-        }
-        
         self.devil_fruits = {
             "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2},
             "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3},
@@ -138,13 +95,6 @@ class OnePieceBattle(commands.Cog):
             "Sniper": ["Exploding Star", "Lead Star", "Fire Bird Star"],
             "Brawler": ["Gomu Gomu no Pistol", "Gomu Gomu no Bazooka", "Gear Second"],
             "Tactician": ["Mirage Tempo", "Thunderbolt Tempo", "Weather Egg"]
-        }
-        
-        self.environments = {
-            "Sea": {"description": "Surrounded by water, Devil Fruit users are weakened.", "df_modifier": 0.8},
-            "Island": {"description": "A balanced environment for all fighters.", "df_modifier": 1.0},
-            "City": {"description": "Urban terrain provides cover and mobility advantages.", "df_modifier": 1.1},
-            "Volcano": {"description": "Intense heat boosts fire-based abilities.", "df_modifier": 1.2}
         }
         
         self.elemental_interactions = {
@@ -201,6 +151,73 @@ class OnePieceBattle(commands.Cog):
                 "Yami Yami no Mi": "Void Field Tactics",
                 "Gura Gura no Mi": "Tectonic Battlefield Control"
             }
+        }
+        
+                self.devil_fruit_abilities = {
+            "Gomu Gomu no Mi": [
+                {"name": "Gum-Gum Pistol", "mastery_required": 0},
+                {"name": "Gum-Gum Bazooka", "mastery_required": 10},
+                {"name": "Gum-Gum Gatling", "mastery_required": 20},
+                {"name": "Gear Second", "mastery_required": 30},
+                {"name": "Gear Third", "mastery_required": 40},
+                {"name": "Gear Fourth", "mastery_required": 50}
+            ],
+            "Mera Mera no Mi": [
+                {"name": "Fire Fist", "mastery_required": 0},
+                {"name": "Fire Gun", "mastery_required": 10},
+                {"name": "Flame Commandment", "mastery_required": 20},
+                {"name": "Firefly", "mastery_required": 30},
+                {"name": "Great Flame Commandment", "mastery_required": 40},
+                {"name": "Flame Emperor", "mastery_required": 50}
+            ],
+            "Hie Hie no Mi": [
+                {"name": "Ice Age", "mastery_required": 0},
+                {"name": "Ice Saber", "mastery_required": 10},
+                {"name": "Ice Time", "mastery_required": 20},
+                {"name": "Ice Block: Pheasant Beak", "mastery_required": 30},
+                {"name": "Ice Time Capsule", "mastery_required": 40},
+                {"name": "Ice Age: Eternal Freeze", "mastery_required": 50}
+            ],
+            "Pika Pika no Mi": [
+                {"name": "Light Speed Kick", "mastery_required": 0},
+                {"name": "Yata no Kagami", "mastery_required": 10},
+                {"name": "Ama no Murakumo", "mastery_required": 20},
+                {"name": "Yasakani no Magatama", "mastery_required": 30},
+                {"name": "Light Logia Transformation", "mastery_required": 40},
+                {"name": "Photon Teleportation", "mastery_required": 50}
+            ],
+            "Gura Gura no Mi": [
+                {"name": "Shock Wave", "mastery_required": 0},
+                {"name": "Seaquake", "mastery_required": 10},
+                {"name": "Island Quake", "mastery_required": 20},
+                {"name": "Tilting", "mastery_required": 30},
+                {"name": "Tsunami", "mastery_required": 40},
+                {"name": "Shattered Space", "mastery_required": 50}
+            ],
+            "Yami Yami no Mi": [
+                {"name": "Black Hole", "mastery_required": 0},
+                {"name": "Liberation", "mastery_required": 10},
+                {"name": "Kurouzu", "mastery_required": 20},
+                {"name": "Blackbeard Whirlpool", "mastery_required": 30},
+                {"name": "Black World", "mastery_required": 40},
+                {"name": "Dark End", "mastery_required": 50}
+            ],
+            "Suna Suna no Mi": [
+                {"name": "Desert Spada", "mastery_required": 0},
+                {"name": "Desert Girasole", "mastery_required": 10},
+                {"name": "Sables", "mastery_required": 20},
+                {"name": "Ground Secco", "mastery_required": 30},
+                {"name": "Desert Encierro", "mastery_required": 40},
+                {"name": "Sandstorm", "mastery_required": 50}
+            ],
+            "Magu Magu no Mi": [
+                {"name": "Dai Funka", "mastery_required": 0},
+                {"name": "Meigo", "mastery_required": 10},
+                {"name": "Bakuretsu Kazan", "mastery_required": 20},
+                {"name": "Ryusei Kazan", "mastery_required": 30},
+                {"name": "Meteor Volcano", "mastery_required": 40},
+                {"name": "Great Eruption", "mastery_required": 50}
+            ]
         }
 
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
