@@ -153,7 +153,7 @@ class OnePieceBattle(commands.Cog):
             }
         }
         
-                self.devil_fruit_abilities = {
+        self.devil_fruit_abilities = {
             "Gomu Gomu no Mi": [
                 {"name": "Gum-Gum Pistol", "mastery_required": 0},
                 {"name": "Gum-Gum Bazooka", "mastery_required": 10},
