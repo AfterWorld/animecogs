@@ -3,12 +3,14 @@ from redbot.core import commands, Config
 import random
 import asyncio
 import datetime
+import logging
 
 class OnePieceBattle(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         self.spawn_channel_id = None
+        self.logger = logging.getLogger("red.onepiecebattle")
 
         default_user = {
             "fighting_style": None,
@@ -26,9 +28,9 @@ class OnePieceBattle(commands.Cog):
             "experience": 0,
             "stamina": 100,
             "skill_points": 0,
-            "strength": 1,  # Changed from 0 to 1
-            "speed": 1,     # Changed from 0 to 1
-            "defense": 1,   # Changed from 0 to 1
+            "strength": 1,
+            "speed": 1,
+            "defense": 1,
             "learned_techniques": [],
             "equipped_items": []
         }
@@ -188,6 +190,7 @@ class OnePieceBattle(commands.Cog):
     async def op_battle(self, ctx, opponent: discord.Member = None):
         """Start a battle with another user or a strong AI opponent"""
         user_data = await self.config.user(ctx.author).all()
+        self.logger.info(f"Battle initiated by {ctx.author.id}")
 
         if not user_data["fighting_style"]:
             await ctx.send("You need to begin your journey first!")
@@ -199,47 +202,21 @@ class OnePieceBattle(commands.Cog):
                 await ctx.send(f"{opponent.mention} has not begun their journey yet!")
                 return
         else:
-            # Create a strong AI opponent
-            ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
-            opponent_name = random.choice(ai_names)
             opponent = ctx.author  # This is just to reuse the existing logic
-            ai_fighting_style = random.choice(list(self.techniques.keys()))
-            available_techniques = self.techniques[ai_fighting_style]
-            
-            opponent_data = {
-                "name": opponent_name,
-                "fighting_style": ai_fighting_style,
-                "devil_fruit": random.choice(list(self.devil_fruits.keys())),
-                "haki": {
-                    "observation": random.randint(50, 100),
-                    "armament": random.randint(50, 100),
-                    "conquerors": random.randint(30, 80)
-                },
-                "doriki": random.randint(1000, 2000),
-                "strength": random.randint(100, 200),
-                "speed": random.randint(100, 200),
-                "defense": random.randint(100, 200),
-                "learned_techniques": random.sample(available_techniques, min(5, len(available_techniques))),
-                "equipped_items": random.sample(list(self.equipment.keys()), 3),
-                "stamina": 150,
-                "bounty": random.randint(500000000, 1500000000)
-            }
+            opponent_data = self.create_ai_opponent()
 
-        battle_location = random.choice(list(self.battle_environments.keys()))
         battle_embed = discord.Embed(
             title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_data['name'] if 'name' in opponent_data else opponent.name}**__ ⚔️",
-            description=f"*{self.battle_environments[battle_location]}*\n*The seas tremble as two mighty warriors clash!*",
+            description="*The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
 
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
 
-        # Calculate HP based on strength
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
 
-        # Apply equipment bonuses
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -279,12 +256,12 @@ class OnePieceBattle(commands.Cog):
             return f"{color * fill}{'⬜' * (bar_length - fill)}"
 
         async def update_battle_embed():
-            battle_embed.description = f"*{self.battle_environments[battle_location]}*\n" + "*" + "\n".join(battle_log[-3:]) + "*"
-            user_health = get_health_bar(user_hp, user_max_hp)
-            opp_health = get_health_bar(opp_hp, opp_max_hp)
+            battle_embed.description = "*" + "\n".join(battle_log[-3:]) + "*"
+            user_health = get_health_bar(user_hp, user_strength * 20)
+            opp_health = get_health_bar(opp_hp, opp_strength * 20)
             
-            user_health_text = f"**{ctx.author.name}**\n{user_health} {user_hp:.0f}/{user_max_hp:.0f} HP"
-            opp_health_text = f"**{opponent_data['name'] if 'name' in opponent_data else opponent.name}**\n{opp_health} {opp_hp:.0f}/{opp_max_hp:.0f} HP"
+            user_health_text = f"**{ctx.author.name}**\n{user_health} {user_hp:.0f}/{user_strength * 20:.0f} HP"
+            opp_health_text = f"**{opponent_data['name'] if 'name' in opponent_data else opponent.name}**\n{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f} HP"
             
             battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
             
@@ -292,12 +269,7 @@ class OnePieceBattle(commands.Cog):
 
         battle_embed.add_field(name="__Health Status__", value="", inline=False)
 
-        user_max_hp = user_hp
-        opp_max_hp = opp_hp
         turn_counter = 0
-        user_combo = 0
-        opp_combo = 0
-
         while user_hp > 0 and opp_hp > 0:
             turn_counter += 1
             user_technique = random.choice(user_data["learned_techniques"]) if user_data["learned_techniques"] else "Basic Attack"
@@ -306,40 +278,16 @@ class OnePieceBattle(commands.Cog):
             user_attack = random.randint(1, max(1, int(user_strength))) * (1.5 if user_technique != "Basic Attack" else 1)
             opp_attack = random.randint(1, max(1, int(opp_strength))) * (1.5 if opp_technique != "Basic Attack" else 1)
 
-            # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
                 battle_log.append(f"💥 **CRITICAL HIT!** {ctx.author.name}'s attack devastates the opponent!")
 
-            # Dodge chance (based on speed)
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
                 battle_log.append(f"💨 With lightning speed, {ctx.author.name} **DODGES** the attack!")
 
-            # Combo system
-            if user_attack > opp_attack:
-                user_combo += 1
-                opp_combo = 0
-                if user_combo >= 3:
-                    combo_bonus = user_attack * 0.5
-                    user_attack += combo_bonus
-                    battle_log.append(f"🔥 **COMBO x{user_combo}!** {ctx.author.name}'s relentless assault deals an extra {combo_bonus:.0f} damage!")
-            else:
-                user_combo = 0
-                opp_combo += 1
-                if opp_combo >= 3:
-                    combo_bonus = opp_attack * 0.5
-                    opp_attack += combo_bonus
-                    battle_log.append(f"🔥 **COMBO x{opp_combo}!** {opponent_data['name'] if 'name' in opponent_data else opponent.name}'s unbreakable chain of attacks deals an extra {combo_bonus:.0f} damage!")
-
-            # Special event (20% chance each turn)
-            if random.random() < 0.2:
-                event = self.trigger_special_event(ctx.author.name, opponent_data['name'] if 'name' in opponent_data else opponent.name)
-                battle_log.append(event)
-
-            # Apply damage
             opp_hp = max(0, opp_hp - user_attack)
             user_hp = max(0, user_hp - opp_attack)
 
@@ -350,10 +298,10 @@ class OnePieceBattle(commands.Cog):
             await update_battle_embed()
             await asyncio.sleep(2)
 
-            if user_hp <= 0 or opp_hp <= 0:
+            if turn_counter >= 30:
+                battle_log.append("⏱️ The battle has reached its time limit!")
                 break
 
-        # Determine the winner
         if user_hp > opp_hp:
             winner = ctx.author
             loser = opponent
@@ -365,21 +313,21 @@ class OnePieceBattle(commands.Cog):
             winner_data = opponent_data
             loser_data = user_data
 
-        # Only apply rewards if the user won
         if winner == ctx.author:
             doriki_gain = random.randint(100, 250)
             haki_gain = random.randint(5, 15)
             bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
 
-            winner_data["doriki"] += doriki_gain
-            winner_data["haki"]["observation"] += haki_gain
-            winner_data["haki"]["armament"] += haki_gain
-            winner_data["haki"]["conquerors"] += haki_gain // 2
-            winner_data["bounty"] = winner_data.get("bounty", 0) + bounty_gain
-            winner_data["battles_won"] = winner_data.get("battles_won", 0) + 1
-            winner_data["stamina"] = max(0, winner_data.get("stamina", 100) - 20)
+            user_data["doriki"] += doriki_gain
+            user_data["haki"]["observation"] += haki_gain
+            user_data["haki"]["armament"] += haki_gain
+            user_data["haki"]["conquerors"] += haki_gain // 2
+            user_data["bounty"] = user_data.get("bounty", 0) + bounty_gain
+            user_data["battles_won"] = user_data.get("battles_won", 0) + 1
+            user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
 
-            await self.config.user(winner).set(winner_data)
+            await self.config.user(ctx.author).set(user_data)
+            self.logger.info(f"Updated data for user {ctx.author.id} after winning battle")
 
             result_embed = discord.Embed(
                 title="🏆 __**Battle Conclusion**__ 🏆",
@@ -390,7 +338,6 @@ class OnePieceBattle(commands.Cog):
             result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
             result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
 
-            # Post-battle reward (30% chance)
             if random.random() < 0.3:
                 reward, description = self.generate_post_battle_reward()
                 result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
@@ -400,20 +347,36 @@ class OnePieceBattle(commands.Cog):
                 description=f"***In a fierce battle, {winner.name} has defeated {ctx.author.name}!***",
                 color=discord.Color.red()
             )
+            self.logger.info(f"User {ctx.author.id} lost battle against {'AI' if opponent == ctx.author else opponent.id}")
 
         await battle_message.edit(embed=result_embed)
+
+    def create_ai_opponent(self):
+        ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
+        opponent_name = random.choice(ai_names)
+        ai_fighting_style = random.choice(list(self.techniques.keys()))
+        
+        opponent_data = {
+            "name": opponent_name,
+            "fighting_style": ai_fighting_style,
+            "devil_fruit": random.choice(list(self.devil_fruits.keys())),
+            "haki": {
+                "observation": random.randint(50, 100),
+                "armament": random.randint
+                
     @op.command(name="profile")
     async def op_profile(self, ctx, user: discord.Member = None):
         """View your or another user's profile"""
         target = user or ctx.author
         user_data = await self.config.user(target).all()
+        self.logger.info(f"Profile viewed for user {target.id}")
 
         if not user_data["fighting_style"]:
             await ctx.send(f"{target.mention} has not begun their One Piece journey yet!")
             return
 
-        embed = discord.Embed(title=f"{target.name}'s Pirate Profile", color=discord.Color.blue())
-        embed.set_thumbnail(url=target.avatar.url)
+        embed = discord.Embed(title=f"{target.name}'s Pirate Profile", color=0x3498db)  # Use hex color code
+        embed.set_thumbnail(url=target.display_avatar.url)  # Use display_avatar for compatibility
 
         embed.add_field(name="Fighting Style", value=user_data["fighting_style"], inline=True)
         embed.add_field(name="Devil Fruit", value=user_data["devil_fruit"] or "None", inline=True)
@@ -555,6 +518,7 @@ class OnePieceBattle(commands.Cog):
         }
 
         await self.config.user(user).set(default_user)
+        self.logger.info(f"Reset data for user {user.id}")
         await ctx.send(f"{user.mention}'s data has been reset to default values.")
     
 
