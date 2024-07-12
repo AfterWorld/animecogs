@@ -428,7 +428,6 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(f"You rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}")
 
     @op.command(name="battle")
-    @commands.cooldown(1, 1800, commands.BucketType.user)
     async def op_battle(self, ctx, opponent: discord.Member = None):
         """Start a battle with another user or a random opponent"""
         user_data = await self.config.user(ctx.author).all()
@@ -459,7 +458,8 @@ class OnePieceBattle(commands.Cog):
                 "defense": max(1, user_data["defense"] + random.randint(-10, 10)),
                 "learned_techniques": random.sample(self.techniques[random.choice(list(self.techniques.keys()))], 3),
                 "equipped_items": random.sample(list(self.equipment.keys()), random.randint(0, 3)),
-                "stamina": 100
+                "stamina": 100,
+                "bounty": 0  # Initialize bounty for random opponent
             }
 
         battle_embed = discord.Embed(
@@ -470,6 +470,10 @@ class OnePieceBattle(commands.Cog):
 
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
+
+        # Calculate HP based on strength
+        user_hp = user_strength * 10
+        opp_hp = opp_strength * 10
 
         # Apply equipment bonuses
         for item in user_data["equipped_items"]:
@@ -497,8 +501,8 @@ class OnePieceBattle(commands.Cog):
             opp_strength = int(opp_strength * self.devil_fruits[opponent_data["devil_fruit"]]["modifier"])
             battle_embed.add_field(name=f"{'Random Opponent' if opponent == ctx.author else opponent.name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=False)
 
+        battle_log = []
         battle_message = await ctx.send(embed=battle_embed)
-        await asyncio.sleep(2)
 
         turns = random.randint(3, 7)
         for turn in range(1, turns + 1):
@@ -511,75 +515,59 @@ class OnePieceBattle(commands.Cog):
             # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
-                battle_embed.add_field(name="Critical Hit!", value=f"{ctx.author.name} lands a critical hit!", inline=False)
+                battle_log.append(f"Critical Hit! {ctx.author.name} lands a critical hit!")
 
             # Dodge chance (based on speed)
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
-                battle_embed.add_field(name="Dodge!", value=f"{ctx.author.name} dodges the attack!", inline=False)
+                battle_log.append(f"Dodge! {ctx.author.name} dodges the attack!")
 
-            # Stamina management
-            user_stamina_cost = random.randint(5, 15)
-            opp_stamina_cost = random.randint(5, 15)
+            # Apply damage
+            opp_hp -= user_attack
+            user_hp -= opp_attack
 
-            if user_data["stamina"] < user_stamina_cost:
-                user_attack *= user_data["stamina"] / user_stamina_cost
-                user_data["stamina"] = 0
-            else:
-                user_data["stamina"] -= user_stamina_cost
+            battle_log.append(f"Turn {turn}")
+            battle_log.append(f"{ctx.author.name} uses {user_technique} with {user_attack:.0f} power!")
+            battle_log.append(f"{'Random Opponent' if opponent == ctx.author else opponent.name} uses {opp_technique} with {opp_attack:.0f} power!")
+            battle_log.append(f"HP: {ctx.author.name}: {max(0, user_hp):.0f} | {'Random Opponent' if opponent == ctx.author else opponent.name}: {max(0, opp_hp):.0f}")
 
-            if opponent_data["stamina"] < opp_stamina_cost:
-                opp_attack *= opponent_data["stamina"] / opp_stamina_cost
-                opponent_data["stamina"] = 0
-            else:
-                opponent_data["stamina"] -= opp_stamina_cost
-
-            battle_embed.add_field(name=f"Turn {turn}", 
-                                value=f"{ctx.author.name} uses {user_technique} with {user_attack:.0f} power!\n{'Random Opponent' if opponent == ctx.author else opponent.name} uses {opp_technique} with {opp_attack:.0f} power!", 
-                                inline=False)
-            battle_embed.add_field(name="Stamina", 
-                                value=f"{ctx.author.name}: {user_data['stamina']:.0f}\n{'Random Opponent' if opponent == ctx.author else opponent.name}: {opponent_data['stamina']:.0f}", 
-                                inline=False)
+            # Update the embed
+            battle_embed.clear_fields()
+            battle_embed.description = "\n".join(battle_log[-10:])  # Show last 10 lines
             await battle_message.edit(embed=battle_embed)
             await asyncio.sleep(2)
 
-            if user_attack > opp_attack:
-                opp_strength -= (user_attack - opp_attack) / 10
-            elif opp_attack > user_attack:
-                user_strength -= (opp_attack - user_attack) / 10
+            if user_hp <= 0 or opp_hp <= 0:
+                break
 
-        if user_strength > opp_strength:
+        if user_hp > opp_hp:
             winner = ctx.author
             loser = opponent
             winner_data = user_data
             loser_data = opponent_data
-        elif opp_strength > user_strength:
+        elif opp_hp > user_hp:
             winner = opponent
             loser = ctx.author
             winner_data = opponent_data
             loser_data = user_data
         else:
-            draw_embed = discord.Embed(
-                title="Battle Ended",
-                description="The battle ended in a draw!",
-                color=discord.Color.gold()
-            )
-            await battle_message.edit(embed=draw_embed)
+            battle_embed.add_field(name="Battle Ended", value="The battle ended in a draw!")
+            await battle_message.edit(embed=battle_embed)
             return
 
         doriki_gain = random.randint(50, 100)
         haki_gain = random.randint(1, 10)
-        bounty_gain = loser_data["bounty"] // 10 if loser_data.get("bounty") else random.randint(1000, 5000)
+        bounty_gain = loser_data.get("bounty", 0) // 10 if loser_data.get("bounty", 0) > 0 else random.randint(1000, 5000)
 
         winner_data["doriki"] += doriki_gain
         winner_data["haki"]["observation"] += haki_gain
         winner_data["haki"]["armament"] += haki_gain
         winner_data["haki"]["conquerors"] += haki_gain // 2
-        winner_data["bounty"] += bounty_gain
-        winner_data["battles_won"] += 1
-        winner_data["stamina"] = max(0, winner_data["stamina"] - 20)
+        winner_data["bounty"] = winner_data.get("bounty", 0) + bounty_gain
+        winner_data["battles_won"] = winner_data.get("battles_won", 0) + 1
+        winner_data["stamina"] = max(0, winner_data.get("stamina", 100) - 20)
 
         if winner == ctx.author:
             await self.config.user(winner).set(winner_data)
