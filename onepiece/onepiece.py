@@ -8,6 +8,7 @@ class OnePieceBattle(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
+        self.spawn_channel_id = None
 
         default_user = {
             "fighting_style": None,
@@ -45,36 +46,36 @@ class OnePieceBattle(commands.Cog):
     def cog_unload(self):
         self.spawn_task.cancel()
 
-    async def devil_fruit_spawn(self):
+    async def devil_fruit_spawn(self, channel_id):
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             await asyncio.sleep(random.randint(3600, 7200))  # Random spawn time between 1-2 hours
-            guild = random.choice(self.bot.guilds)
-            channel = random.choice(guild.text_channels)
-            devil_fruit = random.choice(list(self.devil_fruits.keys()))
-            embed = discord.Embed(
-                title="Devil Fruit Spawn!",
-                description=f"A {devil_fruit} has spawned in this channel! React with 🍎 to claim it!",
-                color=discord.Color.gold()
-            )
-            message = await channel.send(embed=embed)
-            await message.add_reaction("🍎")
+            channel = self.bot.get_channel(channel_id)
+            if channel:
+                devil_fruit = random.choice(list(self.devil_fruits.keys()))
+                embed = discord.Embed(
+                    title="Devil Fruit Spawn!",
+                    description=f"A {devil_fruit} has spawned in this channel! React with 🍎 to claim it!",
+                    color=discord.Color.gold()
+                )
+                message = await channel.send(embed=embed)
+                await message.add_reaction("🍎")
 
-            def check(reaction, user):
-                return str(reaction.emoji) == "🍎" and user != self.bot.user
+                def check(reaction, user):
+                    return str(reaction.emoji) == "🍎" and user != self.bot.user
 
-            try:
-                reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=60.0)
-            except asyncio.TimeoutError:
-                await message.delete()
-            else:
-                user_data = await self.config.user(user).all()
-                if user_data["devil_fruit"]:
-                    await channel.send(f"{user.mention}, you already have a Devil Fruit!")
+                try:
+                    reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=60.0)
+                except asyncio.TimeoutError:
+                    await message.delete()
                 else:
-                    user_data["devil_fruit"] = devil_fruit
-                    await self.config.user(user).set(user_data)
-                    await channel.send(f"Congratulations {user.mention}! You have claimed the {devil_fruit}!")
+                    user_data = await self.config.user(user).all()
+                    if user_data["devil_fruit"]:
+                        await channel.send(f"{user.mention}, you already have a Devil Fruit!")
+                    else:
+                        user_data["devil_fruit"] = devil_fruit
+                        await self.config.user(user).set(user_data)
+                        await channel.send(f"Congratulations {user.mention}! You have claimed the {devil_fruit}!")
 
     @commands.group()
     async def op(self, ctx):
@@ -134,6 +135,16 @@ class OnePieceBattle(commands.Cog):
 
         await ctx.send(f"{ctx.author.mention}, you have begun your journey as a {user_data['fighting_style']}! Your initial Doriki is {user_data['doriki']}. Train hard and make a name for yourself!")
 
+    @commands.command()
+    @commands.is_owner()
+    async def set_devil_fruit_channel(self, ctx, channel: discord.TextChannel):
+        """Set the channel for Devil Fruit spawns"""
+        self.spawn_channel_id = channel.id
+        await ctx.send(f"Devil Fruits will now spawn in {channel.mention}")
+        if self.spawn_task:
+            self.spawn_task.cancel()
+        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
+    
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
         """View your or another user's profile"""
