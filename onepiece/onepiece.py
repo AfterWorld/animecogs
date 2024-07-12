@@ -171,7 +171,7 @@ class OnePieceBattle(commands.Cog):
             self.spawn_task.cancel()
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
 
-    @op.command()
+   @op.command()
     async def reset(self, ctx, user: discord.Member = None):
         """Reset your own data or the data of a specific user (admin only)"""
         if user is None:
@@ -180,16 +180,40 @@ class OnePieceBattle(commands.Cog):
             await ctx.send("You need administrator permissions to reset someone else's data.")
             return
     
-        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + 's'} One Piece battle data? This action cannot be undone. React with ✅ to confirm.")
+        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + ''s'} One Piece battle data? This action cannot be undone. Type 'yes' to confirm.")
         
-        def check(reaction, user_react):
-            return user_react == ctx.author and str(reaction.emoji) == '✅'
+        def check(message):
+            return message.author == ctx.author and message.content.lower() == 'yes'
     
         try:
-            reaction, _ = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            await self.bot.wait_for('message', timeout=30.0, check=check)
         except asyncio.TimeoutError:
             await ctx.send("Data reset canceled due to inactivity.")
             return
+    
+        default_user = {
+            "fighting_style": None,
+            "devil_fruit": None,
+            "haki": {
+                "observation": 0,
+                "armament": 0,
+                "conquerors": 0
+            },
+            "doriki": 0,
+            "bounty": 0,
+            "battles_won": 0,
+            "last_train": None,
+            "level": 1,
+            "experience": 0,
+            "stamina": 100,
+            "skill_points": 0,
+            "strength": 0,
+            "speed": 0,
+            "defense": 0
+        }
+    
+        await self.config.user(user).set(default_user)
+        await ctx.send(f"{'Your' if user == ctx.author else user.mention + ''s'} One Piece battle data has been reset.")
     
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
