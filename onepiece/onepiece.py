@@ -1094,7 +1094,7 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've unequipped the {item}.")
 
-@commands.group(name="ophelp")
+    @commands.group(name="ophelp")
     async def op_help(self, ctx):
         """Displays the help menu for the One Piece Battle Game"""
         if ctx.invoked_subcommand is None:
