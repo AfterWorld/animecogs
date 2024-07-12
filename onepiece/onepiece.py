@@ -1,5 +1,6 @@
 import discord
 from redbot.core import commands, Config
+from redbot.core.utils.menus import menu, DEFAULT_CONTROLS
 import random
 import asyncio
 import datetime
@@ -1092,6 +1093,143 @@ class OnePieceBattle(commands.Cog):
         user_data["equipped_items"].remove(item)
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've unequipped the {item}.")
+
+@commands.group(name="ophelp")
+    async def op_help(self, ctx):
+        """Displays the help menu for the One Piece Battle Game"""
+        if ctx.invoked_subcommand is None:
+            pages = self.get_help_pages()
+            await menu(ctx, pages, DEFAULT_CONTROLS)
+
+    def get_help_pages(self):
+        pages = []
+
+        # Page 1: Introduction
+        intro_embed = discord.Embed(title="One Piece Battle Game - Help", color=discord.Color.blue())
+        intro_embed.add_field(name="Welcome", value="Embark on an epic journey in the world of One Piece! Battle fearsome opponents, master Devil Fruits, and become the Pirate King!", inline=False)
+        intro_embed.add_field(name="Getting Started", value="Use `.op begin` to start your adventure and choose your fighting style.", inline=False)
+        pages.append(intro_embed)
+
+        # Page 2: Core Mechanics
+        mechanics_embed = discord.Embed(title="Core Mechanics", color=discord.Color.green())
+        mechanics_embed.add_field(name="Fighting Styles", value="Choose from Swordsman, Martial Artist, Sniper, or others. Each has unique techniques.", inline=False)
+        mechanics_embed.add_field(name="Devil Fruits", value="Rare abilities that grant immense power. Master them to unlock their true potential!", inline=False)
+        mechanics_embed.add_field(name="Haki", value="A mysterious power that can be developed through battle. Enhances your overall strength.", inline=False)
+        mechanics_embed.add_field(name="Doriki", value="A measure of your physical strength. Increases as you train and win battles.", inline=False)
+        mechanics_embed.add_field(name="Bounty", value="Reflects your notoriety. Higher bounties attract stronger opponents and better rewards.", inline=False)
+        pages.append(mechanics_embed)
+
+        # Page 3: Battle System
+        battle_embed = discord.Embed(title="Battle System", color=discord.Color.red())
+        battle_embed.add_field(name="Initiating Battles", value="Use `.op battle [opponent]` to start a fight. If no opponent is specified, you'll face an AI.", inline=False)
+        battle_embed.add_field(name="Battle Mechanics", value="Battles are turn-based. Your strength, techniques, and Devil Fruit abilities determine your power.", inline=False)
+        battle_embed.add_field(name="Critical Hits & Dodges", value="Chance for extra damage or avoiding attacks based on your stats.", inline=False)
+        battle_embed.add_field(name="Environmental Effects", value="Different battle locations can affect your performance, especially for Devil Fruit users.", inline=False)
+        battle_embed.add_field(name="Awakenings", value="Devil Fruits have a chance to temporarily awaken during battle, greatly boosting your power!", inline=False)
+        pages.append(battle_embed)
+
+        # Page 4: Progression
+        progression_embed = discord.Embed(title="Progression", color=discord.Color.gold())
+        progression_embed.add_field(name="Leveling Up", value="Gain experience from battles and training to level up and earn skill points.", inline=False)
+        progression_embed.add_field(name="Skill Points", value="Allocate skill points to improve your strength, speed, or defense.", inline=False)
+        progression_embed.add_field(name="Devil Fruit Mastery", value="The more you use your Devil Fruit, the stronger it becomes. Unlock new abilities as you master it!", inline=False)
+        progression_embed.add_field(name="Haki Development", value="Your Haki improves as you battle tough opponents, unlocking new techniques.", inline=False)
+        progression_embed.add_field(name="Equipment", value="Find or earn powerful weapons and items to boost your stats.", inline=False)
+        pages.append(progression_embed)
+
+        # Page 5: Commands
+        commands_embed = discord.Embed(title="Game Commands", color=discord.Color.purple())
+        commands_embed.add_field(name=".op begin", value="Start your journey and choose your fighting style.", inline=False)
+        commands_embed.add_field(name=".op profile [user]", value="View your or another user's profile.", inline=False)
+        commands_embed.add_field(name=".op battle [opponent]", value="Start a battle with another user or an AI opponent.", inline=False)
+        commands_embed.add_field(name=".op train <stat>", value="Train a specific stat (strength, speed, defense, or haki).", inline=False)
+        commands_embed.add_field(name=".op rest", value="Recover stamina and reduce fatigue.", inline=False)
+        commands_embed.add_field(name=".op leaderboard [category]", value="View the top players in different categories.", inline=False)
+        commands_embed.add_field(name=".op devil_fruit_info", value="Check your Devil Fruit status and abilities.", inline=False)
+        commands_embed.add_field(name=".op equip <item>", value="Equip a weapon or item.", inline=False)
+        commands_embed.add_field(name=".op unequip <item>", value="Unequip a weapon or item.", inline=False)
+        commands_embed.add_field(name=".op inventory", value="View your inventory of items and equipment.", inline=False)
+        commands_embed.add_field(name=".op shop", value="Browse and purchase items from the shop.", inline=False)
+        pages.append(commands_embed)
+
+        # Page 6: Cooldowns and Limitations
+        cooldown_embed = discord.Embed(title="Cooldowns and Limitations", color=discord.Color.orange())
+        cooldown_embed.add_field(name="Battle Cooldown", value="You can initiate a battle every 5 minutes to prevent spam.", inline=False)
+        cooldown_embed.add_field(name="Training Cooldown", value="Training has a 1-hour cooldown to encourage diverse gameplay.", inline=False)
+        cooldown_embed.add_field(name="Rest Cooldown", value="You can rest every 30 minutes to recover stamina.", inline=False)
+        cooldown_embed.add_field(name="Fatigue System", value="Engaging in too many activities increases fatigue, reducing performance. Rest to recover!", inline=False)
+        cooldown_embed.add_field(name="Daily Limits", value="Some actions (e.g., certain quests or rewards) may have daily limits to balance progression.", inline=False)
+        pages.append(cooldown_embed)
+
+        # Page 7: Tips and Strategies
+        tips_embed = discord.Embed(title="Tips and Strategies", color=discord.Color.teal())
+        tips_embed.add_field(name="Balanced Growth", value="Don't focus on just one stat. A well-rounded character performs better in various situations.", inline=False)
+        tips_embed.add_field(name="Master Your Devil Fruit", value="Regularly use your Devil Fruit abilities to increase mastery and unlock powerful techniques.", inline=False)
+        tips_embed.add_field(name="Strategic Equipment", value="Choose equipment that complements your fighting style and covers your weaknesses.", inline=False)
+        tips_embed.add_field(name="Haki Training", value="Don't neglect Haki training. It's crucial for high-level battles, especially against Logia users.", inline=False)
+        tips_embed.add_field(name="Rest and Recover", value="Keep an eye on your stamina and fatigue. A well-rested fighter performs much better in battle!", inline=False)
+        tips_embed.add_field(name="Explore and Interact", value="Engage with the game's features. You might discover hidden quests or rare items!", inline=False)
+        pages.append(tips_embed)
+
+        return pages
+
+    @op_help.command(name="commands")
+    async def help_commands(self, ctx):
+        """Displays detailed information about game commands"""
+        embed = discord.Embed(title="One Piece Battle Game - Commands", color=discord.Color.blue())
+        embed.add_field(name=".op begin", value="Start your journey in the world of One Piece. You'll choose your fighting style and receive your initial stats.", inline=False)
+        embed.add_field(name=".op profile [user]", value="View your profile or another user's profile. Shows stats, equipment, Devil Fruit, and more.", inline=False)
+        embed.add_field(name=".op battle [opponent]", value="Initiate a battle. If no opponent is specified, you'll fight an AI. Battles earn you experience, Doriki, and possibly bounty.", inline=False)
+        embed.add_field(name=".op train <stat>", value="Train a specific stat. Options are strength, speed, defense, or haki. Has a 1-hour cooldown.", inline=False)
+        embed.add_field(name=".op rest", value="Recover stamina and reduce fatigue. Essential for maintaining peak performance. Has a 30-minute cooldown.", inline=False)
+        embed.add_field(name=".op leaderboard [category]", value="View the top players. Categories include bounty, level, and battles won.", inline=False)
+        embed.add_field(name=".op devil_fruit_info", value="Check your Devil Fruit's current status, mastery level, and unlocked abilities.", inline=False)
+        embed.add_field(name=".op equip <item>", value="Equip a weapon or item from your inventory to boost your stats.", inline=False)
+        embed.add_field(name=".op unequip <item>", value="Unequip a currently equipped item, freeing up a slot for something else.", inline=False)
+        embed.add_field(name=".op inventory", value="View all items in your possession, including equipment and consumables.", inline=False)
+        embed.add_field(name=".op shop", value="Browse available items for purchase. Spend your hard-earned Berries on equipment and supplies!", inline=False)
+        await ctx.send(embed=embed)
+
+    @op_help.command(name="mechanics")
+    async def help_mechanics(self, ctx):
+        """Explains the core game mechanics"""
+        embed = discord.Embed(title="One Piece Battle Game - Core Mechanics", color=discord.Color.green())
+        embed.add_field(name="Fighting Styles", value="Your chosen style affects your base stats and available techniques. Can be improved through training and battles.", inline=False)
+        embed.add_field(name="Devil Fruits", value="Grants unique abilities. Mastery increases through use, unlocking more powerful techniques. Some environments may affect their strength.", inline=False)
+        embed.add_field(name="Haki", value="A powerful ability that grows stronger as you battle. Comes in three types: Observation, Armament, and Conqueror's.", inline=False)
+        embed.add_field(name="Doriki", value="Represents your overall physical strength. Increases mainly through battles and specific training.", inline=False)
+        embed.add_field(name="Bounty", value="Reflects your threat level. Higher bounties attract stronger opponents but also offer better rewards.", inline=False)
+        embed.add_field(name="Stamina & Fatigue", value="Stamina is consumed in battles and training. Low stamina and high fatigue negatively affect performance.", inline=False)
+        embed.add_field(name="Leveling & Skill Points", value="Gain experience to level up. Each level grants skill points to improve your base stats.", inline=False)
+        embed.add_field(name="Equipment", value="Weapons and items that can be equipped to boost various stats. Some may have special effects in battle.", inline=False)
+        await ctx.send(embed=embed)
+
+    @op_help.command(name="tips")
+    async def help_tips(self, ctx):
+        """Provides helpful tips and strategies"""
+        embed = discord.Embed(title="One Piece Battle Game - Tips and Strategies", color=discord.Color.gold())
+        embed.add_field(name="Balanced Growth", value="While specializing can be good, a balanced character often performs better across various situations.", inline=False)
+        embed.add_field(name="Devil Fruit Mastery", value="Use your Devil Fruit abilities frequently to increase mastery. Higher mastery unlocks more powerful techniques.", inline=False)
+        embed.add_field(name="Haki Development", value="Don't neglect Haki training. It's crucial for high-level battles, especially against other Devil Fruit users.", inline=False)
+        embed.add_field(name="Strategic Equipment", value="Choose equipment that complements your fighting style or covers your weaknesses.", inline=False)
+        embed.add_field(name="Stamina Management", value="Keep an eye on your stamina and fatigue levels. Rest when needed to maintain peak performance.", inline=False)
+        embed.add_field(name="Environment Awareness", value="Different battle environments can affect your performance. Plan your strategy accordingly.", inline=False)
+        embed.add_field(name="Regular Training", value="Engage in regular training sessions to steadily improve your stats, even when you can't battle.", inline=False)
+        embed.add_field(name="Explore Game Features", value="Interact with all aspects of the game. You might discover hidden quests, rare items, or useful information!", inline=False)
+        await ctx.send(embed=embed)
+
+    @op_help.command(name="cooldowns")
+    async def help_cooldowns(self, ctx):
+        """Explains the game's cooldown systems"""
+        embed = discord.Embed(title="One Piece Battle Game - Cooldowns and Limitations", color=discord.Color.orange())
+        embed.add_field(name="Battle Cooldown", value="5 minutes between battles. This prevents spam and encourages strategic play.", inline=False)
+        embed.add_field(name="Training Cooldown", value="1 hour between training sessions. Encourages diverse gameplay and prevents rapid stat inflation.", inline=False)
+        embed.add_field(name="Rest Cooldown", value="30 minutes between rest periods. Balances the stamina recovery mechanic.", inline=False)
+        embed.add_field(name="Fatigue System", value="Accumulates with actions, reducing performance. Decreases slowly over time and with rest.", inline=False)
+        embed.add_field(name="Daily Limits", value="Some actions may have daily limits to balance long-term progression.", inline=False)
+        embed.add_field(name="Cooldown Reset", value="Cooldowns reset at midnight UTC. Plan your daily activities accordingly!", inline=False)
+        embed.add_field(name="Cooldown Display", value="Use `.op cooldowns` to view your current cooldown timers and plan your next moves.", inline=False)
+        await ctx.send(embed=embed)
 
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
