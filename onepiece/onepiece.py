@@ -717,5 +717,72 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've unequipped the {item}.")
 
+    @op.command(name="help")
+    async def op_help(self, ctx):
+        """Display detailed help information about the One Piece Battle game"""
+        help_embed = discord.Embed(
+            title="One Piece Battle - Help Guide",
+            description="Welcome to the world of One Piece Battles! Embark on an epic journey, train your skills, and become the Pirate King!",
+            color=discord.Color.blue()
+        )
+
+        # Game Overview
+        help_embed.add_field(
+            name="📜 Game Overview",
+            value=(
+                "In this game, you'll create a character inspired by the One Piece universe. "
+                "Train your skills, learn techniques, acquire Devil Fruits, and battle other players or formidable AI opponents. "
+                "Increase your bounty, improve your Haki, and aim for the top of the leaderboard!"
+            ),
+            inline=False
+        )
+
+        # Commands List
+        commands_info = {
+            "`.op begin`": "Start your journey and choose your fighting style.",
+            "`.op profile [user]`": "View your or another user's profile.",
+            "`.op battle [opponent]`": "Start a battle with another user or a strong AI opponent.",
+            "`.op train <stat>`": "Train a specific stat (strength, speed, defense, or haki).",
+            "`.op rest`": "Rest to recover stamina.",
+            "`.op learn_technique <technique>`": "Learn a new technique for battles.",
+            "`.op equip <item>`": "Equip an item to boost your stats.",
+            "`.op unequip <item>`": "Unequip an item.",
+            "`.op leaderboard [category]`": "View the top players (categories: bounty, level, battles_won).",
+            "`.op view_techniques`": "View available techniques for your fighting style.",
+            "`.op view_equipment`": "View available equipment and their stats."
+        }
+
+        commands_text = "\n".join([f"**{cmd}**: {desc}" for cmd, desc in commands_info.items()])
+        help_embed.add_field(name="🎮 Commands", value=commands_text, inline=False)
+
+        # Game Mechanics
+        mechanics_info = (
+            "**Character Progress**: Gain experience and level up by training and winning battles.\n"
+            "**Haki**: Improve your Observation, Armament, and Conqueror's Haki for powerful advantages.\n"
+            "**Devil Fruits**: Rare abilities that grant unique powers and stat boosts.\n"
+            "**Techniques**: Learn and use special moves in battle for extra damage.\n"
+            "**Equipment**: Equip items to enhance your stats.\n"
+            "**Stamina**: Required for training and battles. Rest to recover.\n"
+            "**Bounty**: Increases as you win battles, reflecting your notoriety.\n"
+            "**Battle System**: Turn-based combat with special events, critical hits, and combos."
+        )
+        help_embed.add_field(name="⚙️ Game Mechanics", value=mechanics_info, inline=False)
+
+        # Tips
+        tips = (
+            "• Balance your training across different stats for a well-rounded character.\n"
+            "• Use your skill points wisely when leveling up.\n"
+            "• Learn a variety of techniques to have options in battle.\n"
+            "• Pay attention to your stamina and rest when needed.\n"
+            "• Participate in battles regularly to increase your bounty and gain experience.\n"
+            "• Check the leaderboard to see how you rank against other players."
+        )
+        help_embed.add_field(name="💡 Tips", value=tips, inline=False)
+
+        # Footer
+        help_embed.set_footer(text="For more detailed information on specific commands, use .help op [command]")
+
+        await ctx.send(embed=help_embed)
+
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
