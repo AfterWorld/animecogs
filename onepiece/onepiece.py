@@ -57,7 +57,7 @@ class OnePieceBattle(commands.Cog):
         self.gear_system = {
             "Gear Second": {"boost": 1.5, "stamina_cost": 20},
             "Gear Third": {"boost": 2.0, "stamina_cost": 30},
-            "Gear Fourth": {"boost": 3.0, "stamina_cost": 50}
+            "Gear Fourth": {"boost": 3.0, "stamina_cost": 50},
             "Gear Fifth": {"boost": 5.0, "stamina_cost": 90}
         }
         
