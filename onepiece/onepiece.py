@@ -28,7 +28,7 @@ class OnePieceBattle(commands.Cog):
             "skill_points": 0,
             "strength": 0,
             "speed": 0,
-            "defense": 0,
+            "defense": 0
         }
         self.config.register_user(**default_user)
 
@@ -170,6 +170,26 @@ class OnePieceBattle(commands.Cog):
         if self.spawn_task:
             self.spawn_task.cancel()
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
+
+    @op.command()
+    async def reset(self, ctx, user: discord.Member = None):
+        """Reset your own data or the data of a specific user (admin only)"""
+        if user is None:
+            user = ctx.author
+        elif not ctx.author.guild_permissions.administrator:
+            await ctx.send("You need administrator permissions to reset someone else's data.")
+            return
+    
+        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + ''s'} One Piece battle data? This action cannot be undone. React with ✅ to confirm.")
+        
+        def check(reaction, user_react):
+            return user_react == ctx.author and str(reaction.emoji) == '✅'
+    
+        try:
+            reaction, _ = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            await ctx.send("Data reset canceled due to inactivity.")
+            return
     
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
