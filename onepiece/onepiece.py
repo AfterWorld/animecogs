@@ -243,8 +243,6 @@ class OnePieceBattle(commands.Cog):
             ]
         }
 
-        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
-
     def cog_unload(self):
         self.spawn_task.cancel()
 
