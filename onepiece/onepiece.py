@@ -362,8 +362,41 @@ class OnePieceBattle(commands.Cog):
             "devil_fruit": random.choice(list(self.devil_fruits.keys())),
             "haki": {
                 "observation": random.randint(50, 100),
-                "armament": random.randint
-                
+                "armament": random.randint(50, 100),
+                "conquerors": random.randint(30, 80)
+            },
+            "doriki": random.randint(1000, 2000),
+            "strength": random.randint(100, 200),
+            "speed": random.randint(100, 200),
+            "defense": random.randint(100, 200),
+            "learned_techniques": random.sample(self.techniques[ai_fighting_style], min(5, len(self.techniques[ai_fighting_style]))),
+            "equipped_items": random.sample(list(self.equipment.keys()), 3),
+            "stamina": 150,
+            "bounty": random.randint(500000000, 1500000000)
+        }
+        return opponent_data
+
+    def trigger_special_event(self, user_name, opponent_name):
+        events = [
+            f"⚡ A sudden lightning strike energizes {user_name}, boosting their next attack!",
+            f"🌊 A massive wave crashes into the battlefield, momentarily stunning {opponent_name}!",
+            f"🌋 The ground splits open, forcing both fighters to adapt their strategies!",
+            f"🌟 A mysterious power awakens within {user_name}, unlocking a hidden technique!",
+            f"🌀 A whirlwind sweeps across the arena, adding chaos to the battle!"
+        ]
+        return random.choice(events)
+
+    def generate_post_battle_reward(self):
+        rewards = [
+            ("🗺️ Piece of a Treasure Map", "You found a fragment of a legendary treasure map!"),
+            ("💎 Rare Gem", "A sparkling gem caught your eye amidst the battlefield debris!"),
+            ("📜 Ancient Scroll", "An old scroll with mysterious techniques was hidden nearby!"),
+            ("🔮 Strange Orb", "A glowing orb pulses with unknown power..."),
+            ("🏆 Battle Trophy", "Your victory has earned you a magnificent trophy!")
+        ]
+        return random.choice(rewards)
+
+            
     @op.command(name="profile")
     async def op_profile(self, ctx, user: discord.Member = None):
         """View your or another user's profile"""
@@ -400,9 +433,9 @@ class OnePieceBattle(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @op.command(name="train")
-    @commands.cooldown(1, 3600, commands.BucketType.user)  # Once per hour
-    async def op_train(self, ctx, stat: str):
+    @commands.command()
+    @commands.cooldown(1, 1800, commands.BucketType.user)  # Once per hour
+    async def train(self, ctx, stat: str):
         """Train a specific stat (strength, speed, defense, or haki)"""
         user_data = await self.config.user(ctx.author).all()
 
@@ -439,9 +472,9 @@ class OnePieceBattle(commands.Cog):
 
         await self.config.user(ctx.author).set(user_data)
 
-    @op.command(name="rest")
+    @commands.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)  # Once per 30 minutes
-    async def op_rest(self, ctx):
+    async def rest(self, ctx):
         """Rest to recover stamina"""
         user_data = await self.config.user(ctx.author).all()
         
@@ -454,8 +487,8 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}/100")
 
-    @op.command(name="leaderboard")
-    async def op_leaderboard(self, ctx, category: str = "bounty"):
+    @commands.command()
+    async def leaderboard(self, ctx, category: str = "bounty"):
         """View the leaderboard (categories: bounty, level, battles_won)"""
         valid_categories = ["bounty", "level", "battles_won"]
         if category.lower() not in valid_categories:
@@ -465,7 +498,7 @@ class OnePieceBattle(commands.Cog):
         all_users = await self.config.all_users()
         sorted_users = sorted(all_users.items(), key=lambda x: x[1].get(category, 0), reverse=True)[:10]
 
-        embed = discord.Embed(title=f"Top 10 Pirates - {category.capitalize()}", color=discord.Color.gold())
+        embed = discord.Embed(title=f"Top 10 Pirates - {category.capitalize()}", color=0xffd700)
         
         for i, (user_id, user_data) in enumerate(sorted_users, 1):
             user = self.bot.get_user(user_id)
