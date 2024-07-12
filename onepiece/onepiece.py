@@ -28,43 +28,37 @@ class OnePieceBattle(commands.Cog):
             "skill_points": 0,
             "strength": 0,
             "speed": 0,
-            "defense": 0
+            "defense": 0,
+            "learned_techniques": [],
+            "equipped_items": []
         }
         self.config.register_user(**default_user)
 
         self.devil_fruits = {
-            "Gomu Gomu no Mi": {
-                "ability": "Elasticity",
-                "modifier": 1.2
-            },
-            "Mera Mera no Mi": {
-                "ability": "Fire Control",
-                "modifier": 1.3
-            },
-            "Hie Hie no Mi": {
-                "ability": "Ice Control",
-                "modifier": 1.3
-            },
-            "Pika Pika no Mi": {
-                "ability": "Light Manipulation",
-                "modifier": 1.4
-            },
-            "Gura Gura no Mi": {
-                "ability": "Earthquake Generation",
-                "modifier": 1.5
-            },
-            "Yami Yami no Mi": {
-                "ability": "Darkness Manipulation",
-                "modifier": 1.4
-            },
-            "Suna Suna no Mi": {
-                "ability": "Sand Control",
-                "modifier": 1.3
-            },
-            "Magu Magu no Mi": {
-                "ability": "Magma Control",
-                "modifier": 1.4
-            }
+            "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2},
+            "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3},
+            "Hie Hie no Mi": {"ability": "Ice Control", "modifier": 1.3},
+            "Pika Pika no Mi": {"ability": "Light Manipulation", "modifier": 1.4},
+            "Gura Gura no Mi": {"ability": "Earthquake Generation", "modifier": 1.5},
+            "Yami Yami no Mi": {"ability": "Darkness Manipulation", "modifier": 1.4},
+            "Suna Suna no Mi": {"ability": "Sand Control", "modifier": 1.3},
+            "Magu Magu no Mi": {"ability": "Magma Control", "modifier": 1.4}
+        }
+
+        self.techniques = {
+            "Swordsman": ["Three Sword Style", "Flying Slash Attack", "Lion's Song"],
+            "Martial Artist": ["Shigan", "Tekkai", "Rankyaku"],
+            "Sniper": ["Exploding Star", "Lead Star", "Fire Bird Star"],
+            "Brawler": ["Gomu Gomu no Pistol", "Gomu Gomu no Bazooka", "Gear Second"],
+            "Tactician": ["Mirage Tempo", "Thunderbolt Tempo", "Weather Egg"]
+        }
+
+        self.equipment = {
+            "Sword": {"strength": 20, "speed": 10},
+            "Gun": {"strength": 15, "speed": 15},
+            "Armor": {"defense": 30},
+            "Boots": {"speed": 20},
+            "Gloves": {"strength": 10, "speed": 10}
         }
 
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
@@ -179,41 +173,17 @@ class OnePieceBattle(commands.Cog):
         elif not ctx.author.guild_permissions.administrator:
             await ctx.send("You need administrator permissions to reset someone else's data.")
             return
-
-        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + 's'} One Piece battle data? This action cannot be undone. Type 'yes' to confirm.")
+    
+        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + 's'} One Piece battle data? This action cannot be undone. React with ✅ to confirm.")
         
-        def check(message):
-            return message.author == ctx.author and message.content.lower() == 'yes'
-
+        def check(reaction, user_react):
+            return user_react == ctx.author and str(reaction.emoji) == '✅'
+    
         try:
-            await self.bot.wait_for('message', timeout=30.0, check=check)
+            reaction, _ = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
         except asyncio.TimeoutError:
             await ctx.send("Data reset canceled due to inactivity.")
             return
-
-        default_user = {
-            "fighting_style": None,
-            "devil_fruit": None,
-            "haki": {
-                "observation": 0,
-                "armament": 0,
-                "conquerors": 0
-            },
-            "doriki": 0,
-            "bounty": 0,
-            "battles_won": 0,
-            "last_train": None,
-            "level": 1,
-            "experience": 0,
-            "stamina": 100,
-            "skill_points": 0,
-            "strength": 0,
-            "speed": 0,
-            "defense": 0
-        }
-
-        await self.config.user(user).set(default_user)
-        await ctx.send(f"{'Your' if user == ctx.author else user.mention + 's'} One Piece battle data has been reset.")
     
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
@@ -357,102 +327,207 @@ class OnePieceBattle(commands.Cog):
                     embed.add_field(name=f"{i}. {user.name}", value=value, inline=False)
 
         await ctx.send(embed=embed)
+    
+    @op.command()
+    @commands.cooldown(1, 1800, commands.BucketType.user)
+    async def rest(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        stamina_gain = random.randint(20, 40)
+        user_data["stamina"] = min(100, user_data["stamina"] + stamina_gain)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}")
+        
+    @op.command()
+    @commands.cooldown(1, 1800, commands.BucketType.user)
+    async def equip(self, ctx, *, item: str):
+        user_data = await self.config.user(ctx.author).all()
+        
+        if not user_data["fighting_style"]:
+            await ctx.send("You need to begin your journey first!")
+            return
+        
+        if item not in self.equipment:
+            await ctx.send("That item doesn't exist.")
+            return
+        
+        if len(user_data["equipped_items"]) >= 3:
+            await ctx.send("You can't equip more than 3 items. Unequip something first.")
+            return
+        
+        user_data["equipped_items"].append(item)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've equipped the {item}!")
+        
+    @op.command()
+    @commands.cooldown(1, 1800, commands.BucketType.user)   
+    async def learn_technique(self, ctx, *, technique_name: str):
+        user_data = await self.config.user(ctx.author).all()
+        fighting_style = user_data["fighting_style"]
+        
+        if not fighting_style:
+            await ctx.send("You need to begin your journey first!")
+            return
+        
+        if technique_name not in self.techniques[fighting_style]:
+            await ctx.send(f"That technique is not available for your fighting style.")
+            return
+        
+        if technique_name in user_data["learned_techniques"]:
+            await ctx.send("You've already learned this technique.")
+            return
+        
+        user_data["learned_techniques"].append(technique_name)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've learned the {technique_name} technique!")
+    
+    @op.command()
+    @commands.cooldown(1, 1800, commands.BucketType.user)
+    async def unequip(self, ctx, *, item: str):
+        user_data = await self.config.user(ctx.author).all()
+        
+        if not user_data["fighting_style"]:
+            await ctx.send("You need to begin your journey first!")
+            return
+        
+        if item not in user_data["equipped_items"]:
+            await ctx.send("You don't have that item equipped.")
+            return
+        
+        user_data["equipped_items"].remove(item)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've unequipped the {item}.")
 
     @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)
-    async def battle(self, ctx, opponent: discord.Member):
-        """Challenge another player to a battle"""
+    async def battle(self, ctx, opponent: discord.Member = None):
         user_data = await self.config.user(ctx.author).all()
-        opponent_data = await self.config.user(opponent).all()
 
         if not user_data["fighting_style"]:
             await ctx.send("You need to begin your journey first!")
             return
 
-        if not opponent_data["fighting_style"]:
-            await ctx.send(f"{opponent.mention} has not begun their journey yet!")
-            return
-
-        if user_data["stamina"] < 20:
-            await ctx.send("You're too tired to battle right now. Rest up and come back later!")
-            return
-
-        if opponent_data["stamina"] < 20:
-            await ctx.send(f"{opponent.mention} is too tired to battle right now.")
-            return
-
-        challenge_embed = discord.Embed(
-            title=f"{ctx.author.name} challenges {opponent.name} to a battle!",
-            description=f"{opponent.mention}, react with ⚔️ to accept or 🏳️ to decline.",
-            color=discord.Color.blue()
-        )
-        challenge_message = await ctx.send(embed=challenge_embed)
-        await challenge_message.add_reaction('⚔️')
-        await challenge_message.add_reaction('🏳️')
-
-        def check(reaction, user):
-            return user == opponent and str(reaction.emoji) in ['⚔️', '🏳️'] and reaction.message == challenge_message
-
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-        except asyncio.TimeoutError:
-            timeout_embed = discord.Embed(
-                title="Challenge Expired",
-                description=f"{opponent.mention} did not respond to the challenge.",
-                color=discord.Color.red()
-            )
-            await challenge_message.edit(embed=timeout_embed)
-            return
-
-        if str(reaction.emoji) == '🏳️':
-            decline_embed = discord.Embed(
-                title="Challenge Declined",
-                description=f"{opponent.mention} declined the challenge.",
-                color=discord.Color.red()
-            )
-            await challenge_message.edit(embed=decline_embed)
-            return
+        if opponent:
+            opponent_data = await self.config.user(opponent).all()
+            if not opponent_data["fighting_style"]:
+                await ctx.send(f"{opponent.mention} has not begun their journey yet!")
+                return
+        else:
+            # If no opponent is specified, create a random opponent with similar stats
+            opponent = ctx.author
+            opponent_data = {
+                "fighting_style": random.choice(list(self.techniques.keys())),
+                "devil_fruit": random.choice(list(self.devil_fruits.keys())) if random.random() < 0.5 else None,
+                "haki": {
+                    "observation": user_data["haki"]["observation"] + random.randint(-10, 10),
+                    "armament": user_data["haki"]["armament"] + random.randint(-10, 10),
+                    "conquerors": user_data["haki"]["conquerors"] + random.randint(-10, 10)
+                },
+                "doriki": user_data["doriki"] + random.randint(-100, 100),
+                "strength": user_data["strength"] + random.randint(-10, 10),
+                "speed": user_data["speed"] + random.randint(-10, 10),
+                "defense": user_data["defense"] + random.randint(-10, 10),
+                "learned_techniques": random.sample(self.techniques[random.choice(list(self.techniques.keys()))], 3),
+                "equipped_items": random.sample(list(self.equipment.keys()), random.randint(0, 3)),
+                "stamina": 100
+            }
 
         battle_embed = discord.Embed(
-            title=f"Battle: {ctx.author.name} vs {opponent.name}",
+            title=f"Battle: {ctx.author.name} vs {'Random Opponent' if opponent == ctx.author else opponent.name}",
             description="The battle begins!",
             color=discord.Color.green()
         )
-        battle_message = await ctx.send(embed=battle_embed)
 
-        user_strength = user_data["doriki"] + sum(user_data["haki"].values())
-        opp_strength = opponent_data["doriki"] + sum(opponent_data["haki"].values())
+        user_strength = user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"]
+        opp_strength = opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"]
+
+        # Apply equipment bonuses
+        for item in user_data["equipped_items"]:
+            for stat, value in self.equipment[item].items():
+                if stat == "strength":
+                    user_strength += value
+                elif stat == "speed":
+                    user_strength += value // 2
+                elif stat == "defense":
+                    user_strength += value // 3
+
+        for item in opponent_data["equipped_items"]:
+            for stat, value in self.equipment[item].items():
+                if stat == "strength":
+                    opp_strength += value
+                elif stat == "speed":
+                    opp_strength += value // 2
+                elif stat == "defense":
+                    opp_strength += value // 3
 
         if user_data["devil_fruit"] in self.devil_fruits:
             user_strength *= self.devil_fruits[user_data["devil_fruit"]]["modifier"]
             battle_embed.add_field(name=f"{ctx.author.name}'s Devil Fruit", value=user_data["devil_fruit"], inline=False)
         if opponent_data["devil_fruit"] in self.devil_fruits:
             opp_strength *= self.devil_fruits[opponent_data["devil_fruit"]]["modifier"]
-            battle_embed.add_field(name=f"{opponent.name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=False)
+            battle_embed.add_field(name=f"{'Random Opponent' if opponent == ctx.author else opponent.name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=False)
 
-        await battle_message.edit(embed=battle_embed)
+        battle_message = await ctx.send(embed=battle_embed)
         await asyncio.sleep(2)
 
-        turns = random.randint(2, 5)
+        turns = random.randint(3, 7)
         for turn in range(1, turns + 1):
-            user_attack = random.randint(1, user_strength)
-            opp_attack = random.randint(1, opp_strength)
+            user_technique = random.choice(user_data["learned_techniques"]) if user_data["learned_techniques"] else "Basic Attack"
+            opp_technique = random.choice(opponent_data["learned_techniques"]) if opponent_data["learned_techniques"] else "Basic Attack"
+            
+            user_attack = random.randint(1, user_strength) * (1.5 if user_technique != "Basic Attack" else 1)
+            opp_attack = random.randint(1, opp_strength) * (1.5 if opp_technique != "Basic Attack" else 1)
 
-            battle_embed.add_field(name=f"Turn {turn}", value=f"{ctx.author.name} attacks with {user_attack} power!\n{opponent.name} attacks with {opp_attack} power!", inline=False)
+            # Critical hit chance (10%)
+            if random.random() < 0.1:
+                user_attack *= 2
+                battle_embed.add_field(name="Critical Hit!", value=f"{ctx.author.name} lands a critical hit!", inline=False)
+
+            # Dodge chance (based on speed)
+            user_dodge_chance = user_data["speed"] / (user_data["speed"] + opponent_data["speed"])
+            if random.random() < user_dodge_chance:
+                opp_attack = 0
+                battle_embed.add_field(name="Dodge!", value=f"{ctx.author.name} dodges the attack!", inline=False)
+
+            # Stamina management
+            user_stamina_cost = random.randint(5, 15)
+            opp_stamina_cost = random.randint(5, 15)
+
+            if user_data["stamina"] < user_stamina_cost:
+                user_attack *= user_data["stamina"] / user_stamina_cost
+                user_data["stamina"] = 0
+            else:
+                user_data["stamina"] -= user_stamina_cost
+
+            if opponent_data["stamina"] < opp_stamina_cost:
+                opp_attack *= opponent_data["stamina"] / opp_stamina_cost
+                opponent_data["stamina"] = 0
+            else:
+                opponent_data["stamina"] -= opp_stamina_cost
+
+            battle_embed.add_field(name=f"Turn {turn}", 
+                                   value=f"{ctx.author.name} uses {user_technique} with {user_attack:.0f} power!\n{'Random Opponent' if opponent == ctx.author else opponent.name} uses {opp_technique} with {opp_attack:.0f} power!", 
+                                   inline=False)
+            battle_embed.add_field(name="Stamina", 
+                                   value=f"{ctx.author.name}: {user_data['stamina']}\n{'Random Opponent' if opponent == ctx.author else opponent.name}: {opponent_data['stamina']}", 
+                                   inline=False)
             await battle_message.edit(embed=battle_embed)
             await asyncio.sleep(2)
 
             if user_attack > opp_attack:
-                opp_strength -= user_attack - opp_attack
+                opp_strength -= (user_attack - opp_attack) / 10
             elif opp_attack > user_attack:
-                user_strength -= opp_attack - user_attack
+                user_strength -= (opp_attack - user_attack) / 10
 
         if user_strength > opp_strength:
             winner = ctx.author
             loser = opponent
+            winner_data = user_data
+            loser_data = opponent_data
         elif opp_strength > user_strength:
             winner = opponent
             loser = ctx.author
+            winner_data = opponent_data
+            loser_data = user_data
         else:
             draw_embed = discord.Embed(
                 title="Battle Ended",
@@ -462,12 +537,9 @@ class OnePieceBattle(commands.Cog):
             await battle_message.edit(embed=draw_embed)
             return
 
-        winner_data = await self.config.user(winner).all()
-        loser_data = await self.config.user(loser).all()
-
         doriki_gain = random.randint(50, 100)
         haki_gain = random.randint(1, 10)
-        bounty_gain = loser_data["bounty"] // 10
+        bounty_gain = loser_data["bounty"] // 10 if loser_data.get("bounty") else random.randint(1000, 5000)
 
         winner_data["doriki"] += doriki_gain
         winner_data["haki"]["observation"] += haki_gain
@@ -475,16 +547,14 @@ class OnePieceBattle(commands.Cog):
         winner_data["haki"]["conquerors"] += haki_gain // 2
         winner_data["bounty"] += bounty_gain
         winner_data["battles_won"] += 1
-        winner_data["stamina"] -= 20
+        winner_data["stamina"] = max(0, winner_data["stamina"] - 20)
 
-        loser_data["stamina"] -= 20
-
-        await self.config.user(winner).set(winner_data)
-        await self.config.user(loser).set(loser_data)
+        if winner == ctx.author:
+            await self.config.user(winner).set(winner_data)
 
         result_embed = discord.Embed(
             title="Battle Result",
-            description=f"{winner.mention} has defeated {loser.mention} in battle!",
+            description=f"{winner.name} has defeated {'Random Opponent' if opponent == ctx.author else loser.name} in battle!",
             color=discord.Color.gold()
         )
         result_embed.add_field(name="Doriki Gained", value=doriki_gain)
