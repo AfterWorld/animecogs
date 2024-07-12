@@ -107,26 +107,6 @@ class OnePieceBattle(commands.Cog):
                         user_data["devil_fruit"] = devil_fruit
                         await self.config.user(user).set(user_data)
                         await channel.send(f"Congratulations {user.mention}! You have claimed the {devil_fruit}!")
-    
-    def trigger_special_event(self, user_name, opponent_name):
-        events = [
-            f"⚡ A sudden lightning strike energizes {user_name}, boosting their next attack!",
-            f"🌊 A massive wave crashes into the battlefield, momentarily stunning {opponent_name}!",
-            f"🌋 The ground splits open, forcing both fighters to adapt their strategies!",
-            f"🌟 A mysterious power awakens within {user_name}, unlocking a hidden technique!",
-            f"🌀 A whirlwind sweeps across the arena, adding chaos to the battle!"
-        ]
-        return random.choice(events)
-
-    def generate_post_battle_reward(self):
-        rewards = [
-            ("🗺️ Piece of a Treasure Map", "You found a fragment of a legendary treasure map!"),
-            ("💎 Rare Gem", "A sparkling gem caught your eye amidst the battlefield debris!"),
-            ("📜 Ancient Scroll", "An old scroll with mysterious techniques was hidden nearby!"),
-            ("🔮 Strange Orb", "A glowing orb pulses with unknown power..."),
-            ("🏆 Battle Trophy", "Your victory has earned you a magnificent trophy!")
-        ]
-        return random.choice(rewards)
 
     @commands.group()
     async def op(self, ctx):
@@ -433,7 +413,7 @@ class OnePieceBattle(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)  # Once per hour
     async def train(self, ctx, stat: str):
         """Train a specific stat (strength, speed, defense, or haki)"""
@@ -472,7 +452,7 @@ class OnePieceBattle(commands.Cog):
 
         await self.config.user(ctx.author).set(user_data)
 
-    @commands.command()
+    @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)  # Once per 30 minutes
     async def rest(self, ctx):
         """Rest to recover stamina"""
@@ -487,8 +467,8 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}/100")
 
-    @commands.command()
-    async def leaderboard(self, ctx, category: str = "bounty"):
+    @op.command(name="leaderboard")
+    async def op_leaderboard(self, ctx, category: str = "bounty"):
         """View the leaderboard (categories: bounty, level, battles_won)"""
         valid_categories = ["bounty", "level", "battles_won"]
         if category.lower() not in valid_categories:
