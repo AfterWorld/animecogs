@@ -29,7 +29,6 @@ class OnePieceBattle(commands.Cog):
             "strength": 0,
             "speed": 0,
             "defense": 0,
-            "haki": 0
         }
         self.config.register_user(**default_user)
 
