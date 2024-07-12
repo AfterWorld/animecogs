@@ -179,18 +179,18 @@ class OnePieceBattle(commands.Cog):
         elif not ctx.author.guild_permissions.administrator:
             await ctx.send("You need administrator permissions to reset someone else's data.")
             return
-    
-        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + ''s'} One Piece battle data? This action cannot be undone. Type 'yes' to confirm.")
+
+        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + '\'s'} One Piece battle data? This action cannot be undone. Type 'yes' to confirm.")
         
         def check(message):
             return message.author == ctx.author and message.content.lower() == 'yes'
-    
+
         try:
             await self.bot.wait_for('message', timeout=30.0, check=check)
         except asyncio.TimeoutError:
             await ctx.send("Data reset canceled due to inactivity.")
             return
-    
+
         default_user = {
             "fighting_style": None,
             "devil_fruit": None,
@@ -211,9 +211,9 @@ class OnePieceBattle(commands.Cog):
             "speed": 0,
             "defense": 0
         }
-    
+
         await self.config.user(user).set(default_user)
-        await ctx.send(f"{'Your' if user == ctx.author else user.mention + ''s'} One Piece battle data has been reset.")
+        await ctx.send(f"{'Your' if user == ctx.author else user.mention + '\'s'} One Piece battle data has been reset.")
     
     @op.command()
     async def profile(self, ctx, user: discord.Member = None):
