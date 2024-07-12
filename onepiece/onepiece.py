@@ -180,7 +180,7 @@ class OnePieceBattle(commands.Cog):
             await ctx.send("You need administrator permissions to reset someone else's data.")
             return
     
-        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + ''s'} One Piece battle data? This action cannot be undone. React with ✅ to confirm.")
+        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + 's'} One Piece battle data? This action cannot be undone. React with ✅ to confirm.")
         
         def check(reaction, user_react):
             return user_react == ctx.author and str(reaction.emoji) == '✅'
