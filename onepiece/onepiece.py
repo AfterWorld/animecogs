@@ -284,6 +284,16 @@ class OnePieceBattle(commands.Cog):
                         await self.config.user(user).set(user_data)
                         await channel.send(f"Congratulations {user.mention}! You have claimed the {devil_fruit}!")
 
+    async def handle_gear_stamina(self, user_data):
+        if "active_gear" in user_data:
+            gear_data = self.gear_system[user_data["active_gear"]]
+            user_data["stamina"] -= gear_data["stamina_cost"] // 2  # Continuous drain
+            if user_data["stamina"] <= 0:
+                del user_data["active_gear"]
+                await self.config.user(user_data["_id"]).set(user_data)
+                return "Your Gear has deactivated due to stamina depletion!"
+        return None
+
     @commands.group()
     async def op(self, ctx):
         pass
@@ -485,6 +495,8 @@ class OnePieceBattle(commands.Cog):
             gear_message = await self.handle_gear_stamina(user_data)
             if gear_message:
                 battle_log.append(gear_message)
+                # Recalculate user_strength if gear deactivated
+                user_strength = self.apply_gear_boost(user_data, user_strength)
     
             # Critical hit chance (10%)
             if random.random() < 0.1:
