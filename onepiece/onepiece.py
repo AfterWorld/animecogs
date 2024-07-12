@@ -45,6 +45,21 @@ class OnePieceBattle(commands.Cog):
         self.max_fatigue = 100
         self.fatigue_per_battle = 10
         self.fatigue_recovery_rate = 5  # Amount of fatigue recovered per hour of rest
+
+        self.awakening_levels = {
+            0: {"name": "Novice", "boost": 1.0},
+            25: {"name": "Adept", "boost": 1.1},
+            50: {"name": "Master", "boost": 1.2},
+            75: {"name": "Awakened", "boost": 1.3},
+            100: {"name": "Fully Awakened", "boost": 1.5}
+        }
+
+        self.gear_system = {
+            "Gear Second": {"boost": 1.5, "stamina_cost": 20},
+            "Gear Third": {"boost": 2.0, "stamina_cost": 30},
+            "Gear Fourth": {"boost": 3.0, "stamina_cost": 50}
+            "Gear Fifth": {"boost": 5.0, "stamina_cost": 90}
+        }
         
         self.battle_environments = {
             "Calm Belt": "The oppressive silence amplifies every move!",
@@ -79,14 +94,19 @@ class OnePieceBattle(commands.Cog):
         }
         
         self.devil_fruits = {
-            "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2},
-            "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3},
-            "Hie Hie no Mi": {"ability": "Ice Control", "modifier": 1.3},
-            "Pika Pika no Mi": {"ability": "Light Manipulation", "modifier": 1.4},
-            "Gura Gura no Mi": {"ability": "Earthquake Generation", "modifier": 1.5},
-            "Yami Yami no Mi": {"ability": "Darkness Manipulation", "modifier": 1.4},
-            "Suna Suna no Mi": {"ability": "Sand Control", "modifier": 1.3},
-            "Magu Magu no Mi": {"ability": "Magma Control", "modifier": 1.4}
+            "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2, "type": "Paramecia"},
+            "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3, "type": "Logia"},
+            "Hie Hie no Mi": {"ability": "Ice Control", "modifier": 1.3, "type": "Logia"},
+            "Pika Pika no Mi": {"ability": "Light Manipulation", "modifier": 1.4, "type": "Logia"},
+            "Gura Gura no Mi": {"ability": "Earthquake Generation", "modifier": 1.5, "type": "Paramecia"},
+            "Yami Yami no Mi": {"ability": "Darkness Manipulation", "modifier": 1.4, "type": "Logia"},
+            "Suna Suna no Mi": {"ability": "Sand Control", "modifier": 1.3, "type": "Logia"},
+            "Magu Magu no Mi": {"ability": "Magma Control", "modifier": 1.4, "type": "Logia"},
+            "Ope Ope no Mi": {"ability": "Operation", "modifier": 1.3, "type": "Paramecia"},
+            "Goro Goro no Mi": {"ability": "Lightning Control", "modifier": 1.4, "type": "Logia"},
+            "Mochi Mochi no Mi": {"ability": "Mochi Manipulation", "modifier": 1.3, "type": "Special Paramecia"},
+            "Bara Bara no Mi": {"ability": "Body Separation", "modifier": 1.2, "type": "Paramecia"},
+            "Zoan Fruits": {"ability": "Animal Transformation", "modifier": 1.3, "type": "Zoan"}
         }
 
         self.techniques = {
@@ -109,9 +129,11 @@ class OnePieceBattle(commands.Cog):
         }
         
         self.legendary_weapons = {
-            "Yoru": {"type": "Sword", "boost": 50, "description": "One of the 12 Supreme Grade Swords"},
-            "Kabuto": {"type": "Slingshot", "boost": 40, "description": "Usopp's ultimate weapon"},
-            "Clima-Tact": {"type": "Staff", "boost": 45, "description": "Weather-controlling weapon"}
+            "Yoru": {"type": "Sword", "boost": 50, "ability": "Black Blade", "description": "One of the 12 Supreme Grade Swords"},
+            "Murakumogiri": {"type": "Naginata", "boost": 45, "ability": "Weather Manipulation", "description": "One of the 12 Supreme Grade Weapons"},
+            "Kabuto": {"type": "Slingshot", "boost": 40, "ability": "Pop Green", "description": "Usopp's ultimate weapon"},
+            "Clima-Tact": {"type": "Staff", "boost": 45, "ability": "Weather Control", "description": "Nami's weather-controlling weapon"},
+            "Shodai Kitetsu": {"type": "Sword", "boost": 48, "ability": "Cursed Blade", "description": "One of the 21 Great Grade Swords"}
         }
 
         self.equipment = {
@@ -224,6 +246,12 @@ class OnePieceBattle(commands.Cog):
 
     def cog_unload(self):
         self.spawn_task.cancel()
+
+    def get_awakening_level(self, mastery):
+        for level, data in sorted(self.awakening_levels.items(), reverse=True):
+            if mastery >= level:
+                return data
+        return self.awakening_levels[0]
 
     async def devil_fruit_spawn(self, channel_id):
         await self.bot.wait_until_ready()
@@ -348,8 +376,21 @@ class OnePieceBattle(commands.Cog):
             color=discord.Color.red()
         )
     
+        # Calculate base strength
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
+    
+        # Apply Legendary Weapon boost
+        user_strength = self.apply_legendary_weapon(user_data, user_strength)
+        opp_strength = self.apply_legendary_weapon(opponent_data, opp_strength)
+    
+        # Apply Devil Fruit boost (including awakening)
+        user_strength = self.apply_devil_fruit_boost(user_data, user_strength)
+        opp_strength = self.apply_devil_fruit_boost(opponent_data, opp_strength)
+    
+        # Apply Gear boost for Paramecia users
+        user_strength = self.apply_gear_boost(user_data, user_strength)
+        opp_strength = self.apply_gear_boost(opponent_data, opp_strength)
     
         # Apply fatigue penalty to user's strength
         fatigue_penalty = 1 - (user_data["fatigue"] / self.max_fatigue) * 0.5  # Max 50% penalty at full fatigue
@@ -369,6 +410,7 @@ class OnePieceBattle(commands.Cog):
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
     
+        # Equipment effects
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -386,13 +428,6 @@ class OnePieceBattle(commands.Cog):
                     opponent_data["speed"] += value
                 elif stat == "defense":
                     opponent_data["defense"] += value
-    
-        if user_data["devil_fruit"] in self.devil_fruits:
-            user_strength = int(user_strength * self.devil_fruits[user_data["devil_fruit"]]["modifier"])
-            battle_embed.add_field(name=f"{ctx.author.name}'s Devil Fruit", value=user_data["devil_fruit"], inline=True)
-        if opponent_data["devil_fruit"] in self.devil_fruits:
-            opp_strength = int(opp_strength * self.devil_fruits[opponent_data["devil_fruit"]]["modifier"])
-            battle_embed.add_field(name=f"{opponent_name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=True)
     
         battle_log = []
         battle_message = await ctx.send(embed=battle_embed)
@@ -433,16 +468,23 @@ class OnePieceBattle(commands.Cog):
             user_attack, user_technique = self.generate_attack(ctx.author, user_data, user_strength)
             opp_attack, opp_technique = self.generate_attack(opponent, opponent_data, opp_strength)
     
-            # Devil Fruit Awakening
+            # Devil Fruit Awakening chance
             if not user_awakened and user_data["devil_fruit"] and random.random() < self.awakening_chance:
-                user_strength *= self.awakening_boost
+                awakening_boost = self.get_awakening_level(user_data.get("devil_fruit_mastery", 0))["boost"]
+                user_strength *= awakening_boost
                 user_awakened = True
-                battle_log.append(f"💥 {ctx.author.name}'s Devil Fruit has awakened, boosting their power!")
+                battle_log.append(f"💥 {ctx.author.name}'s Devil Fruit has temporarily awakened, boosting their power!")
     
             if not opp_awakened and opponent_data["devil_fruit"] and random.random() < self.awakening_chance:
-                opp_strength *= self.awakening_boost
+                awakening_boost = self.get_awakening_level(opponent_data.get("devil_fruit_mastery", 0))["boost"]
+                opp_strength *= awakening_boost
                 opp_awakened = True
-                battle_log.append(f"💥 {opponent_name}'s Devil Fruit has awakened, boosting their power!")
+                battle_log.append(f"💥 {opponent_name}'s Devil Fruit has temporarily awakened, boosting their power!")
+    
+            # Handle Gear stamina drain
+            gear_message = await self.handle_gear_stamina(user_data)
+            if gear_message:
+                battle_log.append(gear_message)
     
             # Critical hit chance (10%)
             if random.random() < 0.1:
@@ -472,9 +514,9 @@ class OnePieceBattle(commands.Cog):
     
         # Reset awakening boost after battle
         if user_awakened:
-            user_strength /= self.awakening_boost
+            user_strength /= awakening_boost
         if opp_awakened:
-            opp_strength /= self.awakening_boost
+            opp_strength /= awakening_boost
     
         if user_hp > opp_hp:
             winner = ctx.author
@@ -504,8 +546,14 @@ class OnePieceBattle(commands.Cog):
             # Increase Devil Fruit mastery
             if user_data["devil_fruit"]:
                 mastery_gain = random.randint(1, 5)
-                user_data["devil_fruit_mastery"] += mastery_gain
+                user_data["devil_fruit_mastery"] = min(100, user_data.get("devil_fruit_mastery", 0) + mastery_gain)
                 await self.check_new_abilities(ctx, user_data)
+    
+            # Chance to find a Legendary Weapon
+            if random.random() < 0.05:  # 5% chance
+                new_weapon = random.choice(list(self.legendary_weapons.keys()))
+                user_data["legendary_weapon"] = new_weapon
+                battle_log.append(f"🏆 {ctx.author.name} found the legendary weapon: {new_weapon}!")
     
             result_embed = discord.Embed(
                 title="🏆 __**Battle Conclusion**__ 🏆",
@@ -541,6 +589,10 @@ class OnePieceBattle(commands.Cog):
         user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
         user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
         result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
+    
+        # Remove active gear after battle
+        if "active_gear" in user_data:
+            del user_data["active_gear"]
     
         await self.config.user(ctx.author).set(user_data)
         await battle_message.edit(embed=result_embed)
@@ -624,6 +676,85 @@ class OnePieceBattle(commands.Cog):
             ("🏆 Battle Trophy", "Your victory has earned you a magnificent trophy!")
         ]
         return random.choice(rewards)
+
+    # Add this to your battle method
+    def apply_legendary_weapon(self, user_data, base_strength):
+        if "legendary_weapon" in user_data:
+            weapon = self.legendary_weapons.get(user_data["legendary_weapon"])
+            if weapon:
+                return base_strength + weapon["boost"]
+        return base_strength
+
+    # Modify your battle method to use the awakening boost
+    def apply_devil_fruit_boost(self, user_data, base_strength):
+        if user_data["devil_fruit"]:
+            mastery = user_data.get("devil_fruit_mastery", 0)
+            awakening_level = self.get_awakening_level(mastery)
+            return base_strength * awakening_level["boost"] * self.devil_fruits[user_data["devil_fruit"]]["modifier"]
+        return base_strength
+
+    # Modify your battle method to apply gear boosts
+    def apply_gear_boost(self, user_data, base_strength):
+        if "active_gear" in user_data:
+            gear_data = self.gear_system[user_data["active_gear"]]
+            return base_strength * gear_data["boost"]
+        return base_strength
+
+    @op.command(name="gears")
+    async def activate_gear(self, ctx, gear: str):
+        """Activate a gear for Paramecia users"""
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["devil_fruit"] or self.devil_fruits[user_data["devil_fruit"]]["type"] != "Paramecia":
+            await ctx.send("You need a Paramecia-type Devil Fruit to use Gears.")
+            return
+
+        if gear not in self.gear_system:
+            await ctx.send("Invalid Gear. Choose from: " + ", ".join(self.gear_system.keys()))
+            return
+
+        gear_data = self.gear_system[gear]
+        if user_data["stamina"] < gear_data["stamina_cost"]:
+            await ctx.send("Not enough stamina to activate this Gear.")
+            return
+
+        user_data["active_gear"] = gear
+        user_data["stamina"] -= gear_data["stamina_cost"]
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"{gear} activated! Your power is boosted, but be careful of the stamina drain.")
+
+    @op.command(name="devilfruit")
+    async def devil_fruit_status(self, ctx):
+        """Display your Devil Fruit status and awakening progress"""
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["devil_fruit"]:
+            await ctx.send("You don't have a Devil Fruit power.")
+            return
+
+        mastery = user_data.get("devil_fruit_mastery", 0)
+        awakening_level = self.get_awakening_level(mastery)
+
+        embed = discord.Embed(title=f"{ctx.author.name}'s Devil Fruit Status", color=discord.Color.purple())
+        embed.add_field(name="Devil Fruit", value=user_data["devil_fruit"])
+        embed.add_field(name="Mastery", value=f"{mastery}/100")
+        embed.add_field(name="Awakening Level", value=awakening_level["name"])
+        embed.add_field(name="Current Boost", value=f"{awakening_level['boost']}x")
+        await ctx.send(embed=embed)
+
+    @op.command(name="weapon")
+    async def legendary_weapon_info(self, ctx, weapon_name: str):
+        """Display information about a legendary weapon"""
+        weapon = self.legendary_weapons.get(weapon_name)
+        if not weapon:
+            await ctx.send("That legendary weapon doesn't exist.")
+            return
+
+        embed = discord.Embed(title=f"Legendary Weapon: {weapon_name}", color=discord.Color.gold())
+        embed.add_field(name="Type", value=weapon["type"])
+        embed.add_field(name="Boost", value=str(weapon["boost"]))
+        embed.add_field(name="Special Ability", value=weapon["ability"])
+        embed.add_field(name="Description", value=weapon["description"], inline=False)
+        await ctx.send(embed=embed)
+
 
             
     @op.command(name="profile")
