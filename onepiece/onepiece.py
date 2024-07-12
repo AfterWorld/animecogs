@@ -446,9 +446,12 @@ class OnePieceBattle(commands.Cog):
             ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
             opponent_name = random.choice(ai_names)
             opponent = ctx.author  # This is just to reuse the existing logic
+            ai_fighting_style = random.choice(list(self.techniques.keys()))
+            available_techniques = self.techniques[ai_fighting_style]
+            
             opponent_data = {
                 "name": opponent_name,
-                "fighting_style": random.choice(list(self.techniques.keys())),
+                "fighting_style": ai_fighting_style,
                 "devil_fruit": random.choice(list(self.devil_fruits.keys())),
                 "haki": {
                     "observation": random.randint(50, 100),
@@ -459,7 +462,7 @@ class OnePieceBattle(commands.Cog):
                 "strength": random.randint(100, 200),
                 "speed": random.randint(100, 200),
                 "defense": random.randint(100, 200),
-                "learned_techniques": random.sample(self.techniques[random.choice(list(self.techniques.keys()))], 5),
+                "learned_techniques": random.sample(available_techniques, min(5, len(available_techniques))),
                 "equipped_items": random.sample(list(self.equipment.keys()), 3),
                 "stamina": 150,
                 "bounty": random.randint(500000000, 1500000000)
