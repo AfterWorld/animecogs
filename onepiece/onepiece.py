@@ -469,10 +469,11 @@ class OnePieceBattle(commands.Cog):
             }
 
         battle_embed = discord.Embed(
-            title=f"Epic Battle: {ctx.author.name} vs {opponent_data['name'] if 'name' in opponent_data else opponent.name}",
-            description="The battle begins! ⚔️",
+            title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_data['name'] if 'name' in opponent_data else opponent.name}**__ ⚔️",
+            description="*The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
+
 
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
@@ -514,16 +515,32 @@ class OnePieceBattle(commands.Cog):
             fill = int(current_hp / max_hp * bar_length)
             return f"[{'■' * fill}{'□' * (bar_length - fill)}]"
 
+        battle_log = []
+        battle_message = await ctx.send(embed=battle_embed)
+
+        def get_health_bar(current_hp, max_hp, bar_length=10):
+            fill = int(current_hp / max_hp * bar_length)
+            if fill <= bar_length * 0.2:
+                color = "🟥"
+            elif fill <= bar_length * 0.5:
+                color = "🟨"
+            else:
+                color = "🟩"
+            return f"{color * fill}{'⬜' * (bar_length - fill)}"
+
         async def update_battle_embed():
-            battle_embed.description = "\n".join(battle_log[-5:])
+            battle_embed.description = "*" + "\n".join(battle_log[-3:]) + "*"
             user_health = get_health_bar(user_hp, user_strength * 20)
             opp_health = get_health_bar(opp_hp, opp_strength * 20)
-            battle_embed.set_field_at(0, name=f"{ctx.author.name}'s HP", value=f"{user_health} {user_hp:.0f}/{user_strength * 20:.0f}", inline=False)
-            battle_embed.set_field_at(1, name=f"{opponent_data['name'] if 'name' in opponent_data else opponent.name}'s HP", value=f"{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f}", inline=False)
+            
+            user_health_text = f"**{ctx.author.name}**\n{user_health} {user_hp:.0f}/{user_strength * 20:.0f} HP"
+            opp_health_text = f"**{opponent_data['name'] if 'name' in opponent_data else opponent.name}**\n{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f} HP"
+            
+            battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
+            
             await battle_message.edit(embed=battle_embed)
 
-        battle_embed.add_field(name=f"{ctx.author.name}'s HP", value="", inline=False)
-        battle_embed.add_field(name=f"{opponent_data['name'] if 'name' in opponent_data else opponent.name}'s HP", value="", inline=False)
+        battle_embed.add_field(name="__Health Status__", value="", inline=False)
 
         turns = random.randint(5, 10)
         for turn in range(1, turns + 1):
@@ -536,22 +553,22 @@ class OnePieceBattle(commands.Cog):
             # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
-                battle_log.append(f"💥 Critical Hit! {ctx.author.name} lands a devastating blow!")
+                battle_log.append(f"💥 **CRITICAL HIT!** {ctx.author.name}'s attack devastates the opponent!")
 
             # Dodge chance (based on speed)
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
-                battle_log.append(f"💨 {ctx.author.name} swiftly dodges the attack!")
+                battle_log.append(f"💨 With lightning speed, {ctx.author.name} **DODGES** the attack!")
 
             # Apply damage
             opp_hp -= user_attack
             user_hp -= opp_attack
 
-            battle_log.append(f"Turn {turn}")
-            battle_log.append(f"{ctx.author.name} uses {user_technique} with {user_attack:.0f} power!")
-            battle_log.append(f"{opponent_data['name'] if 'name' in opponent_data else opponent.name} counters with {opp_technique}, dealing {opp_attack:.0f} damage!")
+            battle_log.append(f"**Turn {turn}**")
+            battle_log.append(f"🌊 {ctx.author.name} unleashes **{user_technique}** with {user_attack:.0f} power!")
+            battle_log.append(f"🔥 {opponent_data['name'] if 'name' in opponent_data else opponent.name} retaliates with **{opp_technique}**, dealing {opp_attack:.0f} damage!")
 
             await update_battle_embed()
             await asyncio.sleep(2)
@@ -590,13 +607,13 @@ class OnePieceBattle(commands.Cog):
             await self.config.user(winner).set(winner_data)
 
         result_embed = discord.Embed(
-            title="Battle Result",
-            description=f"In an epic clash, {winner.name} emerges victorious against {loser.name if isinstance(loser, discord.Member) else loser_data['name']}!",
+            title="🏆 __**Battle Conclusion**__ 🏆",
+            description=f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against {loser.name if isinstance(loser, discord.Member) else loser_data['name']}!***",
             color=discord.Color.gold()
         )
-        result_embed.add_field(name="Doriki Gained", value=f"{doriki_gain} 💪")
-        result_embed.add_field(name="Haki Improved", value=f"{haki_gain} 🔮")
-        result_embed.add_field(name="Bounty Increased", value=f"{bounty_gain:,} 💰")
+        result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
+        result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
+        result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
         await battle_message.edit(embed=result_embed)
     
 def setup(bot):
