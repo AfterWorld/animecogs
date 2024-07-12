@@ -340,8 +340,8 @@ class OnePieceBattle(commands.Cog):
                 battle_log.append(event)
 
             # Apply damage
-            opp_hp -= user_attack
-            user_hp -= opp_attack
+            opp_hp = max(0, opp_hp - user_attack)
+            user_hp = max(0, user_hp - opp_attack)
 
             battle_log.append(f"**Turn {turn_counter}**")
             battle_log.append(f"🌊 {ctx.author.name} unleashes **{user_technique}** with {user_attack:.0f} power!")
@@ -350,9 +350,7 @@ class OnePieceBattle(commands.Cog):
             await update_battle_embed()
             await asyncio.sleep(2)
 
-            # Prevent battles from going on too long (optional)
-            if turn_counter >= 30:
-                battle_log.append("⏱️ The battle has reached its time limit!")
+            if user_hp <= 0 or opp_hp <= 0:
                 break
 
         # Determine the winner
@@ -361,59 +359,49 @@ class OnePieceBattle(commands.Cog):
             loser = opponent
             winner_data = user_data
             loser_data = opponent_data
-        elif opp_hp > user_hp:
+        else:
             winner = opponent
             loser = ctx.author
             winner_data = opponent_data
             loser_data = user_data
-        else:
-            # It's a draw
-            battle_embed.add_field(name="Battle Concluded", value="The epic clash ends in a draw! Both fighters stand exhausted but undefeated.", inline=False)
-            await battle_message.edit(embed=battle_embed)
-            return
 
-        doriki_gain = random.randint(100, 250)
-        haki_gain = random.randint(5, 15)
-        bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
-
-        winner_data["doriki"] += doriki_gain
-        winner_data["haki"]["observation"] += haki_gain
-        winner_data["haki"]["armament"] += haki_gain
-        winner_data["haki"]["conquerors"] += haki_gain // 2
-        winner_data["bounty"] = winner_data.get("bounty", 0) + bounty_gain
-        winner_data["battles_won"] = winner_data.get("battles_won", 0) + 1
-        winner_data["stamina"] = max(0, winner_data.get("stamina", 100) - 20)
-
+        # Only apply rewards if the user won
         if winner == ctx.author:
+            doriki_gain = random.randint(100, 250)
+            haki_gain = random.randint(5, 15)
+            bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
+
+            winner_data["doriki"] += doriki_gain
+            winner_data["haki"]["observation"] += haki_gain
+            winner_data["haki"]["armament"] += haki_gain
+            winner_data["haki"]["conquerors"] += haki_gain // 2
+            winner_data["bounty"] = winner_data.get("bounty", 0) + bounty_gain
+            winner_data["battles_won"] = winner_data.get("battles_won", 0) + 1
+            winner_data["stamina"] = max(0, winner_data.get("stamina", 100) - 20)
+
             await self.config.user(winner).set(winner_data)
 
-        if winner == ctx.author:
-            if opponent == ctx.author:  # This was a fight against an AI opponent
-                result_description = f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against the fearsome {opponent_data['name']}!***"
-            else:
-                result_description = f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against {opponent.name}!***"
+            result_embed = discord.Embed(
+                title="🏆 __**Battle Conclusion**__ 🏆",
+                description=f"***In an epic clash, {winner.name} emerges victorious!***",
+                color=discord.Color.gold()
+            )
+            result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
+            result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
+            result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
+
+            # Post-battle reward (30% chance)
+            if random.random() < 0.3:
+                reward, description = self.generate_post_battle_reward()
+                result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
         else:
-            if opponent == ctx.author:  # This was a fight against an AI opponent
-                result_description = f"***In a stunning turn of events, the mighty {opponent_data['name']} overpowers {ctx.author.name} in an unforgettable battle!***"
-            else:
-                result_description = f"***In a stunning turn of events, {opponent.name} overpowers {ctx.author.name} in an unforgettable battle!***"
-
-        result_embed = discord.Embed(
-            title="🏆 __**Battle Conclusion**__ 🏆",
-            description=result_description,
-            color=discord.Color.gold()
-        )
-        result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
-        result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
-        result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
-
-        # Post-battle reward (30% chance)
-        if random.random() < 0.3:
-            reward, description = self.generate_post_battle_reward()
-            result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
+            result_embed = discord.Embed(
+                title="💀 __**Battle Conclusion**__ 💀",
+                description=f"***In a fierce battle, {winner.name} has defeated {ctx.author.name}!***",
+                color=discord.Color.red()
+            )
 
         await battle_message.edit(embed=result_embed)
-
     @op.command(name="profile")
     async def op_profile(self, ctx, user: discord.Member = None):
         """View your or another user's profile"""
@@ -536,25 +524,12 @@ class OnePieceBattle(commands.Cog):
             self.spawn_task.cancel()
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
 
-    @op.command()
-    async def reset(self, ctx, user: discord.Member = None):
-        """Reset your own data or the data of a specific user (admin only)"""
+    @op.command(name="reset")
+    @commands.is_owner()
+    async def op_reset(self, ctx, user: discord.Member = None):
+        """Reset a user's data (owner only)"""
         if user is None:
             user = ctx.author
-        elif not ctx.author.guild_permissions.administrator:
-            await ctx.send("You need administrator permissions to reset someone else's data.")
-            return
-
-        await ctx.send(f"Are you sure you want to reset {'your' if user == ctx.author else user.mention + 's'} One Piece battle data? This action cannot be undone. Type 'yes' to confirm.")
-        
-        def check(message):
-            return message.author == ctx.author and message.content.lower() == 'yes'
-
-        try:
-            await self.bot.wait_for('message', timeout=30.0, check=check)
-        except asyncio.TimeoutError:
-            await ctx.send("Data reset canceled due to inactivity.")
-            return
 
         default_user = {
             "fighting_style": None,
@@ -572,13 +547,15 @@ class OnePieceBattle(commands.Cog):
             "experience": 0,
             "stamina": 100,
             "skill_points": 0,
-            "strength": 0,
-            "speed": 0,
-            "defense": 0
+            "strength": 1,
+            "speed": 1,
+            "defense": 1,
+            "learned_techniques": [],
+            "equipped_items": []
         }
 
         await self.config.user(user).set(default_user)
-        await ctx.send(f"{'Your' if user == ctx.author else user.mention + 's'} One Piece battle data has been reset.")
+        await ctx.send(f"{user.mention}'s data has been reset to default values.")
     
 
     @op.command()
@@ -716,73 +693,6 @@ class OnePieceBattle(commands.Cog):
         user_data["equipped_items"].remove(item)
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've unequipped the {item}.")
-
-    @op.command(name="help")
-    async def op_help(self, ctx):
-        """Display detailed help information about the One Piece Battle game"""
-        help_embed = discord.Embed(
-            title="One Piece Battle - Help Guide",
-            description="Welcome to the world of One Piece Battles! Embark on an epic journey, train your skills, and become the Pirate King!",
-            color=discord.Color.blue()
-        )
-
-        # Game Overview
-        help_embed.add_field(
-            name="📜 Game Overview",
-            value=(
-                "In this game, you'll create a character inspired by the One Piece universe. "
-                "Train your skills, learn techniques, acquire Devil Fruits, and battle other players or formidable AI opponents. "
-                "Increase your bounty, improve your Haki, and aim for the top of the leaderboard!"
-            ),
-            inline=False
-        )
-
-        # Commands List
-        commands_info = {
-            "`.op begin`": "Start your journey and choose your fighting style.",
-            "`.op profile [user]`": "View your or another user's profile.",
-            "`.op battle [opponent]`": "Start a battle with another user or a strong AI opponent.",
-            "`.op train <stat>`": "Train a specific stat (strength, speed, defense, or haki).",
-            "`.op rest`": "Rest to recover stamina.",
-            "`.op learn_technique <technique>`": "Learn a new technique for battles.",
-            "`.op equip <item>`": "Equip an item to boost your stats.",
-            "`.op unequip <item>`": "Unequip an item.",
-            "`.op leaderboard [category]`": "View the top players (categories: bounty, level, battles_won).",
-            "`.op view_techniques`": "View available techniques for your fighting style.",
-            "`.op view_equipment`": "View available equipment and their stats."
-        }
-
-        commands_text = "\n".join([f"**{cmd}**: {desc}" for cmd, desc in commands_info.items()])
-        help_embed.add_field(name="🎮 Commands", value=commands_text, inline=False)
-
-        # Game Mechanics
-        mechanics_info = (
-            "**Character Progress**: Gain experience and level up by training and winning battles.\n"
-            "**Haki**: Improve your Observation, Armament, and Conqueror's Haki for powerful advantages.\n"
-            "**Devil Fruits**: Rare abilities that grant unique powers and stat boosts.\n"
-            "**Techniques**: Learn and use special moves in battle for extra damage.\n"
-            "**Equipment**: Equip items to enhance your stats.\n"
-            "**Stamina**: Required for training and battles. Rest to recover.\n"
-            "**Bounty**: Increases as you win battles, reflecting your notoriety.\n"
-            "**Battle System**: Turn-based combat with special events, critical hits, and combos."
-        )
-        help_embed.add_field(name="⚙️ Game Mechanics", value=mechanics_info, inline=False)
-
-        # Tips
-        tips = (
-            "• Balance your training across different stats for a well-rounded character.\n"
-            "• Use your skill points wisely when leveling up.\n"
-            "• Learn a variety of techniques to have options in battle.\n"
-            "• Pay attention to your stamina and rest when needed.\n"
-            "• Participate in battles regularly to increase your bounty and gain experience.\n"
-            "• Check the leaderboard to see how you rank against other players."
-        )
-        help_embed.add_field(name="💡 Tips", value=tips, inline=False)
-
-        # Footer
-        help_embed.set_footer(text="For more detailed information on specific commands, use .help op [command]")
-
-        await ctx.send(embed=help_embed)
 
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
