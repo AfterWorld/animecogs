@@ -318,40 +318,43 @@ class OnePieceBattle(commands.Cog):
     async def battle(self, ctx, opponent: discord.Member = None):
         """Start a battle with another user or a strong AI opponent"""
         user_data = await self.config.user(ctx.author).all()
-
+    
         if user_data["fatigue"] >= self.max_fatigue:
             await ctx.send(f"{ctx.author.mention}, you're too fatigued to battle! You need to rest first.")
             return
-
+    
         if not user_data["fighting_style"]:
             await ctx.send("You need to begin your journey first!")
             return
-
+    
         if opponent:
             opponent_data = await self.config.user(opponent).all()
             if not opponent_data["fighting_style"]:
                 await ctx.send(f"{opponent.mention} has not begun their journey yet!")
                 return
+            opponent_name = opponent.name
         else:
+            ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
+            opponent_name = random.choice(ai_names)
             opponent = ctx.author  # This is just to reuse the existing logic
-            opponent_data = self.create_ai_opponent()
-
+            opponent_data = self.create_ai_opponent(opponent_name)
+    
         battle_env = random.choice(list(self.environments.keys()))
         env_effect = self.environments[battle_env]
-
+    
         battle_embed = discord.Embed(
-            title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_data['name'] if 'name' in opponent_data else opponent.name}**__ ⚔️",
+            title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_name}**__ ⚔️",
             description=f"*{env_effect['description']} The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
-
+    
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
-
+    
         # Apply fatigue penalty to user's strength
         fatigue_penalty = 1 - (user_data["fatigue"] / self.max_fatigue) * 0.5  # Max 50% penalty at full fatigue
         user_strength *= fatigue_penalty
-
+    
         # Apply environment effects
         if user_data["devil_fruit"]:
             user_strength *= env_effect["df_modifier"]
@@ -362,11 +365,10 @@ class OnePieceBattle(commands.Cog):
             opp_strength *= env_effect["df_modifier"]
         else:
             opp_strength *= env_effect["non_df_modifier"]
-
+    
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
-
-        # Apply equipment bonuses
+    
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -375,7 +377,7 @@ class OnePieceBattle(commands.Cog):
                     user_data["speed"] += value
                 elif stat == "defense":
                     user_data["defense"] += value
-
+    
         for item in opponent_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -384,17 +386,17 @@ class OnePieceBattle(commands.Cog):
                     opponent_data["speed"] += value
                 elif stat == "defense":
                     opponent_data["defense"] += value
-
+    
         if user_data["devil_fruit"] in self.devil_fruits:
             user_strength = int(user_strength * self.devil_fruits[user_data["devil_fruit"]]["modifier"])
             battle_embed.add_field(name=f"{ctx.author.name}'s Devil Fruit", value=user_data["devil_fruit"], inline=True)
         if opponent_data["devil_fruit"] in self.devil_fruits:
             opp_strength = int(opp_strength * self.devil_fruits[opponent_data["devil_fruit"]]["modifier"])
-            battle_embed.add_field(name=f"{opponent_data['name'] if 'name' in opponent_data else opponent.name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=True)
-
+            battle_embed.add_field(name=f"{opponent_name}'s Devil Fruit", value=opponent_data["devil_fruit"], inline=True)
+    
         battle_log = []
         battle_message = await ctx.send(embed=battle_embed)
-
+    
         def get_health_bar(current_hp, max_hp, bar_length=10):
             fill = int(current_hp / max_hp * bar_length)
             if fill <= bar_length * 0.2:
@@ -404,25 +406,25 @@ class OnePieceBattle(commands.Cog):
             else:
                 color = "🟩"
             return f"{color * fill}{'⬜' * (bar_length - fill)}"
-
+    
         async def update_battle_embed():
             battle_embed.description = f"*{env_effect['description']}*\n" + "*" + "\n".join(battle_log[-3:]) + "*"
             user_health = get_health_bar(user_hp, user_strength * 20)
             opp_health = get_health_bar(opp_hp, opp_strength * 20)
             
             user_health_text = f"**{ctx.author.name}**\n{user_health} {user_hp:.0f}/{user_strength * 20:.0f} HP"
-            opp_health_text = f"**{opponent_data['name'] if 'name' in opponent_data else opponent.name}**\n{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f} HP"
+            opp_health_text = f"**{opponent_name}**\n{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f} HP"
             
             battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
             
             await battle_message.edit(embed=battle_embed)
-
+    
         battle_embed.add_field(name="__Health Status__", value="", inline=False)
         battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
-
+    
         user_awakened = False
         opp_awakened = False
-
+    
         turn_counter = 0
         while user_hp > 0 and opp_hp > 0:
             turn_counter += 1
@@ -430,50 +432,50 @@ class OnePieceBattle(commands.Cog):
             # Generate attacks
             user_attack, user_technique = self.generate_attack(ctx.author, user_data, user_strength)
             opp_attack, opp_technique = self.generate_attack(opponent, opponent_data, opp_strength)
-
+    
             # Devil Fruit Awakening
             if not user_awakened and user_data["devil_fruit"] and random.random() < self.awakening_chance:
                 user_strength *= self.awakening_boost
                 user_awakened = True
                 battle_log.append(f"💥 {ctx.author.name}'s Devil Fruit has awakened, boosting their power!")
-
+    
             if not opp_awakened and opponent_data["devil_fruit"] and random.random() < self.awakening_chance:
                 opp_strength *= self.awakening_boost
                 opp_awakened = True
-                battle_log.append(f"💥 {opponent_data['name']}'s Devil Fruit has awakened, boosting their power!")
-
+                battle_log.append(f"💥 {opponent_name}'s Devil Fruit has awakened, boosting their power!")
+    
             # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
                 battle_log.append(f"💥 **CRITICAL HIT!** {ctx.author.name}'s attack devastates the opponent!")
-
+    
             # Dodge chance
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
                 battle_log.append(f"💨 With lightning speed, {ctx.author.name} **DODGES** the attack!")
-
+    
             opp_hp = max(0, opp_hp - user_attack)
             user_hp = max(0, user_hp - opp_attack)
-
+    
             battle_log.append(f"**Turn {turn_counter}**")
             battle_log.append(f"🌊 {ctx.author.name} unleashes **{user_technique}** with {user_attack:.0f} power!")
-            battle_log.append(f"🔥 {opponent_data['name'] if 'name' in opponent_data else opponent.name} retaliates with **{opp_technique}**, dealing {opp_attack:.0f} damage!")
-
+            battle_log.append(f"🔥 {opponent_name} retaliates with **{opp_technique}**, dealing {opp_attack:.0f} damage!")
+    
             await update_battle_embed()
             await asyncio.sleep(2)
-
+    
             if turn_counter >= 30:
                 battle_log.append("⏱️ The battle has reached its time limit!")
                 break
-
+    
         # Reset awakening boost after battle
         if user_awakened:
             user_strength /= self.awakening_boost
         if opp_awakened:
             opp_strength /= self.awakening_boost
-
+    
         if user_hp > opp_hp:
             winner = ctx.author
             loser = opponent
@@ -507,7 +509,7 @@ class OnePieceBattle(commands.Cog):
     
             result_embed = discord.Embed(
                 title="🏆 __**Battle Conclusion**__ 🏆",
-                description=f"***In an epic clash on {battle_env}, {winner.name} emerges victorious!***",
+                description=f"***In an epic clash on {battle_env}, {ctx.author.name} emerges victorious against {opponent_name}!***",
                 color=discord.Color.gold()
             )
             result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
@@ -529,7 +531,7 @@ class OnePieceBattle(commands.Cog):
     
             result_embed = discord.Embed(
                 title="💀 __**Battle Conclusion**__ 💀",
-                description=f"***In a fierce battle on {battle_env}, {winner.name} has defeated {ctx.author.name}!***",
+                description=f"***In a fierce battle on {battle_env}, {opponent_name} has defeated {ctx.author.name}!***",
                 color=discord.Color.red()
             )
             result_embed.add_field(name="💪 Doriki Lost", value=f"**{doriki_loss}**")
@@ -577,14 +579,12 @@ class OnePieceBattle(commands.Cog):
         
         return attack_power, technique
 
-    def create_ai_opponent(self):
-        ai_names = ["Admiral Akainu", "Yonko Kaido", "Shichibukai Doflamingo", "CP0 Rob Lucci", "Revolutionary Dragon"]
-        opponent_name = random.choice(ai_names)
+    def create_ai_opponent(self, name):
         ai_fighting_style = random.choice(list(self.techniques.keys()))
         ai_devil_fruit = random.choice(list(self.devil_fruits.keys()))
         
         opponent_data = {
-            "name": opponent_name,
+            "name": name,
             "fighting_style": ai_fighting_style,
             "devil_fruit": ai_devil_fruit,
             "haki": {
