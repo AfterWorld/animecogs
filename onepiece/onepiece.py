@@ -604,17 +604,21 @@ class OnePieceBattle(commands.Cog):
         winner_data["stamina"] = max(0, winner_data.get("stamina", 100) - 20)
 
         if winner == ctx.author:
-            await self.config.user(winner).set(winner_data)
+            if opponent == ctx.author:  # This was a fight against an AI opponent
+                result_description = f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against the fearsome {opponent_data['name']}!***"
+            else:
+                result_description = f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against {opponent.name}!***"
+        else:
+            if opponent == ctx.author:  # This was a fight against an AI opponent
+                result_description = f"***In a stunning turn of events, the mighty {opponent_data['name']} overpowers {ctx.author.name} in an unforgettable battle!***"
+            else:
+                result_description = f"***In a stunning turn of events, {opponent.name} overpowers {ctx.author.name} in an unforgettable battle!***"
 
         result_embed = discord.Embed(
             title="🏆 __**Battle Conclusion**__ 🏆",
-            description=f"***In an epic clash that will be remembered for ages, {winner.name} emerges victorious against {loser.name if isinstance(loser, discord.Member) else loser_data['name']}!***",
+            description=result_description,
             color=discord.Color.gold()
         )
-        result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
-        result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
-        result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
-        await battle_message.edit(embed=result_embed)
     
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
