@@ -475,67 +475,67 @@ class OnePieceBattle(commands.Cog):
             opp_strength /= self.awakening_boost
 
         if user_hp > opp_hp:
-        winner = ctx.author
-        loser = opponent
-        winner_data = user_data
-        loser_data = opponent_data
-    else:
-        winner = opponent
-        loser = ctx.author
-        winner_data = opponent_data
-        loser_data = user_data
-
-    if winner == ctx.author:
-        doriki_gain = random.randint(100, 250)
-        haki_gain = random.randint(5, 15)
-        bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
-
-        user_data["doriki"] += doriki_gain
-        user_data["haki"]["observation"] += haki_gain
-        user_data["haki"]["armament"] += haki_gain
-        user_data["haki"]["conquerors"] += haki_gain // 2
-        user_data["bounty"] = user_data.get("bounty", 0) + bounty_gain
-        user_data["battles_won"] = user_data.get("battles_won", 0) + 1
-        user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
-
-        # Increase fatigue after battle
-        user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
-
-        # Increase Devil Fruit mastery
-        if user_data["devil_fruit"]:
-            mastery_gain = random.randint(1, 5)
-            user_data["devil_fruit_mastery"] += mastery_gain
-            await self.check_new_abilities(ctx, user_data)
-
-        await self.config.user(ctx.author).set(user_data)
-
-        result_embed = discord.Embed(
-            title="🏆 __**Battle Conclusion**__ 🏆",
-            description=f"***In an epic clash on {battle_env}, {winner.name} emerges victorious!***",
-            color=discord.Color.gold()
-        )
-        result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
-        result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
-        result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
-        result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
-        if user_data["devil_fruit"]:
-            result_embed.add_field(name="🍎 Devil Fruit Mastery", value=f"+{mastery_gain} (Total: {user_data['devil_fruit_mastery']})", inline=True)
-
-        if random.random() < 0.3:
-            reward, description = self.generate_post_battle_reward()
-            result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
-    else:
-        result_embed = discord.Embed(
-            title="💀 __**Battle Conclusion**__ 💀",
-            description=f"***In a fierce battle on {battle_env}, {winner.name} has defeated {ctx.author.name}!***",
-            color=discord.Color.red()
-        )
-        # Only increase fatigue for the player when they lose
-        user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
-        await self.config.user(ctx.author).set(user_data)
-        result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
-
-    await battle_message.edit(embed=result_embed)
+            winner = ctx.author
+            loser = opponent
+            winner_data = user_data
+            loser_data = opponent_data
+        else:
+            winner = opponent
+            loser = ctx.author
+            winner_data = opponent_data
+            loser_data = user_data
+    
+        if winner == ctx.author:
+            doriki_gain = random.randint(100, 250)
+            haki_gain = random.randint(5, 15)
+            bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
+    
+            user_data["doriki"] += doriki_gain
+            user_data["haki"]["observation"] += haki_gain
+            user_data["haki"]["armament"] += haki_gain
+            user_data["haki"]["conquerors"] += haki_gain // 2
+            user_data["bounty"] = user_data.get("bounty", 0) + bounty_gain
+            user_data["battles_won"] = user_data.get("battles_won", 0) + 1
+            user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
+    
+            # Increase fatigue after battle
+            user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
+    
+            # Increase Devil Fruit mastery
+            if user_data["devil_fruit"]:
+                mastery_gain = random.randint(1, 5)
+                user_data["devil_fruit_mastery"] += mastery_gain
+                await self.check_new_abilities(ctx, user_data)
+    
+            await self.config.user(ctx.author).set(user_data)
+    
+            result_embed = discord.Embed(
+                title="🏆 __**Battle Conclusion**__ 🏆",
+                description=f"***In an epic clash on {battle_env}, {winner.name} emerges victorious!***",
+                color=discord.Color.gold()
+            )
+            result_embed.add_field(name="💪 Doriki Gained", value=f"**{doriki_gain}**")
+            result_embed.add_field(name="🔮 Haki Improved", value=f"**{haki_gain}**")
+            result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
+            result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
+            if user_data["devil_fruit"]:
+                result_embed.add_field(name="🍎 Devil Fruit Mastery", value=f"+{mastery_gain} (Total: {user_data['devil_fruit_mastery']})", inline=True)
+    
+            if random.random() < 0.3:
+                reward, description = self.generate_post_battle_reward()
+                result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
+        else:
+            result_embed = discord.Embed(
+                title="💀 __**Battle Conclusion**__ 💀",
+                description=f"***In a fierce battle on {battle_env}, {winner.name} has defeated {ctx.author.name}!***",
+                color=discord.Color.red()
+            )
+            # Only increase fatigue for the player when they lose
+            user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
+            await self.config.user(ctx.author).set(user_data)
+            result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
+    
+        await battle_message.edit(embed=result_embed)
 
     async def check_new_abilities(self, ctx, user_data):
         if user_data["devil_fruit"] not in self.devil_fruit_abilities:
