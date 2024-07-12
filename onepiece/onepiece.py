@@ -171,7 +171,7 @@ class OnePieceBattle(commands.Cog):
             self.spawn_task.cancel()
         self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
 
-   @op.command()
+    @op.command()
     async def reset(self, ctx, user: discord.Member = None):
         """Reset your own data or the data of a specific user (admin only)"""
         if user is None:
