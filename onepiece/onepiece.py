@@ -338,7 +338,6 @@ class OnePieceBattle(commands.Cog):
             if random.random() < 0.2:
                 event = self.trigger_special_event(ctx.author.name, opponent_data['name'] if 'name' in opponent_data else opponent.name)
                 battle_log.append(event)
-                # You could add logic here to modify the battle based on the event
 
             # Apply damage
             opp_hp -= user_attack
