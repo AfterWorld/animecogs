@@ -22,7 +22,14 @@ class OnePieceBattle(commands.Cog):
             "bounty": 0,
             "battles_won": 0,
             "last_train": None,
-            "stamina": 100
+            "level": 1,
+            "experience": 0,
+            "stamina": 100,
+            "skill_points": 0,
+            "strength": 0,
+            "speed": 0,
+            "defense": 0,
+            "haki": 0
         }
         self.config.register_user(**default_user)
 
@@ -38,10 +45,30 @@ class OnePieceBattle(commands.Cog):
             "Hie Hie no Mi": {
                 "ability": "Ice Control",
                 "modifier": 1.3
+            },
+            "Pika Pika no Mi": {
+                "ability": "Light Manipulation",
+                "modifier": 1.4
+            },
+            "Gura Gura no Mi": {
+                "ability": "Earthquake Generation",
+                "modifier": 1.5
+            },
+            "Yami Yami no Mi": {
+                "ability": "Darkness Manipulation",
+                "modifier": 1.4
+            },
+            "Suna Suna no Mi": {
+                "ability": "Sand Control",
+                "modifier": 1.3
+            },
+            "Magu Magu no Mi": {
+                "ability": "Magma Control",
+                "modifier": 1.4
             }
         }
 
-        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn())
+        self.spawn_task = self.bot.loop.create_task(self.devil_fruit_spawn(self.spawn_channel_id))
 
     def cog_unload(self):
         self.spawn_task.cancel()
@@ -167,6 +194,38 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(embed=embed)
 
     @op.command()
+    async def allocate(self, ctx, stat: str, points: int):
+        """Allocate skill points to a specific stat"""
+        user_data = await self.config.user(ctx.author).all()
+        valid_stats = ["strength", "speed", "defense", "haki"]
+        
+        if stat not in valid_stats:
+            await ctx.send(f"Invalid stat. Please choose one of: {', '.join(valid_stats)}")
+            return
+
+        if points <= 0 or points > user_data["skill_points"]:
+            await ctx.send("Invalid number of points. You don't have enough skill points.")
+            return
+
+        user_data[stat] += points
+        user_data["skill_points"] -= points
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You have allocated {points} points to {stat}.")
+
+    @op.command()
+    async def skill_tree(self, ctx):
+        """View your skill tree"""
+        user_data = await self.config.user(ctx.author).all()
+        
+        embed = discord.Embed(title=f"{ctx.author.name}'s Skill Tree", color=discord.Color.green())
+        embed.add_field(name="Skill Points", value=user_data["skill_points"], inline=False)
+        
+        for stat in ["strength", "speed", "defense", "haki"]:
+            embed.add_field(name=stat.capitalize(), value=user_data[stat], inline=True)
+        
+        await ctx.send(embed=embed)
+
+    @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def train(self, ctx, stat: str):
         """Train a specific stat"""
@@ -176,7 +235,7 @@ class OnePieceBattle(commands.Cog):
             await ctx.send("You need to begin your journey first!")
             return
 
-        valid_stats = ["doriki", "observation", "armament", "conquerors"]
+        valid_stats = ["doriki", "haki"]
         if stat not in valid_stats:
             await ctx.send(f"Invalid stat. Please choose one of: {', '.join(valid_stats)}")
             return
@@ -185,21 +244,76 @@ class OnePieceBattle(commands.Cog):
             await ctx.send("You're too tired to train right now. Rest up and come back later!")
             return
 
-        if stat == "doriki":
-            gain = random.randint(10, 50)
-        else:
-            gain = random.randint(1, 5)
+        exp_gain = random.randint(10, 50)
+        user_data["experience"] += exp_gain
+
+        if user_data["experience"] >= user_data["level"] * 100:
+            user_data["level"] += 1
+            user_data["skill_points"] += 2
+            await ctx.send(f"Congratulations! You have reached level {user_data['level']}. You have gained 2 skill points.")
 
         if stat == "doriki":
+            gain = random.randint(10, 50)
             user_data["doriki"] += gain
-        else:
-            user_data["haki"][stat] += gain
+        else:  # haki
+            gain = random.randint(1, 5)
+            user_data["haki"]["observation"] += gain
+            user_data["haki"]["armament"] += gain
+            user_data["haki"]["conquerors"] += gain // 2
 
         user_data["stamina"] -= 10
         user_data["last_train"] = datetime.now().isoformat()
         await self.config.user(ctx.author).set(user_data)
 
         await ctx.send(f"You trained your {stat} and gained {gain} points!")
+        
+    @op.command()
+    async def devil_fruit_info(self, ctx, *, devil_fruit: str):
+        """Get information about a specific Devil Fruit"""
+        if devil_fruit not in self.devil_fruits:
+            await ctx.send("Invalid Devil Fruit. Please provide a valid Devil Fruit name.")
+            return
+
+        fruit_info = self.devil_fruits[devil_fruit]
+        embed = discord.Embed(title=devil_fruit, color=discord.Color.blue())
+        embed.add_field(name="Ability", value=fruit_info["ability"], inline=False)
+        embed.add_field(name="Strength Modifier", value=fruit_info["modifier"], inline=False)
+
+        await ctx.send(embed=embed)
+        
+    @op.command()
+    async def leaderboard(self, ctx, criteria: str = "bounty"):
+        """Display the leaderboard based on the specified criteria"""
+        valid_criteria = ["bounty", "wins", "level", "doriki"]
+        if criteria not in valid_criteria:
+            await ctx.send(f"Invalid criteria. Please choose one of: {', '.join(valid_criteria)}")
+            return
+
+        users = await self.config.all_users()
+        
+        if criteria == "bounty":
+            leaderboard = sorted(users.items(), key=lambda x: x[1]["bounty"], reverse=True)
+        elif criteria == "wins":
+            leaderboard = sorted(users.items(), key=lambda x: x[1]["battles_won"], reverse=True)
+        elif criteria == "level":
+            leaderboard = sorted(users.items(), key=lambda x: x[1]["level"], reverse=True)
+        else:  # doriki
+            leaderboard = sorted(users.items(), key=lambda x: x[1]["doriki"], reverse=True)
+
+        top_10 = leaderboard[:10]
+
+        embed = discord.Embed(title=f"Leaderboard - Top 10 ({criteria.capitalize()})", color=discord.Color.gold())
+        
+        if not top_10:
+            embed.description = "No users found."
+        else:
+            for i, (user_id, user_data) in enumerate(top_10, start=1):
+                user = self.bot.get_user(user_id)
+                if user:
+                    value = user_data["bounty"] if criteria == "bounty" else user_data["battles_won"] if criteria == "wins" else user_data["level"] if criteria == "level" else user_data["doriki"]
+                    embed.add_field(name=f"{i}. {user.name}", value=value, inline=False)
+
+        await ctx.send(embed=embed)
 
     @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)
