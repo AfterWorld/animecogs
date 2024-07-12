@@ -26,9 +26,9 @@ class OnePieceBattle(commands.Cog):
             "experience": 0,
             "stamina": 100,
             "skill_points": 0,
-            "strength": 0,
-            "speed": 0,
-            "defense": 0,
+            "strength": 1,  # Changed from 0 to 1
+            "speed": 1,     # Changed from 0 to 1
+            "defense": 1,   # Changed from 0 to 1
             "learned_techniques": [],
             "equipped_items": []
         }
@@ -328,39 +328,39 @@ class OnePieceBattle(commands.Cog):
 
         await ctx.send(embed=embed)
     
-    @op.command()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
-    async def rest(self, ctx):
+    @op.command(name="view_techniques")
+    async def op_view_techniques(self, ctx):
+        """View available techniques for your fighting style"""
         user_data = await self.config.user(ctx.author).all()
-        stamina_gain = random.randint(20, 40)
-        user_data["stamina"] = min(100, user_data["stamina"] + stamina_gain)
-        await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}")
+        fighting_style = user_data["fighting_style"]
         
-    @op.command()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
-    async def equip(self, ctx, *, item: str):
-        user_data = await self.config.user(ctx.author).all()
-        
-        if not user_data["fighting_style"]:
+        if not fighting_style:
             await ctx.send("You need to begin your journey first!")
             return
         
-        if item not in self.equipment:
-            await ctx.send("That item doesn't exist.")
-            return
+        available_techniques = self.techniques.get(fighting_style, [])
+        learned_techniques = user_data["learned_techniques"]
         
-        if len(user_data["equipped_items"]) >= 3:
-            await ctx.send("You can't equip more than 3 items. Unequip something first.")
-            return
+        embed = discord.Embed(title=f"Techniques for {fighting_style}", color=discord.Color.blue())
+        for technique in available_techniques:
+            status = "Learned" if technique in learned_techniques else "Not Learned"
+            embed.add_field(name=technique, value=status, inline=False)
         
-        user_data["equipped_items"].append(item)
-        await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You've equipped the {item}!")
+        await ctx.send(embed=embed)
+
+    @op.command(name="view_equipment")
+    async def op_view_equipment(self, ctx):
+        """View available equipment and their stats"""
+        embed = discord.Embed(title="Available Equipment", color=discord.Color.green())
+        for item, stats in self.equipment.items():
+            stat_string = ", ".join([f"{stat}: {value}" for stat, value in stats.items()])
+            embed.add_field(name=item, value=stat_string, inline=False)
         
-    @op.command()
-    @commands.cooldown(1, 1800, commands.BucketType.user)   
-    async def learn_technique(self, ctx, *, technique_name: str):
+        await ctx.send(embed=embed)
+
+    @op.command(name="learn_technique")
+    async def op_learn_technique(self, ctx, *, technique_name: str):
+        """Learn a new technique"""
         user_data = await self.config.user(ctx.author).all()
         fighting_style = user_data["fighting_style"]
         
@@ -379,10 +379,31 @@ class OnePieceBattle(commands.Cog):
         user_data["learned_techniques"].append(technique_name)
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've learned the {technique_name} technique!")
-    
-    @op.command()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
-    async def unequip(self, ctx, *, item: str):
+
+    @op.command(name="equip")
+    async def op_equip(self, ctx, *, item: str):
+        """Equip an item"""
+        user_data = await self.config.user(ctx.author).all()
+        
+        if not user_data["fighting_style"]:
+            await ctx.send("You need to begin your journey first!")
+            return
+        
+        if item not in self.equipment:
+            await ctx.send("That item doesn't exist.")
+            return
+        
+        if len(user_data["equipped_items"]) >= 3:
+            await ctx.send("You can't equip more than 3 items. Unequip something first.")
+            return
+        
+        user_data["equipped_items"].append(item)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've equipped the {item}!")
+
+    @op.command(name="unequip")
+    async def op_unequip(self, ctx, *, item: str):
+        """Unequip an item"""
         user_data = await self.config.user(ctx.author).all()
         
         if not user_data["fighting_style"]:
@@ -396,6 +417,15 @@ class OnePieceBattle(commands.Cog):
         user_data["equipped_items"].remove(item)
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You've unequipped the {item}.")
+
+    @op.command(name="rest")
+    async def op_rest(self, ctx):
+        """Rest to recover stamina"""
+        user_data = await self.config.user(ctx.author).all()
+        stamina_gain = random.randint(20, 40)
+        user_data["stamina"] = min(100, user_data["stamina"] + stamina_gain)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You rested and recovered {stamina_gain} stamina. Current stamina: {user_data['stamina']}")
 
     @op.command()
     @commands.cooldown(1, 1800, commands.BucketType.user)
@@ -418,14 +448,14 @@ class OnePieceBattle(commands.Cog):
                 "fighting_style": random.choice(list(self.techniques.keys())),
                 "devil_fruit": random.choice(list(self.devil_fruits.keys())) if random.random() < 0.5 else None,
                 "haki": {
-                    "observation": user_data["haki"]["observation"] + random.randint(-10, 10),
-                    "armament": user_data["haki"]["armament"] + random.randint(-10, 10),
-                    "conquerors": user_data["haki"]["conquerors"] + random.randint(-10, 10)
+                    "observation": max(0, user_data["haki"]["observation"] + random.randint(-10, 10)),
+                    "armament": max(0, user_data["haki"]["armament"] + random.randint(-10, 10)),
+                    "conquerors": max(0, user_data["haki"]["conquerors"] + random.randint(-10, 10))
                 },
-                "doriki": user_data["doriki"] + random.randint(-100, 100),
-                "strength": user_data["strength"] + random.randint(-10, 10),
-                "speed": user_data["speed"] + random.randint(-10, 10),
-                "defense": user_data["defense"] + random.randint(-10, 10),
+                "doriki": max(1, user_data["doriki"] + random.randint(-100, 100)),
+                "strength": max(1, user_data["strength"] + random.randint(-10, 10)),
+                "speed": max(1, user_data["speed"] + random.randint(-10, 10)),
+                "defense": max(1, user_data["defense"] + random.randint(-10, 10)),
                 "learned_techniques": random.sample(self.techniques[random.choice(list(self.techniques.keys()))], 3),
                 "equipped_items": random.sample(list(self.equipment.keys()), random.randint(0, 3)),
                 "stamina": 100
@@ -437,8 +467,8 @@ class OnePieceBattle(commands.Cog):
             color=discord.Color.green()
         )
 
-        user_strength = user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"]
-        opp_strength = opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"]
+        user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
+        opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
 
         # Apply equipment bonuses
         for item in user_data["equipped_items"]:
@@ -446,18 +476,18 @@ class OnePieceBattle(commands.Cog):
                 if stat == "strength":
                     user_strength += value
                 elif stat == "speed":
-                    user_strength += value // 2
+                    user_data["speed"] += value
                 elif stat == "defense":
-                    user_strength += value // 3
+                    user_data["defense"] += value
 
         for item in opponent_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
                     opp_strength += value
                 elif stat == "speed":
-                    opp_strength += value // 2
+                    opponent_data["speed"] += value
                 elif stat == "defense":
-                    opp_strength += value // 3
+                    opponent_data["defense"] += value
 
         if user_data["devil_fruit"] in self.devil_fruits:
             user_strength *= self.devil_fruits[user_data["devil_fruit"]]["modifier"]
@@ -483,7 +513,8 @@ class OnePieceBattle(commands.Cog):
                 battle_embed.add_field(name="Critical Hit!", value=f"{ctx.author.name} lands a critical hit!", inline=False)
 
             # Dodge chance (based on speed)
-            user_dodge_chance = user_data["speed"] / (user_data["speed"] + opponent_data["speed"])
+            total_speed = max(1, user_data["speed"] + opponent_data["speed"])  # Ensure it's not zero
+            user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
                 battle_embed.add_field(name="Dodge!", value=f"{ctx.author.name} dodges the attack!", inline=False)
