@@ -4,6 +4,7 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 import json
+from redbot.core.utils.predicates import MessagePredicate
 
 def safe_json_loads(data, default=None):
     if isinstance(data, (dict, list)):
@@ -121,6 +122,31 @@ class DemonSlayer(commands.Cog):
             user_data["exam_cooldown"] = (datetime.now() + timedelta(minutes=5)).timestamp()
             await self.config.user(ctx.author).set(user_data)
             await ctx.send(f"You've failed the exam with a score of {score}/5. You can retake it in 5 minutes.")
+
+    @commands.is_owner()
+    @ds.command(name="wipe_data")
+    async def wipe_all_data(self, ctx):
+        """Wipe all Demon Slayer data (Owner only)"""
+        await ctx.send("⚠️ **WARNING**: This will delete ALL Demon Slayer data for all users and guilds. "
+                       "This action is irreversible. Are you sure you want to proceed? (yes/no)")
+
+        pred = MessagePredicate.yes_or_no(ctx)
+        try:
+            await self.bot.wait_for("message", check=pred, timeout=30)
+        except asyncio.TimeoutError:
+            await ctx.send("No response received. Data wipe cancelled.")
+            return
+
+        if pred.result is True:
+            # Wipe all user data
+            await self.config.clear_all_users()
+            
+            # Wipe all guild data
+            await self.config.clear_all_guilds()
+            
+            await ctx.send("All Demon Slayer data has been wiped.")
+        else:
+            await ctx.send("Data wipe cancelled.")
 
     @ds.command(name="hunt")
     @commands.cooldown(1, 3600, commands.BucketType.user)
