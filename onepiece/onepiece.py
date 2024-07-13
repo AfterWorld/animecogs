@@ -3,7 +3,7 @@ from redbot.core import commands, Config
 from redbot.core.utils.menus import menu, DEFAULT_CONTROLS
 import random
 import asyncio
-from datetime import datetime, timedelta
+import datetime
 import logging
 
 class OnePieceBattle(commands.Cog):
@@ -43,19 +43,6 @@ class OnePieceBattle(commands.Cog):
             "devil_fruit_mastery": 0,
             "unlocked_abilities": []
         }
-        
-        default_global = {
-            "last_bounty_update": None,
-            "top_bounties": [],
-            "battle_royale_channel": None,
-            "next_battle_royale": None,
-            "ongoing_battle_royale": False
-        }
-        
-        
-        self.battle_royale_task = self.bot.loop.create_task(self.battle_royale_scheduler())
-        self.bounty_update_task = self.bot.loop.create_task(self.periodic_bounty_update()) # Start the bounty update loop
-        self.config.register_global(**default_global)
         self.config.register_user(**default_user)
         self.max_fatigue = 100
         self.fatigue_per_battle = 10
@@ -84,54 +71,7 @@ class OnePieceBattle(commands.Cog):
             "Fishman Island": "The underwater pressure adds a unique twist to the battle!",
             "Punk Hazard": "Half-frozen, half-ablaze, this island is a battleground of extremes!"
         }
-        
-        self.terrain_effects = {
-            "Sea": {
-                "water": 1.5,
-                "fire": 0.7,
-                "lightning": 1.3,
-                "earth": 0.8,
-                "wind": 1.2
-            },
-            "Island": {
-                "water": 0.9,
-                "fire": 1.1,
-                "lightning": 1.0,
-                "earth": 1.3,
-                "wind": 1.1
-            },
-            "City": {
-                "water": 1.0,
-                "fire": 1.2,
-                "lightning": 1.1,
-                "earth": 0.9,
-                "wind": 1.0
-            },
-            "Desert": {
-                "water": 1.5,
-                "fire": 1.3,
-                "lightning": 0.8,
-                "earth": 1.2,
-                "wind": 1.1
-            },
-            "Sky": {
-                "water": 0.8,
-                "fire": 0.9,
-                "lightning": 1.5,
-                "earth": 0.7,
-                "wind": 1.4
-            }
-        }
-        
-        self.devil_fruit_elements = {
-            "Mera Mera no Mi": "fire",
-            "Hie Hie no Mi": "water",  # Ice is considered water-based
-            "Goro Goro no Mi": "lightning",
-            "Suna Suna no Mi": "earth",
-            "Kaze Kaze no Mi": "wind",  # Hypothetical wind fruit
-            # ... add more as needed
-        }
-        
+
         self.environments = {
             "Sea": {
                 "description": "Surrounded by water, Devil Fruit users are weakened.",
@@ -155,61 +95,6 @@ class OnePieceBattle(commands.Cog):
             }
         }
         
-        self.battle_hazards = {
-            "Sea": [
-                {"name": "Sea King Attack", "description": "A massive Sea King emerges!", "effect": self.sea_king_attack},
-                {"name": "Whirlpool", "description": "A dangerous whirlpool forms nearby!", "effect": self.whirlpool_effect},
-                {"name": "Tidal Wave", "description": "A massive tidal wave approaches!", "effect": self.tidal_wave_effect},
-                {"name": "Storm Surge", "description": "A powerful storm surge hits the area!", "effect": self.storm_surge}
-            ],
-            "Island": [
-                {"name": "Volcano Eruption", "description": "The island's volcano begins to erupt!", "effect": self.volcano_eruption},
-                {"name": "Jungle Ambush", "description": "Wild animals suddenly attack!", "effect": self.jungle_ambush},
-                {"name": "Quicksand", "description": "The ground beneath turns to quicksand!", "effect": self.quicksand_effect},
-                {"name": "Earthquake", "description": "The island is hit by a sudden earthquake!", "effect": self.earthquake}
-            ],
-            "City": [
-                {"name": "Falling Debris", "description": "Buildings start to collapse!", "effect": self.falling_debris},
-                {"name": "Civilian Panic", "description": "Panicked civilians run through the battlefield!", "effect": self.civilian_panic},
-                {"name": "Marine Interference", "description": "A Marine patrol stumbles upon the battle!", "effect": self.marine_interference},
-                {"name": "Blackout", "description": "The city's power grid fails, causing a blackout!", "effect": self.blackout},
-                {"name": "Toxic Gas Leak", "description": "A nearby factory releases toxic gas!", "effect": self.toxic_gas_leak}
-            ]
-        }
-        
-        self.mythical_zones = {
-            "Raftel": {
-                "description": "The legendary final island of the Grand Line.",
-                "effect": self.raftel_effect,
-                "reward": "Ancient Weapon Blueprint",
-                "spawn_chance": 0.01  # 1% chance
-            },
-            "All Blue": {
-                "description": "The mystical sea where all four Blues meet.",
-                "effect": self.all_blue_effect,
-                "reward": "Legendary Fish",
-                "spawn_chance": 0.05  # 5% chance
-            },
-            "Emerald City": {
-                "description": "A hidden city of advanced technology.",
-                "effect": self.emerald_city_effect,
-                "reward": "Advanced Den Den Mushi",
-                "spawn_chance": 0.03  # 3% chance
-            },
-            "God Valley": {
-                "description": "An island that disappeared from history.",
-                "effect": self.god_valley_effect,
-                "reward": "Celestial Dragon Artifact",
-                "spawn_chance": 0.02  # 2% chance
-            },
-            "Laugh Tale": {
-                "description": "The island where the One Piece is hidden.",
-                "effect": self.laugh_tale_effect,
-                "reward": "Poneglyph Rubbing",
-                "spawn_chance": 0.005  # 0.5% chance
-            }
-        }
-        
         self.devil_fruits = {
             "Gomu Gomu no Mi": {"ability": "Elasticity", "modifier": 1.2, "type": "Paramecia"},
             "Mera Mera no Mi": {"ability": "Fire Control", "modifier": 1.3, "type": "Logia"},
@@ -217,78 +102,21 @@ class OnePieceBattle(commands.Cog):
             "Pika Pika no Mi": {"ability": "Light Manipulation", "modifier": 1.4, "type": "Logia"},
             "Gura Gura no Mi": {"ability": "Earthquake Generation", "modifier": 1.5, "type": "Paramecia"},
             "Yami Yami no Mi": {"ability": "Darkness Manipulation", "modifier": 1.4, "type": "Logia"},
-            "Ope Ope no Mi": {"ability": "Operation", "modifier": 1.3, "type": "Paramecia"},
-            "Magu Magu no Mi": {"ability": "Magma Control", "modifier": 1.4, "type": "Logia"},
-            "Goro Goro no Mi": {"ability": "Lightning Control", "modifier": 1.4, "type": "Logia"},
             "Suna Suna no Mi": {"ability": "Sand Control", "modifier": 1.3, "type": "Logia"},
+            "Magu Magu no Mi": {"ability": "Magma Control", "modifier": 1.4, "type": "Logia"},
+            "Ope Ope no Mi": {"ability": "Operation", "modifier": 1.3, "type": "Paramecia"},
+            "Goro Goro no Mi": {"ability": "Lightning Control", "modifier": 1.4, "type": "Logia"},
             "Mochi Mochi no Mi": {"ability": "Mochi Manipulation", "modifier": 1.3, "type": "Special Paramecia"},
             "Bara Bara no Mi": {"ability": "Body Separation", "modifier": 1.2, "type": "Paramecia"},
-            "Doku Doku no Mi": {"ability": "Poison Generation", "modifier": 1.3, "type": "Paramecia"},
-            "Hana Hana no Mi": {"ability": "Body Replication", "modifier": 1.2, "type": "Paramecia"},
-            "Kilo Kilo no Mi": {"ability": "Weight Manipulation", "modifier": 1.2, "type": "Paramecia"}
+            "Zoan Fruits": {"ability": "Animal Transformation", "modifier": 1.3, "type": "Zoan"}
         }
 
         self.techniques = {
-            "Swordsman": [
-                {"name": "Single Sword Style", "level": 1},
-                {"name": "Two Sword Style", "level": 5},
-                {"name": "Three Sword Style", "level": 10},
-                {"name": "Flying Slash Attack", "level": 15},
-                {"name": "Lion's Song", "level": 20},
-                {"name": "Great Dragon Shock", "level": 25},
-                {"name": "Purgatory Onigiri", "level": 30},
-                {"name": "Phoenix of the 36 Earthly Desires", "level": 35},
-                {"name": "One Sword Style: Great Dragon Shock", "level": 40},
-                {"name": "Santoryu Ogi: Rokudo no Tsuji", "level": 50}
-            ],
-            "Martial Artist": [
-                {"name": "Shigan", "level": 1},
-                {"name": "Tekkai", "level": 5},
-                {"name": "Rankyaku", "level": 10},
-                {"name": "Soru", "level": 15},
-                {"name": "Geppou", "level": 20},
-                {"name": "Kami-e", "level": 25},
-                {"name": "Rokuogan", "level": 30},
-                {"name": "Life Return", "level": 35},
-                {"name": "Seimei Kikan: Kami-e Bushin", "level": 40},
-                {"name": "Rokushiki Ogi: Rokuogan", "level": 50}
-            ],
-            "Sniper": [
-                {"name": "Lead Star", "level": 1},
-                {"name": "Exploding Star", "level": 5},
-                {"name": "Fire Bird Star", "level": 10},
-                {"name": "Smoke Star", "level": 15},
-                {"name": "Kemuri Boshi", "level": 20},
-                {"name": "Platanus Shuriken", "level": 25},
-                {"name": "Hissatsu Firebird Star", "level": 30},
-                {"name": "Midori Boshi: Devil", "level": 35},
-                {"name": "Grow Up: Kuro Kabuto", "level": 40},
-                {"name": "Hissatsu: Totsugeki Ryuseigun", "level": 50}
-            ],
-            "Brawler": [
-                {"name": "Gomu Gomu no Pistol", "level": 1},
-                {"name": "Gomu Gomu no Bazooka", "level": 5},
-                {"name": "Gomu Gomu no Gatling", "level": 10},
-                {"name": "Gear Second", "level": 15},
-                {"name": "Gomu Gomu no Jet Pistol", "level": 20},
-                {"name": "Gear Third", "level": 25},
-                {"name": "Gomu Gomu no Elephant Gun", "level": 30},
-                {"name": "Gear Fourth", "level": 35},
-                {"name": "Gomu Gomu no King Kong Gun", "level": 40},
-                {"name": "Gear Fifth", "level": 50}
-            ],
-            "Tactician": [
-                {"name": "Mirage Tempo", "level": 1},
-                {"name": "Thunderbolt Tempo", "level": 5},
-                {"name": "Cyclone Tempo", "level": 10},
-                {"name": "Thunder Lance Tempo", "level": 15},
-                {"name": "Clima-Tact: Rain Tempo", "level": 20},
-                {"name": "Weather Egg", "level": 25},
-                {"name": "Thunder Breed Tempo", "level": 30},
-                {"name": "Zeus Breeze Tempo", "level": 35},
-                {"name": "Raitei", "level": 40},
-                {"name": "Big Mom: Thunderbolt", "level": 50}
-            ]
+            "Swordsman": ["Three Sword Style", "Flying Slash Attack", "Lion's Song"],
+            "Martial Artist": ["Shigan", "Tekkai", "Rankyaku"],
+            "Sniper": ["Exploding Star", "Lead Star", "Fire Bird Star"],
+            "Brawler": ["Gomu Gomu no Pistol", "Gomu Gomu no Bazooka", "Gear Second"],
+            "Tactician": ["Mirage Tempo", "Thunderbolt Tempo", "Weather Egg"]
         }
         
         self.elemental_interactions = {
@@ -311,29 +139,11 @@ class OnePieceBattle(commands.Cog):
         }
 
         self.equipment = {
-            "Weapons": {
-                "Wooden Sword": {"type": "Sword", "rarity": "Common", "strength": 5, "speed": 2},
-                "Steel Cutlass": {"type": "Sword", "rarity": "Uncommon", "strength": 15, "speed": 5},
-                "Graded Sword: Wado Ichimonji": {"type": "Sword", "rarity": "Rare", "strength": 30, "speed": 10, "special": "Increases critical hit chance"},
-                "Supreme Grade Sword: Yoru": {"type": "Sword", "rarity": "Legendary", "strength": 50, "speed": 20, "special": "Chance to unleash devastating slash"},
-                
-                "Flintlock Pistol": {"type": "Gun", "rarity": "Common", "strength": 8, "speed": 10},
-                "Modified Rifle": {"type": "Gun", "rarity": "Uncommon", "strength": 20, "speed": 15},
-                "Kabuto": {"type": "Gun", "rarity": "Rare", "strength": 35, "speed": 25, "special": "Versatile ammo types"},
-                "Clima-Tact": {"type": "Staff", "rarity": "Legendary", "strength": 40, "speed": 30, "special": "Weather manipulation"}
-            },
-            "Armor": {
-                "Light Vest": {"type": "Chest", "rarity": "Common", "defense": 10},
-                "Steel Armor": {"type": "Chest", "rarity": "Uncommon", "defense": 25, "speed": -5},
-                "Sea Stone Gauntlets": {"type": "Hands", "rarity": "Rare", "defense": 20, "strength": 15, "special": "Nullifies Devil Fruit powers on contact"},
-                "Adam Wood Armor": {"type": "Chest", "rarity": "Legendary", "defense": 50, "special": "Greatly reduces damage from slashing attacks"}
-            },
-            "Accessories": {
-                "Straw Hat": {"type": "Head", "rarity": "Uncommon", "speed": 5, "special": "Increases crew morale"},
-                "Log Pose": {"type": "Wrist", "rarity": "Rare", "special": "Improves navigation, chance to avoid ambushes"},
-                "Eternal Pose": {"type": "Wrist", "rarity": "Epic", "special": "Always find your way, significant boost to escape chances"},
-                "Red Poneglyph Rubbing": {"type": "Pocket", "rarity": "Legendary", "special": "Reveals hidden knowledge, chance for instant victory against history-based encounters"}
-            }
+            "Sword": {"strength": 20, "speed": 10},
+            "Gun": {"strength": 15, "speed": 15},
+            "Armor": {"defense": 30},
+            "Boots": {"speed": 20},
+            "Gloves": {"strength": 10, "speed": 10}
         }
         
         self.combo_attacks = {
@@ -341,86 +151,29 @@ class OnePieceBattle(commands.Cog):
                 "Gomu Gomu no Mi": "Gum-Gum Sword Whip",
                 "Mera Mera no Mi": "Flame-Edged Blade Dance",
                 "Hie Hie no Mi": "Frozen Sword Barrage",
-                "Pika Pika no Mi": "Light Speed Slash",
-                "Gura Gura no Mi": "Tremor Blade Quake",
                 "Yami Yami no Mi": "Dark Matter Slash",
-                "Ope Ope no Mi": "Precision Surgical Strike",
-                "Magu Magu no Mi": "Magma Sword Eruption",
-                "Goro Goro no Mi": "Thunder Blade Tempest",
-                "Suna Suna no Mi": "Sand Storm Blade",
-                "Mochi Mochi no Mi": "Sticky Blade Assault",
-                "Bara Bara no Mi": "Separate Sword Dance",
-                "Doku Doku no Mi": "Venomous Blade Strike",
-                "Hana Hana no Mi": "Blooming Sword Garden",
-                "Kilo Kilo no Mi": "Gravity Slash"
+                "Gura Gura no Mi": "Tremor Blade Quake"
             },
             "Martial Artist": {
                 "Gomu Gomu no Mi": "Elastic Fist Gatling",
                 "Mera Mera no Mi": "Blazing Kick Tempest",
                 "Hie Hie no Mi": "Frost-Knuckle Assault",
-                "Pika Pika no Mi": "Light Speed Barrage",
-                "Gura Gura no Mi": "Seismic Shockwave Punch",
                 "Yami Yami no Mi": "Gravity Well Throw",
-                "Ope Ope no Mi": "Shambles Combo Strike",
-                "Magu Magu no Mi": "Volcanic Eruption Fist",
-                "Goro Goro no Mi": "Thunder God's Wrath",
-                "Suna Suna no Mi": "Desert Whirlwind Kick",
-                "Mochi Mochi no Mi": "Sticky Mochi Beatdown",
-                "Bara Bara no Mi": "Chop-Chop Cannon",
-                "Doku Doku no Mi": "Toxic Touch Combo",
-                "Hana Hana no Mi": "Thousand-Arm Barrage",
-                "Kilo Kilo no Mi": "Meteor Punch"
+                "Gura Gura no Mi": "Seismic Shockwave Punch"
             },
             "Sniper": {
                 "Gomu Gomu no Mi": "Rubber Bullet Barrage",
                 "Mera Mera no Mi": "Inferno Snipe",
                 "Hie Hie no Mi": "Absolute Zero Shot",
-                "Pika Pika no Mi": "Photon Beam Precision",
-                "Gura Gura no Mi": "Shatterpoint Precision Shot",
                 "Yami Yami no Mi": "Black Hole Projectile",
-                "Ope Ope no Mi": "Surgical Snipe",
-                "Magu Magu no Mi": "Magma Meteor Shower",
-                "Goro Goro no Mi": "Lightning Bolt Accuracy",
-                "Suna Suna no Mi": "Sandstorm Spread Shot",
-                "Mochi Mochi no Mi": "Sticky Trap Shot",
-                "Bara Bara no Mi": "Separate Homing Missile",
-                "Doku Doku no Mi": "Venom Dart Volley",
-                "Hana Hana no Mi": "Bloom-Bloom Crossfire",
-                "Kilo Kilo no Mi": "Variable Mass Bullet"
-            },
-            "Brawler": {
-                "Gomu Gomu no Mi": "Gum-Gum Storm",
-                "Mera Mera no Mi": "Flame Emperor's Wrath",
-                "Hie Hie no Mi": "Absolute Zero Smash",
-                "Pika Pika no Mi": "Light Speed Barrage",
-                "Gura Gura no Mi": "World Shaker Assault",
-                "Yami Yami no Mi": "Black Hole Crush",
-                "Ope Ope no Mi": "Operating Room Rampage",
-                "Magu Magu no Mi": "Volcanic Devastation",
-                "Goro Goro no Mi": "Million Volt Mayhem",
-                "Suna Suna no Mi": "Sahara Tempest",
-                "Mochi Mochi no Mi": "Mochi Mochi Pummeling",
-                "Bara Bara no Mi": "Chop-Chop Festival",
-                "Doku Doku no Mi": "Venom Demon Onslaught",
-                "Hana Hana no Mi": "Cien Fleur Fury",
-                "Kilo Kilo no Mi": "Mass Shift Beatdown"
+                "Gura Gura no Mi": "Shatterpoint Precision Shot"
             },
             "Tactician": {
                 "Gomu Gomu no Mi": "Elastic Trap Network",
                 "Mera Mera no Mi": "Firewall Strategy",
                 "Hie Hie no Mi": "Cryo-Lockdown Maneuver",
-                "Pika Pika no Mi": "Lightspeed Tactical Array",
-                "Gura Gura no Mi": "Tectonic Battlefield Control",
                 "Yami Yami no Mi": "Void Field Tactics",
-                "Ope Ope no Mi": "Surgical Strike Plan",
-                "Magu Magu no Mi": "Magma Flow Redirect",
-                "Goro Goro no Mi": "Thunder Cloud Formation",
-                "Suna Suna no Mi": "Sandstorm Cover Op",
-                "Mochi Mochi no Mi": "Sticky Situation Setup",
-                "Bara Bara no Mi": "Disassembly Maze",
-                "Doku Doku no Mi": "Toxic Terrain Advantage",
-                "Hana Hana no Mi": "Spy Network Bloom",
-                "Kilo Kilo no Mi": "Gravity Well Trap"
+                "Gura Gura no Mi": "Tectonic Battlefield Control"
             }
         }
         
@@ -496,131 +249,6 @@ class OnePieceBattle(commands.Cog):
             if mastery >= level:
                 return data
         return self.awakening_levels[0]
-    
-    def get_attack_element(self, attack_name):
-            # This method determines the elemental type of an attack based on its name
-        if "Fire" in attack_name or "Flame" in attack_name:
-            return "fire"
-        elif "Water" in attack_name or "Aqua" in attack_name:
-            return "water"
-        elif "Thunder" in attack_name or "Lightning" in attack_name:
-            return "lightning"
-        elif "Earth" in attack_name or "Stone" in attack_name:
-            return "earth"
-        elif "Wind" in attack_name or "Air" in attack_name:
-            return "wind"
-        else:
-            return "normal"
-
-    def apply_terrain_effect(self, attack_power, attack_name, terrain, devil_fruit):
-        attack_element = self.get_attack_element(attack_name)
-        
-        # If the attack doesn't have a specific element, check if it's a Devil Fruit attack
-        if attack_element == "normal" and devil_fruit in self.devil_fruit_elements:
-            attack_element = self.devil_fruit_elements[devil_fruit]
-        
-        terrain_modifier = self.terrain_effects[terrain].get(attack_element, 1.0)
-        return attack_power * terrain_modifier
-    
-    async def tidal_wave_effect(self, ctx, user_data, opponent_data):
-        user_damage = random.randint(30, 70)
-        opp_damage = random.randint(30, 70)
-        user_data["hp"] -= user_damage
-        opponent_data["hp"] -= opp_damage
-        return f"The tidal wave crashes into both fighters! {ctx.author.name} takes {user_damage} damage and {opponent_data['name']} takes {opp_damage} damage!"
-
-    async def storm_surge(self, ctx, user_data, opponent_data):
-        speed_penalty = 10
-        user_data["speed"] = max(0, user_data["speed"] - speed_penalty)
-        opponent_data["speed"] = max(0, opponent_data["speed"] - speed_penalty)
-        return f"A storm surge hits! Both fighters' speed is reduced by {speed_penalty}!"
-
-    async def volcano_eruption(self, ctx, user_data, opponent_data):
-        damage = random.randint(40, 80)
-        user_data["hp"] -= damage
-        opponent_data["hp"] -= damage
-        return f"The volcano erupts, showering both fighters with hot ash and debris! Both take {damage} damage!"
-
-    async def jungle_ambush(self, ctx, user_data, opponent_data):
-        if random.random() < 0.5:
-            user_data["hp"] -= 30
-            return f"Wild animals ambush {ctx.author.name}, dealing 30 damage!"
-        else:
-            opponent_data["hp"] -= 30
-            return f"Wild animals ambush {opponent_data['name']}, dealing 30 damage!"
-
-    async def quicksand_effect(self, ctx, user_data, opponent_data):
-        speed_reduction = 20
-        user_data["speed"] = max(0, user_data["speed"] - speed_reduction)
-        opponent_data["speed"] = max(0, opponent_data["speed"] - speed_reduction)
-        return f"Quicksand appears! Both fighters' speed is reduced by {speed_reduction}!"
-
-    async def earthquake(self, ctx, user_data, opponent_data):
-        damage = random.randint(20, 60)
-        user_data["hp"] -= damage
-        opponent_data["hp"] -= damage
-        return f"An earthquake shakes the island! Both fighters take {damage} damage and lose their footing!"
-
-    async def falling_debris(self, ctx, user_data, opponent_data):
-        if random.random() < 0.5:
-            damage = random.randint(30, 70)
-            user_data["hp"] -= damage
-            return f"Falling debris hits {ctx.author.name}, dealing {damage} damage!"
-        else:
-            damage = random.randint(30, 70)
-            opponent_data["hp"] -= damage
-            return f"Falling debris hits {opponent_data['name']}, dealing {damage} damage!"
-
-    async def civilian_panic(self, ctx, user_data, opponent_data):
-        speed_boost = 15
-        user_data["speed"] += speed_boost
-        opponent_data["speed"] += speed_boost
-        return f"Panicked civilians create chaos! Both fighters' speed increases by {speed_boost} as they maneuver through the crowd!"
-
-    async def marine_interference(self, ctx, user_data, opponent_data):
-        damage = random.randint(10, 40)
-        user_data["hp"] -= damage
-        opponent_data["hp"] -= damage
-        return f"Marine forces interfere with the battle! Both fighters take {damage} damage from stray attacks!"
-
-    async def blackout(self, ctx, user_data, opponent_data):
-        accuracy_penalty = 20
-        user_data["accuracy"] = max(0, user_data.get("accuracy", 100) - accuracy_penalty)
-        opponent_data["accuracy"] = max(0, opponent_data.get("accuracy", 100) - accuracy_penalty)
-        return f"A sudden blackout occurs! Both fighters' accuracy is reduced by {accuracy_penalty}%!"
-
-    async def toxic_gas_leak(self, ctx, user_data, opponent_data):
-        poison_damage = 10
-        user_data["hp"] -= poison_damage
-        opponent_data["hp"] -= poison_damage
-        return f"Toxic gas leaks into the area! Both fighters take {poison_damage} poison damage and will continue to take damage each turn!"
-    
-    async def trigger_hazard(self, ctx, environment, user_data, opponent_data):
-        if random.random() < 0.2:  # 20% chance of a hazard occurring
-            hazard = random.choice(self.battle_hazards[environment])
-            await ctx.send(f"**{hazard['name']}**: {hazard['description']}")
-            effect_message = await hazard['effect'](ctx, user_data, opponent_data)
-            await ctx.send(effect_message)
-            return True
-        return False
-    
-    async def check_new_techniques(self, user):
-        """Check and grant new techniques based on user's level"""
-        user_data = await self.config.user(user).all()
-        fighting_style = user_data["fighting_style"]
-        current_level = user_data["level"]
-        learned_techniques = user_data["learned_techniques"]
-
-        new_techniques = []
-        for technique in self.techniques[fighting_style]:
-            if technique["level"] <= current_level and technique["name"] not in learned_techniques:
-                learned_techniques.append(technique["name"])
-                new_techniques.append(technique["name"])
-
-        if new_techniques:
-            await self.config.user(user).learned_techniques.set(learned_techniques)
-            return new_techniques
-        return []
 
     async def devil_fruit_spawn(self):
         await self.bot.wait_until_ready()
@@ -677,97 +305,10 @@ class OnePieceBattle(commands.Cog):
                 await self.config.user(user_data["_id"]).set(user_data)
                 return "Your Gear has deactivated due to stamina depletion!"
         return None
-    
-    async def periodic_bounty_update(self):
-        await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
-            await self.update_top_bounties()
-            await asyncio.sleep(3600)  # Update every hour
-
-    async def update_top_bounties(self):
-        all_users = await self.config.all_users()
-        sorted_users = sorted(all_users.items(), key=lambda x: x[1].get('bounty', 0), reverse=True)
-        top_50 = sorted_users[:50]
-
-        top_bounties = [
-            {"user_id": user_id, "bounty": user_data.get('bounty', 0)}
-            for user_id, user_data in top_50
-        ]
-
-        await self.config.top_bounties.set(top_bounties)
-        await self.config.last_bounty_update.set(datetime.datetime.utcnow().isoformat())
-        
-    async def raftel_effect(self, ctx, user_data, opponent_data):
-        """Double all stats for both fighters"""
-        for stat in ['strength', 'speed', 'defense']:
-            user_data[stat] *= 2
-            opponent_data[stat] *= 2
-        return "The power of Raftel doubles all stats for both fighters!"
-
-    async def all_blue_effect(self, ctx, user_data, opponent_data):
-        """Heal both fighters and boost water-based attacks"""
-        heal_amount = 50
-        user_data['hp'] = min(user_data['max_hp'], user_data['hp'] + heal_amount)
-        opponent_data['hp'] = min(opponent_data['max_hp'], opponent_data['hp'] + heal_amount)
-        return f"The healing waters of All Blue restore {heal_amount} HP to both fighters and boost water-based attacks!"
-
-    async def emerald_city_effect(self, ctx, user_data, opponent_data):
-        """Randomly enhance one stat for each fighter"""
-        user_stat = random.choice(['strength', 'speed', 'defense'])
-        opp_stat = random.choice(['strength', 'speed', 'defense'])
-        user_data[user_stat] *= 1.5
-        opponent_data[opp_stat] *= 1.5
-        return f"The advanced technology of Emerald City enhances {ctx.author.name}'s {user_stat} and {opponent_data['name']}'s {opp_stat}!"
-
-    async def god_valley_effect(self, ctx, user_data, opponent_data):
-        """Temporarily unlock advanced Haki for both fighters"""
-        haki_boost = 50
-        for haki_type in user_data['haki']:
-            user_data['haki'][haki_type] += haki_boost
-            opponent_data['haki'][haki_type] += haki_boost
-        return f"The mysterious power of God Valley unlocks advanced Haki for both fighters, boosting all Haki types by {haki_boost}!"
-
-    async def laugh_tale_effect(self, ctx, user_data, opponent_data):
-        """Reveal the 'Voice of All Things' to one random fighter"""
-        if random.choice([True, False]):
-            user_data['voice_of_all_things'] = True
-            return f"{ctx.author.name} hears the Voice of All Things, gaining incredible insight!"
-        else:
-            opponent_data['voice_of_all_things'] = True
-            return f"{opponent_data['name']} hears the Voice of All Things, gaining incredible insight!"
-        
-    async def update_discovered_zones(self, user, zone):
-        async with self.config.user(user).all() as user_data:
-            user_data.setdefault('discovered_zones', [])
-            if zone not in user_data['discovered_zones']:
-                user_data['discovered_zones'].append(zone)
-                
-    async def battle_royale_scheduler(self):
-        await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
-            all_guilds = await self.config.all_guilds()
-            for guild_id, guild_data in all_guilds.items():
-                if guild_data["battle_royale_channel"] and not guild_data["ongoing_battle_royale"]:
-                    next_battle = guild_data["next_battle_royale"]
-                    if next_battle and datetime.now() >= datetime.fromisoformat(next_battle):
-                        guild = self.bot.get_guild(guild_id)
-                        if guild:
-                            await self.start_battle_royale(guild)
-            await asyncio.sleep(60)  # Check every minute
-    
-    def cog_unload(self):
-        # Cancel the update task when the cog is unloaded
-        if self.bounty_update_task:
-            self.bounty_update_task.cancel()
 
     def cog_unload(self):
         if self.spawn_task:
             self.spawn_task.cancel()
-            
-    def cog_unload(self):
-        if self.battle_royale_task:
-            self.battle_royale_task.cancel()
-            
 
     @commands.group()
     async def op(self, ctx):
@@ -831,15 +372,15 @@ class OnePieceBattle(commands.Cog):
     async def battle(self, ctx, opponent: discord.Member = None):
         """Start a battle with another user or a strong AI opponent"""
         user_data = await self.config.user(ctx.author).all()
-
+    
         if user_data["fatigue"] >= self.max_fatigue:
             await ctx.send(f"{ctx.author.mention}, you're too fatigued to battle! You need to rest first.")
             return
-
+    
         if not user_data["fighting_style"]:
             await ctx.send("You need to begin your journey first!")
             return
-
+    
         if opponent:
             opponent_data = await self.config.user(opponent).all()
             if not opponent_data["fighting_style"]:
@@ -851,53 +392,36 @@ class OnePieceBattle(commands.Cog):
             opponent_name = random.choice(ai_names)
             opponent = ctx.author  # This is just to reuse the existing logic
             opponent_data = self.create_ai_opponent(opponent_name)
-
-        # Determine battle environment
+    
         battle_env = random.choice(list(self.environments.keys()))
         env_effect = self.environments[battle_env]
-
-        # Check for Mythical Zone
-        mythical_zone = None
-        for zone, data in self.mythical_zones.items():
-            if random.random() < data['spawn_chance']:
-                mythical_zone = zone
-                break
-
-        if mythical_zone:
-            battle_env = mythical_zone
-            await ctx.send(f"**Mythical Zone Discovered: {mythical_zone}!**\n{self.mythical_zones[mythical_zone]['description']}")
-            effect_message = await self.mythical_zones[mythical_zone]['effect'](ctx, user_data, opponent_data)
-            await ctx.send(effect_message)
-        else:
-            await ctx.send(f"The battle takes place in a {battle_env} environment!")
-
+    
         battle_embed = discord.Embed(
             title=f"⚔️ __**Epic Battle: {ctx.author.name} vs {opponent_name}**__ ⚔️",
             description=f"*{env_effect['description']} The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
-        battle_message = await ctx.send(embed=battle_embed)
-
+    
         # Calculate base strength
         user_strength = max(1, user_data["doriki"] + sum(user_data["haki"].values()) + user_data["strength"])
         opp_strength = max(1, opponent_data["doriki"] + sum(opponent_data["haki"].values()) + opponent_data["strength"])
-
+    
         # Apply Legendary Weapon boost
         user_strength = self.apply_legendary_weapon(user_data, user_strength)
         opp_strength = self.apply_legendary_weapon(opponent_data, opp_strength)
-
+    
         # Apply Devil Fruit boost (including awakening)
         user_strength = self.apply_devil_fruit_boost(user_data, user_strength)
         opp_strength = self.apply_devil_fruit_boost(opponent_data, opp_strength)
-
+    
         # Apply Gear boost for Paramecia users
         user_strength = self.apply_gear_boost(user_data, user_strength)
         opp_strength = self.apply_gear_boost(opponent_data, opp_strength)
-
+    
         # Apply fatigue penalty to user's strength
         fatigue_penalty = 1 - (user_data["fatigue"] / self.max_fatigue) * 0.5  # Max 50% penalty at full fatigue
         user_strength *= fatigue_penalty
-
+    
         # Apply environment effects
         if user_data["devil_fruit"]:
             user_strength *= env_effect["df_modifier"]
@@ -908,10 +432,10 @@ class OnePieceBattle(commands.Cog):
             opp_strength *= env_effect["df_modifier"]
         else:
             opp_strength *= env_effect["non_df_modifier"]
-
+    
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
-
+    
         # Equipment effects
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
@@ -921,7 +445,7 @@ class OnePieceBattle(commands.Cog):
                     user_data["speed"] += value
                 elif stat == "defense":
                     user_data["defense"] += value
-
+    
         for item in opponent_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
                 if stat == "strength":
@@ -930,9 +454,10 @@ class OnePieceBattle(commands.Cog):
                     opponent_data["speed"] += value
                 elif stat == "defense":
                     opponent_data["defense"] += value
-
+    
         battle_log = []
-
+        battle_message = await ctx.send(embed=battle_embed)
+    
         def get_health_bar(current_hp, max_hp, bar_length=10):
             fill = int(current_hp / max_hp * bar_length)
             if fill <= bar_length * 0.2:
@@ -942,7 +467,7 @@ class OnePieceBattle(commands.Cog):
             else:
                 color = "🟩"
             return f"{color * fill}{'⬜' * (bar_length - fill)}"
-
+    
         async def update_battle_embed():
             battle_embed.description = f"*{env_effect['description']}*\n" + "*" + "\n".join(battle_log[-3:]) + "*"
             user_health = get_health_bar(user_hp, user_strength * 20)
@@ -954,13 +479,13 @@ class OnePieceBattle(commands.Cog):
             battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
             
             await battle_message.edit(embed=battle_embed)
-
+    
         battle_embed.add_field(name="__Health Status__", value="", inline=False)
         battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
-
+    
         user_awakened = False
         opp_awakened = False
-
+    
         turn_counter = 0
         while user_hp > 0 and opp_hp > 0:
             turn_counter += 1
@@ -968,68 +493,59 @@ class OnePieceBattle(commands.Cog):
             # Generate attacks
             user_attack, user_technique = self.generate_attack(ctx.author, user_data, user_strength)
             opp_attack, opp_technique = self.generate_attack(opponent, opponent_data, opp_strength)
-
-            # Apply terrain effects
-            user_attack = self.apply_terrain_effect(user_attack, user_technique, battle_env, user_data.get("devil_fruit"))
-            opp_attack = self.apply_terrain_effect(opp_attack, opp_technique, battle_env, opponent_data.get("devil_fruit"))
-
+    
             # Devil Fruit Awakening chance
             if not user_awakened and user_data["devil_fruit"] and random.random() < self.awakening_chance:
                 awakening_boost = self.get_awakening_level(user_data.get("devil_fruit_mastery", 0))["boost"]
                 user_strength *= awakening_boost
                 user_awakened = True
                 battle_log.append(f"💥 {ctx.author.name}'s Devil Fruit has temporarily awakened, boosting their power!")
-
+    
             if not opp_awakened and opponent_data["devil_fruit"] and random.random() < self.awakening_chance:
                 awakening_boost = self.get_awakening_level(opponent_data.get("devil_fruit_mastery", 0))["boost"]
                 opp_strength *= awakening_boost
                 opp_awakened = True
                 battle_log.append(f"💥 {opponent_name}'s Devil Fruit has temporarily awakened, boosting their power!")
-
+    
             # Handle Gear stamina drain
             gear_message = await self.handle_gear_stamina(user_data)
             if gear_message:
                 battle_log.append(gear_message)
+                # Recalculate user_strength if gear deactivated
                 user_strength = self.apply_gear_boost(user_data, user_strength)
-
+    
             # Critical hit chance (10%)
             if random.random() < 0.1:
                 user_attack *= 2
                 battle_log.append(f"💥 **CRITICAL HIT!** {ctx.author.name}'s attack devastates the opponent!")
-
+    
             # Dodge chance
             total_speed = max(1, user_data["speed"] + opponent_data["speed"])
             user_dodge_chance = user_data["speed"] / total_speed
             if random.random() < user_dodge_chance:
                 opp_attack = 0
                 battle_log.append(f"💨 With lightning speed, {ctx.author.name} **DODGES** the attack!")
-
-            # Battle Hazards
-            hazard_occurred = await self.trigger_hazard(ctx, battle_env, user_data, opponent_data)
-            if hazard_occurred:
-                await update_battle_embed()
-                await asyncio.sleep(2)
-
+    
             opp_hp = max(0, opp_hp - user_attack)
             user_hp = max(0, user_hp - opp_attack)
-
+    
             battle_log.append(f"**Turn {turn_counter}**")
             battle_log.append(f"🌊 {ctx.author.name} unleashes **{user_technique}** with {user_attack:.0f} power!")
             battle_log.append(f"🔥 {opponent_name} retaliates with **{opp_technique}**, dealing {opp_attack:.0f} damage!")
-
+    
             await update_battle_embed()
             await asyncio.sleep(2)
-
+    
             if turn_counter >= 30:
                 battle_log.append("⏱️ The battle has reached its time limit!")
                 break
-
+    
         # Reset awakening boost after battle
         if user_awakened:
             user_strength /= awakening_boost
         if opp_awakened:
             opp_strength /= awakening_boost
-
+    
         if user_hp > opp_hp:
             winner = ctx.author
             loser = opponent
@@ -1042,25 +558,31 @@ class OnePieceBattle(commands.Cog):
             winner_data = opponent_data
             loser_data = user_data
             is_victory = False
-
+    
         if is_victory:
             doriki_gain = random.randint(100, 250)
             haki_gain = random.randint(5, 15)
             bounty_gain = loser_data.get("bounty", 0) // 20 if loser_data.get("bounty", 0) > 0 else random.randint(10000000, 50000000)
-
+    
             user_data["doriki"] += doriki_gain
             user_data["haki"]["observation"] += haki_gain
             user_data["haki"]["armament"] += haki_gain
             user_data["haki"]["conquerors"] += haki_gain // 2
             user_data["bounty"] = user_data.get("bounty", 0) + bounty_gain
             user_data["battles_won"] = user_data.get("battles_won", 0) + 1
-
+    
             # Increase Devil Fruit mastery
             if user_data["devil_fruit"]:
                 mastery_gain = random.randint(1, 5)
                 user_data["devil_fruit_mastery"] = min(100, user_data.get("devil_fruit_mastery", 0) + mastery_gain)
                 await self.check_new_abilities(ctx, user_data)
-
+    
+            # Chance to find a Legendary Weapon
+            if random.random() < 0.05:  # 5% chance
+                new_weapon = random.choice(list(self.legendary_weapons.keys()))
+                user_data["legendary_weapon"] = new_weapon
+                battle_log.append(f"🏆 {ctx.author.name} found the legendary weapon: {new_weapon}!")
+    
             result_embed = discord.Embed(
                 title="🏆 __**Battle Conclusion**__ 🏆",
                 description=f"***In an epic clash on {battle_env}, {ctx.author.name} emerges victorious against {opponent_name}!***",
@@ -1071,16 +593,10 @@ class OnePieceBattle(commands.Cog):
             result_embed.add_field(name="💰 Bounty Increased", value=f"**{bounty_gain:,}**")
             if user_data["devil_fruit"]:
                 result_embed.add_field(name="🍎 Devil Fruit Mastery", value=f"+{mastery_gain} (Total: {user_data['devil_fruit_mastery']})", inline=True)
-
+    
             if random.random() < 0.3:
                 reward, description = self.generate_post_battle_reward()
                 result_embed.add_field(name=f"🎁 Special Reward: {reward}", value=description, inline=False)
-
-            # Mythical Zone reward
-            if mythical_zone:
-                mythical_reward = self.mythical_zones[mythical_zone]['reward']
-                user_data.setdefault('inventory', []).append(mythical_reward)
-                result_embed.add_field(name="🏝️ Mythical Zone Reward", value=f"You've obtained: {mythical_reward}!", inline=False)
         else:
             # Penalties for losing
             doriki_loss = random.randint(50, 150)
@@ -1088,7 +604,7 @@ class OnePieceBattle(commands.Cog):
             
             user_data["doriki"] = max(0, user_data["doriki"] - doriki_loss)
             user_data["bounty"] = max(0, user_data["bounty"] - bounty_loss)
-
+    
             result_embed = discord.Embed(
                 title="💀 __**Battle Conclusion**__ 💀",
                 description=f"***In a fierce battle on {battle_env}, {opponent_name} has defeated {ctx.author.name}!***",
@@ -1096,119 +612,6 @@ class OnePieceBattle(commands.Cog):
             )
             result_embed.add_field(name="💪 Doriki Lost", value=f"**{doriki_loss}**")
             result_embed.add_field(name="💰 Bounty Decreased", value=f"**{bounty_loss:,}**")
-
-        # Common operations for both win and loss
-        user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
-        user_data["fatigue"] = min(self.max_fatigue, user_data["fatigue"] + self.fatigue_per_battle)
-        result_embed.add_field(name="😓 Fatigue", value=f"{user_data['fatigue']}/{self.max_fatigue}", inline=True)
-
-        # Remove active gear after battle
-        if "active_gear" in user_data:
-            del user_data["active_gear"]
-
-        # Update user data in the database
-        await self.config.user(ctx.author).set(user_data)
-
-        # Update opponent data if it's a real player
-        if isinstance(opponent, discord.Member):
-            await self.config.user(opponent).set(opponent_data)
-
-        # Add experience
-        exp_gain = random.randint(50, 100) if is_victory else random.randint(20, 50)
-        user_data["experience"] += exp_gain
-        result_embed.add_field(name="📊 Experience Gained", value=f"**{exp_gain}**", inline=True)
-
-        # Check for level up
-        level_up_message = await self.check_level_up(ctx.author, user_data)
-        if level_up_message:
-            result_embed.add_field(name="🎉 Level Up!", value=level_up_message, inline=False)
-
-        # Update bounty rankings
-        await self.update_bounty_rankings(ctx.guild, ctx.author, user_data["bounty"])
-
-        # Send the final result embed
-        await battle_message.edit(embed=result_embed)
-
-        # If it was a Mythical Zone battle, update the user's discovered zones
-        if mythical_zone:
-            await self.update_discovered_zones(ctx.author, mythical_zone)
-
-        # Trigger any post-battle events
-        await self.trigger_post_battle_events(ctx, is_victory, battle_env)
-
-    async def check_level_up(self, user, user_data):
-        exp_needed = user_data["level"] * 100
-        if user_data["experience"] >= exp_needed:
-            user_data["level"] += 1
-            user_data["experience"] -= exp_needed
-            user_data["skill_points"] += 3
-            await self.config.user(user).set(user_data)
-            return f"{user.mention} has reached level {user_data['level']}! You've gained 3 skill points."
-        return None
-
-    async def update_bounty_rankings(self, guild, user, bounty):
-        async with self.config.guild(guild).bounty_rankings() as rankings:
-            rankings[str(user.id)] = bounty
-            # Keep only top 100 bounties
-            rankings = dict(sorted(rankings.items(), key=lambda x: x[1], reverse=True)[:100])
-
-    async def update_discovered_zones(self, user, zone):
-        async with self.config.user(user).discovered_zones() as zones:
-            if zone not in zones:
-                zones.append(zone)
-
-    async def trigger_post_battle_events(self, ctx, is_victory, battle_env):
-        # Implement any post-battle events here
-        # For example, random item discoveries, special announcements, etc.
-        if is_victory and random.random() < 0.1:  # 10% chance
-            special_item = random.choice(["Mystery Map", "Ancient Coin", "Strange Device"])
-            user_data = await self.config.user(ctx.author).all()
-            user_data.setdefault("inventory", []).append(special_item)
-            await self.config.user(ctx.author).set(user_data)
-            await ctx.send(f"🎁 In the aftermath of the battle, {ctx.author.mention} discovers a {special_item}!")
-
-        # Maybe trigger a random world event based on the battle outcome
-        if random.random() < 0.05:  # 5% chance
-            event_message = f"News of the fierce battle in {battle_env} spreads across the world!"
-            # Implement logic to affect world state or trigger follow-up events
-            await ctx.send(f"📰 **Breaking News**: {event_message}")
-
-    async def check_level_up(self, user, user_data):
-        exp_needed = user_data["level"] * 100
-        if user_data["experience"] >= exp_needed:
-            user_data["level"] += 1
-            user_data["experience"] -= exp_needed
-            user_data["skill_points"] += 3
-            await self.config.user(user).set(user_data)
-            return f"{user.mention} has reached level {user_data['level']}! You've gained 3 skill points."
-        return None
-
-    async def update_bounty_rankings(self, guild, user, bounty):
-        async with self.config.guild(guild).bounty_rankings() as rankings:
-            rankings[str(user.id)] = bounty
-            # Keep only top 100 bounties
-            rankings = dict(sorted(rankings.items(), key=lambda x: x[1], reverse=True)[:100])
-
-    async def update_discovered_zones(self, user, zone):
-        async with self.config.user(user).discovered_zones() as zones:
-            if zone not in zones:
-                zones.append(zone)
-
-    async def trigger_post_battle_events(self, ctx, is_victory, battle_env):
-        # Implement any post-battle events here
-        # For example, random item discoveries, special announcements, etc.
-        if is_victory and random.random() < 0.1:  # 10% chance
-            special_item = random.choice(["Mystery Map", "Ancient Coin", "Strange Device"])
-            user_data = await self.config.user(ctx.author).all()
-            user_data.setdefault("inventory", []).append(special_item)
-            await self.config.user(ctx.author).set(user_data)
-            await ctx.send(f"🎁 In the aftermath of the battle, {ctx.author.mention} discovers a {special_item}!")
-
-        # Maybe trigger a random world event based on the battle outcome
-        if random.random() < 0.05:  # 5% chance
-            event_message = f"News of the fierce battle in {battle_env} spreads across the world!"
-            # Implement logic to affect world state or trigger follow-up events
-            await ctx.send(f"📰 **Breaking News**: {event_message}")
     
         # Common operations for both win and loss
         user_data["stamina"] = max(0, user_data.get("stamina", 100) - 20)
@@ -1309,15 +712,6 @@ class OnePieceBattle(commands.Cog):
             if weapon:
                 return base_strength + weapon["boost"]
         return base_strength
-    
-    # You can add this effect to the main battle loop to apply continuous damage
-    async def apply_poison_effect(self, ctx, user_data, opponent_data):
-        if "poisoned" in user_data:
-            user_data["hp"] -= 10
-            await ctx.send(f"{ctx.author.name} takes 10 poison damage!")
-        if "poisoned" in opponent_data:
-            opponent_data["hp"] -= 10
-            await ctx.send(f"{opponent_data['name']} takes 10 poison damage!")
 
     # Modify your battle method to use the awakening boost
     def apply_devil_fruit_boost(self, user_data, base_strength):
@@ -1333,174 +727,6 @@ class OnePieceBattle(commands.Cog):
             gear_data = self.gear_system[user_data["active_gear"]]
             return base_strength * gear_data["boost"]
         return base_strength
-    
-    @op.command(name="lvlup")
-    async def level_up(self, ctx):
-        """Simulate leveling up (for testing purposes)"""
-        user_data = await self.config.user(ctx.author).all()
-        user_data["level"] += 1
-        await self.config.user(ctx.author).set(user_data)
-
-        new_techniques = await self.check_new_techniques(ctx.author)
-        
-        if new_techniques:
-            techniques_str = ", ".join(new_techniques)
-            await ctx.send(f"Congratulations! You've reached level {user_data['level']} and learned new techniques: {techniques_str}")
-        else:
-            await ctx.send(f"Congratulations! You've reached level {user_data['level']}.")
-            
-    @op.command(name="terrain")
-    async def terrain_info(self, ctx, terrain: str = None):
-        """Display information about terrain effects"""
-        if terrain is None or terrain.capitalize() not in self.terrain_effects:
-            terrains = ", ".join(self.terrain_effects.keys())
-            await ctx.send(f"Please specify a valid terrain: {terrains}")
-            return
-
-        terrain = terrain.capitalize()
-        embed = discord.Embed(title=f"{terrain} Terrain Effects", color=discord.Color.green())
-        for element, modifier in self.terrain_effects[terrain].items():
-            effect = "Boosted" if modifier > 1 else "Weakened" if modifier < 1 else "Neutral"
-            embed.add_field(name=element.capitalize(), value=f"{effect} ({modifier}x)", inline=True)
-        
-        await ctx.send(embed=embed)
-    
-    @op.command(name="rewards")
-    async def bounty_rewards(self, ctx):
-        """Display information about bounty rewards"""
-        embed = discord.Embed(title="Bounty Ranking Rewards", color=discord.Color.gold())
-        embed.add_field(name="1st Place", value="1,000,000 Berries and Yonko's Treasure", inline=False)
-        embed.add_field(name="2nd Place", value="750,000 Berries and Admiral's Medal", inline=False)
-        embed.add_field(name="3rd Place", value="500,000 Berries and Shichibukai Emblem", inline=False)
-        embed.add_field(name="4th - 10th Place", value="250,000 Berries", inline=False)
-        embed.add_field(name="11th - 50th Place", value="100,000 Berries", inline=False)
-        embed.set_footer(text="Rewards are distributed periodically to top-ranked players.")
-        await ctx.send(embed=embed)
-        
-    @op.command(name="zones")
-    async def mythical_zones(self, ctx):
-        """Display information about Mythical Zones"""
-        embed = discord.Embed(title="Mythical Zones", color=discord.Color.purple())
-        for zone, data in self.mythical_zones.items():
-            embed.add_field(name=zone, value=f"Description: {data['description']}\nReward: {data['reward']}\nSpawn Chance: {data['spawn_chance']*100}%", inline=False)
-        embed.set_footer(text="Mythical Zones are rare battle environments with unique effects and rewards!")
-        await ctx.send(embed=embed)
-    
-    @op.command(name="myzones")
-    async def my_discoveries(self, ctx):
-        """View the Mythical Zones you've discovered"""
-        user_data = await self.config.user(ctx.author).all()
-        discovered = user_data.get('discovered_zones', [])
-        
-        if not discovered:
-            await ctx.send("You haven't discovered any Mythical Zones yet. Keep exploring!")
-            return
-
-        embed = discord.Embed(title=f"{ctx.author.name}'s Discovered Mythical Zones", color=discord.Color.gold())
-        for zone in discovered:
-            embed.add_field(name=zone, value=self.mythical_zones[zone]['description'], inline=False)
-        
-        await ctx.send(embed=embed)
-        
-    @op.command(name="bountytop")
-    async def bounty_leaderboard(self, ctx, page: int = 1):
-        """Display the bounty leaderboard"""
-        top_bounties = await self.config.top_bounties()
-        last_update = await self.config.last_bounty_update()
-
-        if not top_bounties:
-            await ctx.send("The bounty leaderboard is currently empty.")
-            return
-
-        items_per_page = 10
-        pages = []
-
-        for i in range(0, len(top_bounties), items_per_page):
-            embed = discord.Embed(title="Bounty Leaderboard", color=discord.Color.gold())
-            for j, entry in enumerate(top_bounties[i:i+items_per_page], start=i+1):
-                user = self.bot.get_user(entry['user_id'])
-                user_name = user.name if user else f"User {entry['user_id']}"
-                embed.add_field(
-                    name=f"{j}. {user_name}",
-                    value=f"Bounty: {entry['bounty']:,} Berries",
-                    inline=False
-                )
-            
-            if last_update:
-                embed.set_footer(text=f"Last updated: {last_update}")
-            pages.append(embed)
-
-        await menu(ctx, pages, DEFAULT_CONTROLS)
-
-    @op.command(name="rank")
-    async def my_rank(self, ctx):
-        """Check your current bounty rank"""
-        top_bounties = await self.config.top_bounties()
-        user_data = await self.config.user(ctx.author).all()
-        user_bounty = user_data.get('bounty', 0)
-
-        for i, entry in enumerate(top_bounties, start=1):
-            if entry['user_id'] == ctx.author.id:
-                await ctx.send(f"Your current bounty rank is #{i} with a bounty of {user_bounty:,} Berries!")
-                return
-
-        await ctx.send(f"You are not in the top 50. Your current bounty is {user_bounty:,} Berries.")
-
-    @op.command(name="rewardtop")
-    async def reward_top_bounties(self):
-        """Reward the top bounty holders"""
-        top_bounties = await self.config.top_bounties()
-        
-        rewards = [
-            {"rank": 1, "berries": 1000000, "special_item": "Yonko's Treasure"},
-            {"rank": 2, "berries": 750000, "special_item": "Admiral's Medal"},
-            {"rank": 3, "berries": 500000, "special_item": "Shichibukai Emblem"},
-            {"rank": (4, 10), "berries": 250000},
-            {"rank": (11, 50), "berries": 100000}
-        ]
-
-        for i, entry in enumerate(top_bounties, start=1):
-            user = self.bot.get_user(entry['user_id'])
-            if not user:
-                continue
-
-            for reward in rewards:
-                if isinstance(reward['rank'], int) and i == reward['rank'] or \
-                   isinstance(reward['rank'], tuple) and reward['rank'][0] <= i <= reward['rank'][1]:
-                    user_data = await self.config.user(user).all()
-                    user_data['berries'] = user_data.get('berries', 0) + reward['berries']
-                    if 'special_item' in reward:
-                        user_data.setdefault('inventory', []).append(reward['special_item'])
-                    await self.config.user(user).set(user_data)
-
-                    # Notify the user
-                    try:
-                        await user.send(f"Congratulations! You've received a bounty reward for your rank #{i}:\n"
-                                        f"{reward['berries']:,} Berries" + 
-                                        (f" and a {reward['special_item']}!" if 'special_item' in reward else "!"))
-                    except discord.HTTPException:
-                        pass  # Unable to send DM to the user
-                    break
-
-    @op.command(name="forcebounty")
-    @commands.is_owner()
-    async def force_bounty_update(self, ctx):
-        """Force an update of the bounty leaderboard and distribute rewards"""
-        await self.update_top_bounties()
-        await self.reward_top_bounties()
-        await ctx.send("Bounty leaderboard updated and rewards distributed!")
-
-    @op.command(name="techniques")
-    async def my_techniques(self, ctx):
-        """Display your learned techniques"""
-        user_data = await self.config.user(ctx.author).all()
-        learned_techniques = user_data["learned_techniques"]
-
-        if not learned_techniques:
-            await ctx.send("You haven't learned any techniques yet!")
-        else:
-            techniques_str = "\n".join(learned_techniques)
-            await ctx.send(f"Your learned techniques:\n{techniques_str}")
 
     @op.command(name="gears")
     async def activate_gear(self, ctx, gear: str):
@@ -1557,6 +783,8 @@ class OnePieceBattle(commands.Cog):
         embed.add_field(name="Description", value=weapon["description"], inline=False)
         await ctx.send(embed=embed)
 
+
+            
     @op.command(name="profile")
     async def op_profile(self, ctx, user: discord.Member = None):
         """View your or another user's profile"""
@@ -1742,144 +970,7 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(user).set(default_user)
         self.logger.info(f"Reset data for user {user.id}")
         await ctx.send(f"{user.mention}'s data has been reset to default values.")
-        
-    @commands.group()
-    @commands.admin_or_permissions(manage_guild=True)
-    async def battleroyale(self, ctx):
-        """Battle Royale management commands"""
-        pass
-
-    @battleroyale.command()
-    async def setchannel(self, ctx, channel: discord.TextChannel):
-        """Set the channel for Battle Royale announcements"""
-        await self.config.guild(ctx.guild).battle_royale_channel.set(channel.id)
-        await ctx.send(f"Battle Royale announcements will now be sent to {channel.mention}")
-
-    @battleroyale.command()
-    async def schedule(self, ctx, hours: int):
-        """Schedule the next Battle Royale"""
-        next_battle = datetime.now() + timedelta(hours=hours)
-        await self.config.guild(ctx.guild).next_battle_royale.set(next_battle.isoformat())
-        await ctx.send(f"Next Battle Royale scheduled for {next_battle.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    async def start_battle_royale(self, guild):
-        channel_id = await self.config.guild(guild).battle_royale_channel()
-        channel = guild.get_channel(channel_id)
-        if not channel:
-            return
-
-        await self.config.guild(guild).ongoing_battle_royale.set(True)
-        
-        # Announce the start of Battle Royale
-        announcement = await channel.send("🏴‍☠️ **BATTLE ROYALE STARTING SOON!** 🏴‍☠️\nPlace your bets or join the battle!")
-        await announcement.add_reaction("💰")  # For betting
-        await announcement.add_reaction("⚔️")  # For joining
-
-        # Wait for bets and participants
-        await asyncio.sleep(300)  # 5 minutes waiting period
-
-        # Get bets and participants
-        announcement = await channel.fetch_message(announcement.id)
-        bets = [user for user in await announcement.reactions[0].users().flatten() if not user.bot]
-        participants = [user for user in await announcement.reactions[1].users().flatten() if not user.bot]
-
-        # Generate AI opponents
-        ai_opponents = [self.generate_ai_opponent() for _ in range(max(5 - len(participants), 0))]
-        all_participants = participants + ai_opponents
-
-        # Run the Battle Royale
-        winner = await self.run_battle_royale(channel, all_participants)
-
-        # Distribute rewards
-        await self.distribute_battle_royale_rewards(channel, winner, participants, bets)
-
-        await self.config.guild(guild).ongoing_battle_royale.set(False)
-        await self.config.guild(guild).next_battle_royale.set((datetime.now() + timedelta(hours=24)).isoformat())
-
-    def generate_ai_opponent(self):
-        return {
-            "name": f"AI Pirate {random.randint(1, 999)}",
-            "strength": random.randint(50, 100),
-            "hp": random.randint(500, 1000)
-        }
-
-    async def run_battle_royale(self, channel, participants):
-        await channel.send("🏴‍☠️ **BATTLE ROYALE BEGINS!** 🏴‍☠️")
-        while len(participants) > 1:
-            attacker = random.choice(participants)
-            defender = random.choice([p for p in participants if p != attacker])
-            
-            damage = random.randint(50, 150)
-            if isinstance(defender, dict):  # AI opponent
-                defender["hp"] -= damage
-                if defender["hp"] <= 0:
-                    participants.remove(defender)
-                    await channel.send(f"{attacker.name if isinstance(attacker, discord.Member) else attacker['name']} defeated {defender['name']}!")
-            else:  # Player
-                user_data = await self.config.user(defender).all()
-                user_data["hp"] -= damage
-                if user_data["hp"] <= 0:
-                    participants.remove(defender)
-                    await channel.send(f"{attacker.name if isinstance(attacker, discord.Member) else attacker['name']} defeated {defender.name}!")
-                await self.config.user(defender).set(user_data)
-            
-            await asyncio.sleep(2)  # Pause between attacks
-
-        winner = participants[0]
-        await channel.send(f"🏆 **BATTLE ROYALE WINNER: {winner.name if isinstance(winner, discord.Member) else winner['name']}** 🏆")
-        return winner
-
-    async def distribute_battle_royale_rewards(self, channel, winner, participants, bets):
-        reward_pool = len(bets) * 10000  # 10,000 Berries per bet
-        
-        if isinstance(winner, discord.Member):
-            user_data = await self.config.user(winner).all()
-            user_data["berries"] = user_data.get("berries", 0) + reward_pool
-            user_data["battle_royale_wins"] = user_data.get("battle_royale_wins", 0) + 1
-            await self.config.user(winner).set(user_data)
-            await channel.send(f"{winner.mention} wins {reward_pool:,} Berries and a Battle Royale victory!")
-        else:
-            await channel.send(f"AI opponent {winner['name']} wins, but doesn't claim the prize.")
-
-        # Distribute participation rewards
-        for participant in participants:
-            if isinstance(participant, discord.Member) and participant != winner:
-                user_data = await self.config.user(participant).all()
-                participation_reward = 5000  # 5,000 Berries for participating
-                user_data["berries"] = user_data.get("berries", 0) + participation_reward
-                await self.config.user(participant).set(user_data)
-                await channel.send(f"{participant.mention} receives {participation_reward:,} Berries for participating!")
-
-        # Handle bets
-        winning_bets = [user for user in bets if user.id == winner.id]
-        if winning_bets:
-            bet_reward = reward_pool // len(winning_bets)
-            for better in winning_bets:
-                user_data = await self.config.user(better).all()
-                user_data["berries"] = user_data.get("berries", 0) + bet_reward
-                await self.config.user(better).set(user_data)
-                await channel.send(f"{better.mention} wins {bet_reward:,} Berries from their bet!")
-
-    @commands.command()
-    async def battleroyalestats(self, ctx):
-        """View your Battle Royale statistics"""
-        user_data = await self.config.user(ctx.author).all()
-        embed = discord.Embed(title=f"{ctx.author.name}'s Battle Royale Stats", color=discord.Color.gold())
-        embed.add_field(name="Victories", value=user_data.get("battle_royale_wins", 0))
-        embed.add_field(name="Berries Won", value=f"{user_data.get('berries', 0):,}")
-        await ctx.send(embed=embed)
-
-    @op.command(name="nextbr")
-    async def nextbattleroyale(self, ctx):
-        """View the time of the next scheduled Battle Royale"""
-        next_battle = await self.config.guild(ctx.guild).next_battle_royale()
-        if next_battle:
-            battle_time = datetime.fromisoformat(next_battle)
-            time_until = battle_time - datetime.now()
-            await ctx.send(f"The next Battle Royale is scheduled for {battle_time.strftime('%Y-%m-%d %H:%M:%S')} "
-                           f"(in {time_until.days} days, {time_until.seconds // 3600} hours, and {(time_until.seconds // 60) % 60} minutes)")
-        else:
-            await ctx.send("There is no Battle Royale currently scheduled.")    
+    
 
     @op.command()
     async def allocate(self, ctx, stat: str, points: int):
@@ -1914,34 +1005,26 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(embed=embed)
 
     @op.command()
-    async def devil_fruit_info(self, ctx, *, fruit_name: str = None):
-        """Display information about a Devil Fruit or your own if no name is provided"""
+    async def devil_fruit_info(self, ctx):
+        """Display information about your Devil Fruit and mastery"""
         user_data = await self.config.user(ctx.author).all()
-        
-        if fruit_name is None:
-            fruit_name = user_data.get("devil_fruit")
-            if fruit_name is None:
-                await ctx.send("You don't have a Devil Fruit. Specify a fruit name to get information about it.")
-                return
 
-        fruit = self.devil_fruits.get(fruit_name)
-        if fruit is None:
-            await ctx.send(f"No information found for {fruit_name}.")
+        if not user_data["devil_fruit"]:
+            await ctx.send("You don't have a Devil Fruit power yet!")
             return
 
-        embed = discord.Embed(title=f"Devil Fruit: {fruit_name}", color=discord.Color.purple())
-        embed.add_field(name="Ability", value=fruit["ability"], inline=False)
-        embed.add_field(name="Type", value=fruit["type"], inline=True)
-        embed.add_field(name="Power Modifier", value=f"{fruit['modifier']}x", inline=True)
+        embed = discord.Embed(
+            title=f"🍎 Devil Fruit: {user_data['devil_fruit']}",
+            description=f"Mastery Level: {user_data['devil_fruit_mastery']}",
+            color=discord.Color.orange()
+        )
 
-        # Display combo attacks for this fruit
-        combo_attacks = []
-        for style, attacks in self.combo_attacks.items():
-            if fruit_name in attacks:
-                combo_attacks.append(f"{style}: {attacks[fruit_name]}")
-        
-        if combo_attacks:
-            embed.add_field(name="Combo Attacks", value="\n".join(combo_attacks), inline=False)
+        unlocked = user_data["unlocked_abilities"]
+        all_abilities = self.devil_fruit_abilities.get(user_data["devil_fruit"], [])
+
+        for ability in all_abilities:
+            status = "✅ Unlocked" if ability["name"] in unlocked else f"🔒 Locked (Requires Mastery {ability['mastery_required']})"
+            embed.add_field(name=ability["name"], value=status, inline=False)
 
         await ctx.send(embed=embed)
         
@@ -1998,70 +1081,42 @@ class OnePieceBattle(commands.Cog):
         await ctx.send(f"You've learned the {technique_name} technique!")
 
     @op.command(name="equip")
-    async def equip(self, ctx, *, item_name: str):
-        """Equip an item from your inventory"""
+    async def op_equip(self, ctx, *, item: str):
+        """Equip an item"""
         user_data = await self.config.user(ctx.author).all()
         
-        if item_name not in user_data.get("inventory", []):
-            await ctx.send(f"You don't have {item_name} in your inventory.")
+        if not user_data["fighting_style"]:
+            await ctx.send("You need to begin your journey first!")
             return
-
-        for category, items in self.equipment.items():
-            if item_name in items:
-                item = items[item_name]
-                slot = item["type"]
-                
-                # Check if the slot is already occupied
-                if slot in user_data.get("equipped", {}):
-                    old_item = user_data["equipped"][slot]
-                    user_data["inventory"].append(old_item)
-                    await ctx.send(f"Unequipped {old_item}.")
-
-                user_data.setdefault("equipped", {})[slot] = item_name
-                user_data["inventory"].remove(item_name)
-                await self.config.user(ctx.author).set(user_data)
-                await ctx.send(f"Successfully equipped {item_name}!")
-                return
-
-        await ctx.send(f"Couldn't find equipment named {item_name}.")
+        
+        if item not in self.equipment:
+            await ctx.send("That item doesn't exist.")
+            return
+        
+        if len(user_data["equipped_items"]) >= 3:
+            await ctx.send("You can't equip more than 3 items. Unequip something first.")
+            return
+        
+        user_data["equipped_items"].append(item)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've equipped the {item}!")
 
     @op.command(name="unequip")
-    async def unequip(self, ctx, *, slot: str):
-        """Unequip an item from a specific slot"""
+    async def op_unequip(self, ctx, *, item: str):
+        """Unequip an item"""
         user_data = await self.config.user(ctx.author).all()
-        equipped = user_data.get("equipped", {})
         
-        if slot not in equipped:
-            await ctx.send(f"You don't have anything equipped in the {slot} slot.")
+        if not user_data["fighting_style"]:
+            await ctx.send("You need to begin your journey first!")
             return
-
-        item = equipped[slot]
-        del equipped[slot]
-        user_data.setdefault("inventory", []).append(item)
-        await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"Successfully unequipped {item} from {slot} slot.")
-    
-    @op.command(name="inv")
-    async def inventory(self, ctx):
-        """Display your inventory and equipped items"""
-        user_data = await self.config.user(ctx.author).all()
-        inventory = user_data.get("inventory", [])
-        equipped = user_data.get("equipped", {})
-
-        embed = discord.Embed(title=f"{ctx.author.name}'s Inventory", color=discord.Color.blue())
         
-        if inventory:
-            embed.add_field(name="Inventory", value="\n".join(inventory), inline=False)
-        else:
-            embed.add_field(name="Inventory", value="Your inventory is empty.", inline=False)
-
-        if equipped:
-            equipped_str = "\n".join([f"{slot}: {item}" for slot, item in equipped.items()])
-            embed.add_field(name="Equipped", value=equipped_str, inline=False)
-        else:
-            embed.add_field(name="Equipped", value="You have no items equipped.", inline=False)
-
-        await ctx.send(embed=embed)
+        if item not in user_data["equipped_items"]:
+            await ctx.send("You don't have that item equipped.")
+            return
+        
+        user_data["equipped_items"].remove(item)
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've unequipped the {item}.")
 
     @commands.group(name="ophelp")
     async def op_help(self, ctx):
