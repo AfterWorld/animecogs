@@ -3,6 +3,7 @@ from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
+import json
 
 class DemonSlayer(commands.Cog):
     def __init__(self, bot):
@@ -13,16 +14,12 @@ class DemonSlayer(commands.Cog):
             "has_passed_exam": False,
             "exam_cooldown": None,
             "breathing_technique": None,
-            "breathing_mastery": {},
-            "nichirin_blade": {
-                "color": None,
-                "level": 0,
-            },
-            "materials": {
-                "scarlet_iron_sand": 0,
-                "scarlet_ore": 0,
-                "spirit_wood": 0,
-            },
+            "breathing_mastery": {},  # This will be stored as a JSON string
+            "nichirin_blade_color": None,
+            "nichirin_blade_level": 0,
+            "material_scarlet_iron_sand": 0,
+            "material_scarlet_ore": 0,
+            "material_spirit_wood": 0,
             "demons_slayed": 0,
             "rank": None,
             "experience": 0,
@@ -32,7 +29,7 @@ class DemonSlayer(commands.Cog):
         }
         
         default_guild = {
-            "active_hashira_training": None,
+            "active_hashira_training": None,  # This will be stored as a JSON string
         }
         
         self.config.register_user(**default_user)
@@ -52,6 +49,39 @@ class DemonSlayer(commands.Cog):
         ]
         
         self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
+
+        
+        self.config.register_user(**default_user)
+        self.config.register_guild(**default_guild)
+        
+        self.breathing_techniques = {
+            "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
+            "Thunder": ["Thunderclap and Flash", "Rice Spirit", "Thunder Swarm", "Distant Thunder", "Heat Lightning"],
+            "Flame": ["Unknowing Fire", "Rising Scorching Sun", "Blazing Universe", "Blooming Flame", "Flame Tiger"],
+            "Wind": ["Dust Whirlwind Cutter", "Claws-Purifying Wind", "Clean Storm Wind", "Rising Dust Storm", "Purgatory Windmill"],
+            "Stone": ["Serpentine Bipedal", "Upper Smash", "Stone Skin", "Volcanic Rock", "Arcs of Justice"]
+        }
+        
+        self.ranks = [
+            "Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe",
+            "Hinoto", "Hinoe", "Kinoto", "Kinoe", "Hashira"
+        ]
+        
+        self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
+
+        async def _save_breathing_mastery(self, user, breathing_mastery):
+        await self.config.user(user).breathing_mastery.set(json.dumps(breathing_mastery))
+
+        async def _get_breathing_mastery(self, user):
+            breathing_mastery_json = await self.config.user(user).breathing_mastery()
+            return json.loads(breathing_mastery_json) if breathing_mastery_json else {}
+    
+        async def _save_hashira_training(self, guild, training_data):
+            await self.config.guild(guild).active_hashira_training.set(json.dumps(training_data))
+    
+        async def _get_hashira_training(self, guild):
+            training_data_json = await self.config.guild(guild).active_hashira_training()
+            return json.loads(training_data_json) if training_data_json else None
 
     @commands.group()
     async def ds(self, ctx):
