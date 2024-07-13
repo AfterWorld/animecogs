@@ -120,7 +120,7 @@ class DemonSlayer(commands.Cog):
 
     @ds.command(name="hunt")
     @commands.cooldown(1, 3600, commands.BucketType.user)
-    async def hunt(self, ctx):
+    async def ds_hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
         
