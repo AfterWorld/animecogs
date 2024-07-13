@@ -5,6 +5,14 @@ import asyncio
 from datetime import datetime, timedelta
 import json
 
+def safe_json_loads(data, default=None):
+    if isinstance(data, (dict, list)):
+        return data
+    try:
+        return json.loads(data)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else {}
+
 class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -103,6 +111,7 @@ class DemonSlayer(commands.Cog):
             user_data["breathing_technique"] = random.choice(list(self.breathing_techniques.keys()))
             user_data["companion"] = random.choice(self.companions)
             user_data["nichirin_blade_color"] = random.choice(["Red", "Blue", "Green", "Yellow", "Purple", "Black"])
+            user_data["breathing_mastery"] = json.dumps({})  # Initialize as empty JSON object
             await self.config.user(ctx.author).set(user_data)
             await ctx.send(f"Congratulations! You've passed the exam with a score of {score}/5. Welcome to the Demon Slayer Corps!")
             await ctx.send(f"Your assigned Breathing Technique is: {user_data['breathing_technique']}")
@@ -241,7 +250,7 @@ class DemonSlayer(commands.Cog):
         technique = user_data["breathing_technique"]
         forms = self.breathing_techniques[technique]
         
-        breathing_mastery = json.loads(user_data["breathing_mastery"])
+        breathing_mastery = safe_json_loads(user_data["breathing_mastery"])
         if technique not in breathing_mastery:
             breathing_mastery[technique] = {}
         
@@ -283,7 +292,7 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Companion", value=user_data["companion"])
         embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_blade_color']} (+{user_data['nichirin_blade_level']})")
         
-        breathing_mastery = json.loads(user_data["breathing_mastery"])
+        breathing_mastery = safe_json_loads(user_data["breathing_mastery"])
         mastery_text = "\n".join([f"{form}: {mastery}" for form, mastery in breathing_mastery.get(user_data["breathing_technique"], {}).items()])
         embed.add_field(name="Breathing Mastery", value=mastery_text or "No forms mastered yet", inline=False)
         
