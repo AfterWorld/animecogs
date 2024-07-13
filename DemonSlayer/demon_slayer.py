@@ -28,6 +28,7 @@ class DemonSlayer(commands.Cog):
             "experience": 0,
             "companion": None,
             "last_hunt": None,
+            "upper_moon_defeated": False,
         }
         
         default_guild = {
