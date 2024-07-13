@@ -14,7 +14,7 @@ class DemonSlayer(commands.Cog):
             "has_passed_exam": False,
             "exam_cooldown": None,
             "breathing_technique": None,
-            "breathing_mastery": {},  # This will be stored as a JSON string
+            "breathing_mastery": "{}",  # JSON string
             "nichirin_blade_color": None,
             "nichirin_blade_level": 0,
             "material_scarlet_iron_sand": 0,
@@ -29,7 +29,7 @@ class DemonSlayer(commands.Cog):
         }
         
         default_guild = {
-            "active_hashira_training": None,  # This will be stored as a JSON string
+            "active_hashira_training": None,  # Will be set as JSON string when active
         }
         
         self.config.register_user(**default_user)
@@ -49,39 +49,6 @@ class DemonSlayer(commands.Cog):
         ]
         
         self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
-
-        
-        self.config.register_user(**default_user)
-        self.config.register_guild(**default_guild)
-        
-        self.breathing_techniques = {
-            "Water": ["Water Surface Slash", "Water Wheel", "Flowing Dance", "Striking Tide", "Blessed Rain"],
-            "Thunder": ["Thunderclap and Flash", "Rice Spirit", "Thunder Swarm", "Distant Thunder", "Heat Lightning"],
-            "Flame": ["Unknowing Fire", "Rising Scorching Sun", "Blazing Universe", "Blooming Flame", "Flame Tiger"],
-            "Wind": ["Dust Whirlwind Cutter", "Claws-Purifying Wind", "Clean Storm Wind", "Rising Dust Storm", "Purgatory Windmill"],
-            "Stone": ["Serpentine Bipedal", "Upper Smash", "Stone Skin", "Volcanic Rock", "Arcs of Justice"]
-        }
-        
-        self.ranks = [
-            "Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe",
-            "Hinoto", "Hinoe", "Kinoto", "Kinoe", "Hashira"
-        ]
-        
-        self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
-
-        async def _save_breathing_mastery(self, user, breathing_mastery):
-            await self.config.user(user).breathing_mastery.set(json.dumps(breathing_mastery))
-
-        async def _get_breathing_mastery(self, user):
-            breathing_mastery_json = await self.config.user(user).breathing_mastery()
-            return json.loads(breathing_mastery_json) if breathing_mastery_json else {}
-    
-        async def _save_hashira_training(self, guild, training_data):
-            await self.config.guild(guild).active_hashira_training.set(json.dumps(training_data))
-    
-        async def _get_hashira_training(self, guild):
-            training_data_json = await self.config.guild(guild).active_hashira_training()
-            return json.loads(training_data_json) if training_data_json else None
 
     @commands.group()
     async def ds(self, ctx):
@@ -137,12 +104,12 @@ class DemonSlayer(commands.Cog):
             user_data["rank"] = "Mizunoto"
             user_data["breathing_technique"] = random.choice(list(self.breathing_techniques.keys()))
             user_data["companion"] = random.choice(self.companions)
-            user_data["nichirin_blade"]["color"] = random.choice(["Red", "Blue", "Green", "Yellow", "Purple", "Black"])
+            user_data["nichirin_blade_color"] = random.choice(["Red", "Blue", "Green", "Yellow", "Purple", "Black"])
             await self.config.user(ctx.author).set(user_data)
             await ctx.send(f"Congratulations! You've passed the exam with a score of {score}/5. Welcome to the Demon Slayer Corps!")
             await ctx.send(f"Your assigned Breathing Technique is: {user_data['breathing_technique']}")
             await ctx.send(f"Your companion is: {user_data['companion']}")
-            await ctx.send(f"Your Nichirin Blade color is: {user_data['nichirin_blade']['color']}")
+            await ctx.send(f"Your Nichirin Blade color is: {user_data['nichirin_blade_color']}")
         else:
             user_data["exam_cooldown"] = (datetime.now() + timedelta(minutes=5)).timestamp()
             await self.config.user(ctx.author).set(user_data)
@@ -150,7 +117,7 @@ class DemonSlayer(commands.Cog):
 
     @ds.command(name="hunt")
     @commands.cooldown(1, 3600, commands.BucketType.user)
-    async def ds_hunt(self, ctx):
+    async def hunt(self, ctx):
         """Hunt for demons"""
         user_data = await self.config.user(ctx.author).all()
         
@@ -197,7 +164,10 @@ class DemonSlayer(commands.Cog):
             user_data["experience"] += xp_gain
             user_data["demons_slayed"] += 1
             for material, amount in material_gain.items():
-                user_data["materials"][material] += amount
+                user_data[f"material_{material}"] += amount
+            
+            if demon == "Upper Moon":
+                user_data["upper_moon_defeated"] = True
             
             await self.config.user(ctx.author).set(user_data)
             
@@ -220,7 +190,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You must pass the entrance exam before you can upgrade your blade!")
             return
         
-        current_level = user_data["nichirin_blade"]["level"]
+        current_level = user_data["nichirin_blade_level"]
         cost = {
             "scarlet_iron_sand": (current_level + 1) * 5,
             "scarlet_ore": (current_level + 1) * 2,
@@ -231,7 +201,7 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Current Level", value=f"+{current_level}")
         embed.add_field(name="Upgrade Cost", value="\n".join([f"{mat.replace('_', ' ').title()}: {amt}" for mat, amt in cost.items()]))
         
-        if all(user_data["materials"][mat] >= amt for mat, amt in cost.items()):
+        if all(user_data[f"material_{mat}"] >= amt for mat, amt in cost.items()):
             embed.add_field(name="Upgrade Possible", value="Yes", inline=False)
             embed.add_field(name="Instructions", value="React with ✅ to upgrade or ❌ to cancel.", inline=False)
             message = await ctx.send(embed=embed)
@@ -249,10 +219,10 @@ class DemonSlayer(commands.Cog):
             
             if str(reaction.emoji) == "✅":
                 for mat, amt in cost.items():
-                    user_data["materials"][mat] -= amt
-                user_data["nichirin_blade"]["level"] += 1
+                    user_data[f"material_{mat}"] -= amt
+                user_data["nichirin_blade_level"] += 1
                 await self.config.user(ctx.author).set(user_data)
-                await ctx.send(f"Your Nichirin Blade has been upgraded to +{user_data['nichirin_blade']['level']}!")
+                await ctx.send(f"Your Nichirin Blade has been upgraded to +{user_data['nichirin_blade_level']}!")
             else:
                 await ctx.send("Upgrade cancelled.")
         else:
@@ -273,23 +243,25 @@ class DemonSlayer(commands.Cog):
         technique = user_data["breathing_technique"]
         forms = self.breathing_techniques[technique]
         
-        if technique not in user_data["breathing_mastery"]:
-            user_data["breathing_mastery"][technique] = {}
+        breathing_mastery = json.loads(user_data["breathing_mastery"])
+        if technique not in breathing_mastery:
+            breathing_mastery[technique] = {}
         
         form_to_train = random.choice(forms)
         mastery_gain = random.randint(1, 10)
         
-        if form_to_train not in user_data["breathing_mastery"][technique]:
-            user_data["breathing_mastery"][technique][form_to_train] = 0
+        if form_to_train not in breathing_mastery[technique]:
+            breathing_mastery[technique][form_to_train] = 0
         
-        user_data["breathing_mastery"][technique][form_to_train] += mastery_gain
+        breathing_mastery[technique][form_to_train] += mastery_gain
+        user_data["breathing_mastery"] = json.dumps(breathing_mastery)
         await self.config.user(ctx.author).set(user_data)
         
         embed = discord.Embed(title="Breathing Technique Training", color=discord.Color.blue())
         embed.add_field(name="Technique", value=technique)
         embed.add_field(name="Form Trained", value=form_to_train)
         embed.add_field(name="Mastery Gained", value=str(mastery_gain))
-        embed.add_field(name="Current Mastery", value=str(user_data["breathing_mastery"][technique][form_to_train]))
+        embed.add_field(name="Current Mastery", value=str(breathing_mastery[technique][form_to_train]))
         
         await ctx.send(embed=embed)
 
@@ -311,19 +283,19 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Demons Slayed", value=str(user_data["demons_slayed"]))
         embed.add_field(name="Experience", value=str(user_data["experience"]))
         embed.add_field(name="Companion", value=user_data["companion"])
-        embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_blade']['color']} (+{user_data['nichirin_blade']['level']})")
+        embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_blade_color']} (+{user_data['nichirin_blade_level']})")
         
-        breathing_mastery = user_data["breathing_mastery"].get(user_data["breathing_technique"], {})
-        mastery_text = "\n".join([f"{form}: {mastery}" for form, mastery in breathing_mastery.items()])
+        breathing_mastery = json.loads(user_data["breathing_mastery"])
+        mastery_text = "\n".join([f"{form}: {mastery}" for form, mastery in breathing_mastery.get(user_data["breathing_technique"], {}).items()])
         embed.add_field(name="Breathing Mastery", value=mastery_text or "No forms mastered yet", inline=False)
         
-        materials_text = "\n".join([f"{mat.replace('_', ' ').title()}: {amt}" for mat, amt in user_data["materials"].items()])
+        materials_text = "\n".join([f"{mat.replace('material_', '').replace('_', ' ').title()}: {amt}" for mat, amt in user_data.items() if mat.startswith('material_')])
         embed.add_field(name="Materials", value=materials_text, inline=False)
         
         await ctx.send(embed=embed)
 
     @commands.is_owner()
-    @ds.command(name="start_hashira_training")
+    @ds.command(name="starth")
     async def start_hashira_training(self, ctx):
         """Start a Hashira training event (Owner only)"""
         guild_data = await self.config.guild(ctx.guild).all()
@@ -332,21 +304,21 @@ class DemonSlayer(commands.Cog):
             await ctx.send("A Hashira training event is already active!")
             return
         
-        guild_data["active_hashira_training"] = {
+        hashira_training = {
             "hashira": random.choice(["Water", "Flame", "Wind", "Stone", "Love"]),
             "difficulty": random.randint(1, 5),
             "participants": []
         }
-        await self.config.guild(ctx.guild).set(guild_data)
+        await self.config.guild(ctx.guild).active_hashira_training.set(json.dumps(hashira_training))
         
         embed = discord.Embed(title="Hashira Training Event", color=discord.Color.purple())
-        embed.add_field(name="Hashira", value=guild_data["active_hashira_training"]["hashira"])
-        embed.add_field(name="Difficulty", value="⭐" * guild_data["active_hashira_training"]["difficulty"])
+        embed.add_field(name="Hashira", value=hashira_training["hashira"])
+        embed.add_field(name="Difficulty", value="⭐" * hashira_training["difficulty"])
         embed.add_field(name="How to Join", value="Use the command `[p]ds join_hashira_training` to participate!", inline=False)
         
         await ctx.send(embed=embed)
 
-    @ds.command(name="join_hashira_training")
+    @ds.command(name="joinh")
     async def join_hashira_training(self, ctx):
         """Join the active Hashira training event"""
         guild_data = await self.config.guild(ctx.guild).all()
@@ -360,14 +332,16 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You must pass the entrance exam before you can participate in Hashira training!")
             return
         
-        if ctx.author.id in guild_data["active_hashira_training"]["participants"]:
+        hashira_training = json.loads(guild_data["active_hashira_training"])
+        
+        if ctx.author.id in hashira_training["participants"]:
             await ctx.send("You're already participating in this Hashira training event!")
             return
         
         # Check if the user has defeated an Upper Moon demon
-        if user_data.get("upper_moon_defeated", False) or self.ranks.index(user_data["rank"]) >= self.ranks.index("Kinoe"):
-            guild_data["active_hashira_training"]["participants"].append(ctx.author.id)
-            await self.config.guild(ctx.guild).set(guild_data)
+        if user_data["upper_moon_defeated"] or self.ranks.index(user_data["rank"]) >= self.ranks.index("Kinoe"):
+            hashira_training["participants"].append(ctx.author.id)
+            await self.config.guild(ctx.guild).active_hashira_training.set(json.dumps(hashira_training))
             await ctx.send(f"{ctx.author.mention} has joined the Hashira training event!")
         else:
             await ctx.send("You need to have defeated an Upper Moon demon or be at least Kinoe rank to participate in Hashira training!")
@@ -382,31 +356,34 @@ class DemonSlayer(commands.Cog):
             await ctx.send("There is no active Hashira training event!")
             return
         
-        embed = discord.Embed(title="Hashira Training Results", color=discord.Color.gold())
-        embed.add_field(name="Hashira", value=guild_data["active_hashira_training"]["hashira"])
-        embed.add_field(name="Difficulty", value="⭐" * guild_data["active_hashira_training"]["difficulty"])
+        hashira_training = json.loads(guild_data["active_hashira_training"])
         
-        for participant_id in guild_data["active_hashira_training"]["participants"]:
+        embed = discord.Embed(title="Hashira Training Results", color=discord.Color.gold())
+        embed.add_field(name="Hashira", value=hashira_training["hashira"])
+        embed.add_field(name="Difficulty", value="⭐" * hashira_training["difficulty"])
+        
+        for participant_id in hashira_training["participants"]:
             user = self.bot.get_user(participant_id)
             if user:
                 user_data = await self.config.user(user).all()
-                xp_gain = random.randint(100, 500) * guild_data["active_hashira_training"]["difficulty"]
+                xp_gain = random.randint(100, 500) * hashira_training["difficulty"]
                 user_data["experience"] += xp_gain
                 
                 # Chance to learn a new form
-                if random.random() < 0.1 * guild_data["active_hashira_training"]["difficulty"]:
-                    new_form = random.choice(self.breathing_techniques[guild_data["active_hashira_training"]["hashira"]])
-                    if guild_data["active_hashira_training"]["hashira"] not in user_data["breathing_mastery"]:
-                        user_data["breathing_mastery"][guild_data["active_hashira_training"]["hashira"]] = {}
-                    user_data["breathing_mastery"][guild_data["active_hashira_training"]["hashira"]][new_form] = 1
-                    embed.add_field(name=f"{user.name} Learned New Form", value=f"{new_form} ({guild_data['active_hashira_training']['hashira']} Breathing)", inline=False)
+                if random.random() < 0.1 * hashira_training["difficulty"]:
+                    new_form = random.choice(self.breathing_techniques[hashira_training["hashira"]])
+                    breathing_mastery = json.loads(user_data["breathing_mastery"])
+                    if hashira_training["hashira"] not in breathing_mastery:
+                        breathing_mastery[hashira_training["hashira"]] = {}
+                    breathing_mastery[hashira_training["hashira"]][new_form] = 1
+                    user_data["breathing_mastery"] = json.dumps(breathing_mastery)
+                    embed.add_field(name=f"{user.name} Learned New Form", value=f"{new_form} ({hashira_training['hashira']} Breathing)", inline=False)
                 
                 await self.config.user(user).set(user_data)
                 embed.add_field(name=f"{user.name} Rewards", value=f"XP Gained: {xp_gain}", inline=False)
         
         await ctx.send(embed=embed)
-        guild_data["active_hashira_training"] = None
-        await self.config.guild(ctx.guild).set(guild_data)
+        await self.config.guild(ctx.guild).active_hashira_training.set(None)
 
     @ds.command(name="leaderboard")
     async def show_leaderboard(self, ctx):
