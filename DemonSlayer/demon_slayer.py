@@ -599,7 +599,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send(embed=result_embed)
             await self.check_rank_up(ctx)
         else:
-        await ctx.send(f"You were defeated by the {target} and had to retreat. Better luck next time!")
+            await ctx.send(f"You were defeated by the {target} and had to retreat. Better luck next time!")
 
     @ds.command(name="upgrade")
     async def upgrade_blade(self, ctx):
