@@ -18,6 +18,28 @@ class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.event_task = self.bot.loop.create_task(self.random_event_loop())
+        self.current_event = None
+
+    def cog_unload(self):
+        if self.event_task:
+            self.event_task.cancel()
+
+    async def random_event_loop(self):
+        while True:
+            await asyncio.sleep(600)  # 10 minutes
+            await self.trigger_random_event()
+
+    async def trigger_random_event(self):
+        events = [
+            self.demon_invasion,
+            self.rare_material_discovery,
+            self.hashira_challenge,
+            self.blood_moon,
+            self.wisteria_bloom
+        ]
+        self.current_event = random.choice(events)
+        await self.current_event()
         
         default_user = {
             "has_passed_exam": False,
@@ -62,6 +84,122 @@ class DemonSlayer(commands.Cog):
     @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
+
+    @ds.command(name="join_event")
+    async def join_event(self, ctx):
+        """Join the current active event"""
+        if self.current_event is None:
+            await ctx.send("There is no active event right now.")
+            return
+        
+        user_data = await self.config.user(ctx.author).all()
+        if not user_data["has_passed_exam"]:
+            await ctx.send("You must pass the Demon Slayer exam before participating in events!")
+            return
+
+        event_name = self.current_event.__name__
+        await ctx.send(f"You've joined the current event: {event_name}")
+        
+        if event_name == "demon_invasion":
+            await self.participate_demon_invasion(ctx, user_data)
+        elif event_name == "rare_material_discovery":
+            await self.participate_rare_material_discovery(ctx, user_data)
+        elif event_name == "hashira_challenge":
+            await self.participate_hashira_challenge(ctx, user_data)
+        elif event_name == "blood_moon":
+            await self.participate_blood_moon(ctx, user_data)
+        elif event_name == "wisteria_bloom":
+            await self.participate_wisteria_bloom(ctx, user_data)
+
+    async def demon_invasion(self):
+        await self.bot.get_channel(self.config.guild(self.bot.guilds[0]).event_channel()).send(
+            "🚨 A demon invasion has begun! Use `[p]ds join_event` to defend the village!"
+        )
+        self.current_event = self.demon_invasion
+        await asyncio.sleep(600)  # Event lasts for 10 minutes
+        self.current_event = None
+
+    async def participate_demon_invasion(self, ctx, user_data):
+        demons_defeated = random.randint(1, 5)
+        xp_gained = demons_defeated * 50
+        user_data["demons_slayed"] += demons_defeated
+        user_data["experience"] += xp_gained
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've defeated {demons_defeated} demons and gained {xp_gained} XP!")
+
+    async def rare_material_discovery(self):
+        await self.bot.get_channel(self.config.guild(self.bot.guilds[0]).event_channel()).send(
+            "💎 Rare materials have been discovered! Use `[p]ds join_event` to gather them!"
+        )
+        self.current_event = self.rare_material_discovery
+        await asyncio.sleep(600)  # Event lasts for 10 minutes
+        self.current_event = None
+
+    async def participate_rare_material_discovery(self, ctx, user_data):
+        materials = ["scarlet_iron_sand", "scarlet_ore", "spirit_wood"]
+        gathered_material = random.choice(materials)
+        amount = random.randint(5, 15)
+        user_data[f"material_{gathered_material}"] += amount
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've gathered {amount} {gathered_material.replace('_', ' ')}!")
+
+    async def hashira_challenge(self):
+        await self.bot.get_channel(self.config.guild(self.bot.guilds[0]).event_channel()).send(
+            "⚔️ A Hashira has issued a challenge! Use `[p]ds join_event` to test your skills!"
+        )
+        self.current_event = self.hashira_challenge
+        await asyncio.sleep(600)  # Event lasts for 10 minutes
+        self.current_event = None
+
+    async def participate_hashira_challenge(self, ctx, user_data):
+        if self.ranks.index(user_data["rank"]) < self.ranks.index("Kinoe"):
+            await ctx.send("You must be at least Kinoe rank to challenge a Hashira!")
+            return
+
+        hashira = random.choice(["Water", "Flame", "Wind", "Stone", "Love"])
+        success = random.random() < 0.3  # 30% chance of success
+        if success:
+            xp_gained = random.randint(500, 1000)
+            user_data["experience"] += xp_gained
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"You've successfully completed the {hashira} Hashira's challenge and gained {xp_gained} XP!")
+        else:
+            await ctx.send(f"You were defeated by the {hashira} Hashira. Keep training and try again next time!")
+
+    async def blood_moon(self):
+        await self.bot.get_channel(self.config.guild(self.bot.guilds[0]).event_channel()).send(
+            "🔴 The Blood Moon has risen! Demons are stronger, but rewards are greater. Use `[p]ds join_event` to hunt!"
+        )
+        self.current_event = self.blood_moon
+        await asyncio.sleep(600)  # Event lasts for 10 minutes
+        self.current_event = None
+
+    async def participate_blood_moon(self, ctx, user_data):
+        demon_strength = random.randint(100, 500)
+        user_strength = user_data["experience"] + sum(user_data["form_levels"].values()) * 10
+        if user_strength > demon_strength:
+            xp_gained = demon_strength * 2  # Double XP during Blood Moon
+            user_data["experience"] += xp_gained
+            user_data["demons_slayed"] += 1
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"You've defeated a powerful demon under the Blood Moon and gained {xp_gained} XP!")
+        else:
+            await ctx.send("The demon was too strong! You managed to escape, but gained no rewards.")
+
+    async def wisteria_bloom(self):
+        await self.bot.get_channel(self.config.guild(self.bot.guilds[0]).event_channel()).send(
+            "🌸 Wisteria flowers are in bloom! Use `[p]ds join_event` to receive their blessing!"
+        )
+        self.current_event = self.wisteria_bloom
+        await asyncio.sleep(600)  # Event lasts for 10 minutes
+        self.current_event = None
+
+    async def participate_wisteria_bloom(self, ctx, user_data):
+        healing = random.randint(50, 200)
+        protection_duration = random.randint(1, 3)
+        user_data["experience"] += healing
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"The Wisteria bloom has healed you for {healing} HP and granted you {protection_duration} hours of demon protection!")
 
     @ds.command(name="exam")
     async def take_exam(self, ctx):
