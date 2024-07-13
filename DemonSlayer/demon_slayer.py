@@ -21,26 +21,6 @@ class DemonSlayer(commands.Cog):
         self.event_task = self.bot.loop.create_task(self.random_event_loop())
         self.current_event = None
 
-    def cog_unload(self):
-        if self.event_task:
-            self.event_task.cancel()
-
-    async def random_event_loop(self):
-        while True:
-            await asyncio.sleep(600)  # 10 minutes
-            await self.trigger_random_event()
-
-    async def trigger_random_event(self):
-        events = [
-            self.demon_invasion,
-            self.rare_material_discovery,
-            self.hashira_challenge,
-            self.blood_moon,
-            self.wisteria_bloom
-        ]
-        self.current_event = random.choice(events)
-        await self.current_event()
-        
         default_user = {
             "has_passed_exam": False,
             "exam_cooldown": None,
@@ -160,6 +140,27 @@ class DemonSlayer(commands.Cog):
         ]
         
         self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
+
+    def cog_unload(self):
+        if self.event_task:
+            self.event_task.cancel()
+
+    async def random_event_loop(self):
+        while True:
+            await asyncio.sleep(600)  # 10 minutes
+            await self.trigger_random_event()
+
+    async def trigger_random_event(self):
+        events = [
+            self.demon_invasion,
+            self.rare_material_discovery,
+            self.hashira_challenge,
+            self.blood_moon,
+            self.wisteria_bloom
+        ]
+        self.current_event = random.choice(events)
+        await self.current_event()
+        
 
     @commands.group()
     async def ds(self, ctx):
