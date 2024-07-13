@@ -763,7 +763,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send("You need to have defeated an Upper Moon demon or be at least Kinoe rank to participate in Hashira training!")
 
     @commands.is_owner()
-    @ds.command(name="end_hashira_training")
+    @ds.command(name="endh")
     async def end_hashira_training(self, ctx):
         """End the current Hashira training event and distribute rewards"""
         guild_data = await self.config.guild(ctx.guild).all()
