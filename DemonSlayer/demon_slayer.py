@@ -57,6 +57,11 @@ class DemonSlayer(commands.Cog):
             "companion": None,
             "last_hunt": None,
             "upper_moon_defeated": False,
+            "is_demon": False,
+            "demon_rank": None,
+            "blood_demon_art": None,
+            "demons_consumed": 0,
+            "story_progress": 0,
         }
         
         default_guild = {
@@ -73,10 +78,84 @@ class DemonSlayer(commands.Cog):
             "Wind": ["Dust Whirlwind Cutter", "Claws-Purifying Wind", "Clean Storm Wind", "Rising Dust Storm", "Purgatory Windmill"],
             "Stone": ["Serpentine Bipedal", "Upper Smash", "Stone Skin", "Volcanic Rock", "Arcs of Justice"]
         }
+
+        self.story_quests = [
+            {
+                "title": "First Mission",
+                "description": "You've completed your training and are ready for your first mission. A nearby village has reported strange disappearances.",
+                "options": ["Investigate the village", "Train more before leaving", "Ask a senior slayer for advice"],
+                "outcomes": [
+                    "You discover a demon hiding in the village and manage to defeat it!",
+                    "Your extra training pays off when you face your first demon.",
+                    "The senior slayer's advice proves invaluable in your first encounter."
+                ]
+            },
+            {
+                "title": "The Wisteria House",
+                "description": "You've been assigned to guard a Wisteria House, a safe haven for demon slayers. Suddenly, you hear screams from inside.",
+                "options": ["Rush in immediately", "Assess the situation from outside", "Call for backup"],
+                "outcomes": [
+                    "Your quick action saves lives, but you're injured in the process.",
+                    "Your caution reveals a trap set by demons, which you manage to disarm.",
+                    "Backup arrives just in time to help you fend off a powerful demon attack."
+                ]
+            },
+            {
+                "title": "Mountain Trial",
+                "description": "Your next mission takes you to a remote mountain where several slayers have gone missing.",
+                "options": ["Climb the treacherous path", "Search for a hidden route", "Set up a base camp first"],
+                "outcomes": [
+                    "The difficult climb strengthens your resolve, preparing you for the challenges ahead.",
+                    "You discover a network of caves that leads you to the demon's lair.",
+                    "Your well-prepared base camp becomes crucial for surviving the lengthy mission."
+                ]
+            },
+            {
+                "title": "Demon Moon Encounter",
+                "description": "During a routine patrol, you encounter a Lower Moon demon. This is your first time facing such a powerful foe.",
+                "options": ["Engage in direct combat", "Use the environment to your advantage", "Attempt to flee and report"],
+                "outcomes": [
+                    "Your bravery impresses the Hashira, earning you recognition despite the tough battle.",
+                    "Your clever use of the terrain allows you to hold your ground until help arrives.",
+                    "Your report leads to a coordinated effort to take down the Lower Moon."
+                ]
+            },
+            {
+                "title": "The Swordsmith Village",
+                "description": "You're tasked with escorting a young swordsmith to their village. On the way, you're ambushed by demons.",
+                "options": ["Protect the swordsmith at all costs", "Fight aggressively to end the battle quickly", "Try to lose the demons in the forest"],
+                "outcomes": [
+                    "Your unwavering protection impresses the swordsmith, who later crafts you a superior blade.",
+                    "Your aggressive strategy catches the demons off guard, leading to a swift victory.",
+                    "Your knowledge of the forest helps you escape, and you learn valuable evasion techniques."
+                ]
+            }
+        ]
         
         self.ranks = [
             "Mizunoto", "Mizunoe", "Kanoto", "Kanoe", "Tsuchinoto", "Tsuchinoe",
             "Hinoto", "Hinoe", "Kinoto", "Kinoe", "Hashira"
+        ]
+
+        self.demon_ranks = ["Newly Turned", "Lower Rank 6", "Lower Rank 5", "Lower Rank 4", "Lower Rank 3", "Lower Rank 2", "Lower Rank 1", 
+                            "Upper Rank 6", "Upper Rank 5", "Upper Rank 4", "Upper Rank 3", "Upper Rank 2", "Upper Rank 1"]
+        
+        self.blood_demon_arts = [
+            "Blood Manipulation",
+            "Shadow Control",
+            "Flesh Manipulation",
+            "Illusion Creation",
+            "Poison Generation",
+            "Sound Manipulation",
+            "Time Distortion",
+            "Elemental Affinity",
+            "Mind Control",
+            "Regeneration",
+            "Dimensional Manipulation",
+            "Emotion Amplification",
+            "Gravity Control",
+            "Dream Infiltration",
+            "Metamorphosis"
         ]
         
         self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
@@ -84,6 +163,139 @@ class DemonSlayer(commands.Cog):
     @commands.group()
     async def ds(self, ctx):
         """Demon Slayer commands"""
+
+    @ds.command(name="story")
+    async def story_quest(self, ctx):
+        """Progress through the Demon Slayer story"""
+        user_data = await self.config.user(ctx.author).all()
+        
+        if user_data["is_demon"]:
+            await ctx.send("As a demon, you cannot participate in Demon Slayer story quests.")
+            return
+        
+        quest = self.story_quests[user_data["story_progress"]]
+        
+        embed = discord.Embed(title=quest["title"], description=quest["description"], color=discord.Color.blue())
+        for i, option in enumerate(quest["options"], 1):
+            embed.add_field(name=f"Option {i}", value=option, inline=False)
+        
+        await ctx.send(embed=embed)
+        
+        def check(m):
+            return m.author == ctx.author and m.content.isdigit() and 1 <= int(m.content) <= len(quest["options"])
+        
+        try:
+            choice = await self.bot.wait_for('message', check=check, timeout=30.0)
+            choice = int(choice.content) - 1
+            
+            outcome = quest["outcomes"][choice]
+            await ctx.send(f"Outcome: {outcome}")
+            
+            user_data["story_progress"] += 1
+            user_data["experience"] += 100  # Reward for completing a story quest
+            await self.config.user(ctx.author).set(user_data)
+            
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. The quest has been cancelled.")
+
+    @ds.command(name="demon")
+    async def become_demon(self, ctx):
+        """Choose to become a demon"""
+        user_data = await self.config.user(ctx.author).all()
+        
+        if user_data["is_demon"]:
+            await ctx.send("You are already a demon!")
+            return
+        
+        await ctx.send("Are you sure you want to abandon your humanity and become a demon? This action is irreversible. (yes/no)")
+        
+        def check(m):
+            return m.author == ctx.author and m.content.lower() in ['yes', 'no']
+        
+        try:
+            choice = await self.bot.wait_for('message', check=check, timeout=30.0)
+            
+            if choice.content.lower() == 'yes':
+                user_data["is_demon"] = True
+                user_data["demon_rank"] = "Newly Turned"
+                user_data["blood_demon_art"] = random.choice(self.blood_demon_arts)
+                user_data["breathing_technique"] = None  # Demons don't use breathing techniques
+                
+                await self.config.user(ctx.author).set(user_data)
+                await ctx.send(f"You have become a demon! Your Blood Demon Art is: {user_data['blood_demon_art']}")
+            else:
+                await ctx.send("You have chosen to remain human.")
+                
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. The transformation has been cancelled.")
+
+    @ds.command(name="dbattle")
+    async def demon_battle(self, ctx, opponent: discord.Member):
+        """Challenge another demon to a blood battle"""
+        user_data = await self.config.user(ctx.author).all()
+        opponent_data = await self.config.user(opponent).all()
+        
+        if not user_data["is_demon"] or not opponent_data["is_demon"]:
+            await ctx.send("Both participants must be demons to engage in a blood battle!")
+            return
+        
+        user_strength = self.calculate_demon_strength(user_data)
+        opponent_strength = self.calculate_demon_strength(opponent_data)
+        
+        await ctx.send(f"{ctx.author.mention} has challenged {opponent.mention} to a blood battle!")
+        await asyncio.sleep(3)
+        
+        if user_strength > opponent_strength:
+            winner, loser = ctx.author, opponent
+            winner_data, loser_data = user_data, opponent_data
+        else:
+            winner, loser = opponent, ctx.author
+            winner_data, loser_data = opponent_data, user_data
+        
+        await ctx.send(f"{winner.mention} has emerged victorious in the blood battle!")
+        
+        # Winner consumes the loser
+        winner_data["demons_consumed"] += 1
+        self.upgrade_demon_rank(winner_data)
+        
+        # Reset loser to human
+        loser_data["is_demon"] = False
+        loser_data["demon_rank"] = None
+        loser_data["blood_demon_art"] = None
+        
+        await self.config.user(winner).set(winner_data)
+        await self.config.user(loser).set(loser_data)
+        
+        await ctx.send(f"{winner.mention} has consumed {loser.mention} and grown stronger!")
+        await ctx.send(f"{loser.mention} has been turned back into a human.")
+
+    def calculate_demon_strength(self, user_data):
+        rank_index = self.demon_ranks.index(user_data["demon_rank"])
+        return (rank_index + 1) * 100 + user_data["demons_consumed"] * 50
+
+    def upgrade_demon_rank(self, user_data):
+        current_rank_index = self.demon_ranks.index(user_data["demon_rank"])
+        if current_rank_index < len(self.demon_ranks) - 1:
+            user_data["demon_rank"] = self.demon_ranks[current_rank_index + 1]
+
+    @ds.command(name="dprofile")
+    async def demon_profile(self, ctx, user: discord.Member = None):
+        """Display your demon profile"""
+        if user is None:
+            user = ctx.author
+        
+        user_data = await self.config.user(user).all()
+        
+        if not user_data["is_demon"]:
+            await ctx.send("This user is not a demon!")
+            return
+        
+        embed = discord.Embed(title=f"{user.name}'s Demon Profile", color=discord.Color.dark_red())
+        embed.add_field(name="Rank", value=user_data["demon_rank"])
+        embed.add_field(name="Blood Demon Art", value=user_data["blood_demon_art"])
+        embed.add_field(name="Demons Consumed", value=str(user_data["demons_consumed"]))
+        
+        await ctx.send(embed=embed)
 
     @ds.command(name="join_event")
     async def join_event(self, ctx):
