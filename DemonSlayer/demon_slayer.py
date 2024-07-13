@@ -70,7 +70,7 @@ class DemonSlayer(commands.Cog):
         self.companions = ["Kasugai Crow", "Nichirin Ore Fox", "Demon Slayer Cat"]
 
         async def _save_breathing_mastery(self, user, breathing_mastery):
-        await self.config.user(user).breathing_mastery.set(json.dumps(breathing_mastery))
+            await self.config.user(user).breathing_mastery.set(json.dumps(breathing_mastery))
 
         async def _get_breathing_mastery(self, user):
             breathing_mastery_json = await self.config.user(user).breathing_mastery()
