@@ -565,8 +565,8 @@ class OnePieceBattle(commands.Cog):
 
     async def volcano_eruption_effect(self, ctx, user_data, opponent_data):
         damage = random.randint(40, 80)
-        user_data["hp"] -= damage
-        opponent_data["hp"] -= damage
+        user_data["hp"] = max(0, user_data["hp"] - damage)
+        opponent_data["hp"] = max(0, opponent_data["hp"] - damage)
         return f"The volcano erupts, showering both fighters with hot ash and debris! Both take {damage} damage!"
 
     async def jungle_ambush_effect(self, ctx, user_data, opponent_data):
@@ -934,6 +934,9 @@ class OnePieceBattle(commands.Cog):
         user_hp = user_strength * 20
         opp_hp = opp_strength * 20
 
+        user_data["hp"] = user_hp
+        opponent_data["hp"] = opp_hp
+
         # Equipment effects
         for item in user_data["equipped_items"]:
             for stat, value in self.equipment[item].items():
@@ -967,18 +970,16 @@ class OnePieceBattle(commands.Cog):
 
         async def update_battle_embed():
             battle_embed.description = f"*{env_effect['description']}*\n" + "*" + "\n".join(battle_log[-3:]) + "*"
-            user_health = get_health_bar(user_hp, user_strength * 20)
-            opp_health = get_health_bar(opp_hp, opp_strength * 20)
+            user_health = get_health_bar(user_data["hp"], user_strength * 20)
+            opp_health = get_health_bar(opponent_data["hp"], opp_strength * 20)
             
-            user_health_text = f"**{ctx.author.name}**\n{user_health} {user_hp:.0f}/{user_strength * 20:.0f} HP"
-            opp_health_text = f"**{opponent_name}**\n{opp_health} {opp_hp:.0f}/{opp_strength * 20:.0f} HP"
+            user_health_text = f"**{ctx.author.name}**\n{user_health} {user_data['hp']:.0f}/{user_strength * 20:.0f} HP"
+            opp_health_text = f"**{opponent_name}**\n{opp_health} {opponent_data['hp']:.0f}/{opp_strength * 20:.0f} HP"
             
             battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
+            battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
             
             await battle_message.edit(embed=battle_embed)
-
-        battle_embed.add_field(name="__Health Status__", value="", inline=False)
-        battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
 
         user_awakened = False
         opp_awakened = False
