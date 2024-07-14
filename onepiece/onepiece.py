@@ -1716,8 +1716,8 @@ class OnePieceBattle(commands.Cog):
 
         await ctx.send(f"You are not in the top 50. Your current bounty is {user_bounty:,} Berries.")
 
-    @op.command(name="rewardtop")
-    async def reward_top_bounties(self):
+    @commands.command(name="rewardtop")
+    async def rewardtop(self, ctx):
         """Reward the top bounty holders"""
         top_bounties = await self.config.top_bounties()
         
@@ -1736,7 +1736,7 @@ class OnePieceBattle(commands.Cog):
 
             for reward in rewards:
                 if isinstance(reward['rank'], int) and i == reward['rank'] or \
-                   isinstance(reward['rank'], tuple) and reward['rank'][0] <= i <= reward['rank'][1]:
+                isinstance(reward['rank'], tuple) and reward['rank'][0] <= i <= reward['rank'][1]:
                     user_data = await self.config.user(user).all()
                     user_data['berries'] = user_data.get('berries', 0) + reward['berries']
                     if 'special_item' in reward:
@@ -1751,6 +1751,8 @@ class OnePieceBattle(commands.Cog):
                     except discord.HTTPException:
                         pass  # Unable to send DM to the user
                     break
+
+        await ctx.send("Top bounty holders have been rewarded!")
 
     @op.command(name="forcebounty")
     @commands.is_owner()
