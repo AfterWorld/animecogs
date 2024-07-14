@@ -1040,8 +1040,8 @@ class OnePieceBattle(commands.Cog):
                 await update_battle_embed()
                 await asyncio.sleep(2)
 
-            opp_hp = max(0, opp_hp - user_attack)
-            user_hp = max(0, user_hp - opp_attack)
+            opponent_data["hp"] = max(0, opponent_data["hp"] - user_attack)
+            user_data["hp"] = max(0, user_data["hp"] - opp_attack)
 
             battle_log.append(f"**Turn {turn_counter}**")
             battle_log.append(f"🌊 {ctx.author.name} unleashes **{user_technique}** with {user_attack:.0f} power!")
@@ -1049,6 +1049,9 @@ class OnePieceBattle(commands.Cog):
 
             await update_battle_embed()
             await asyncio.sleep(2)
+
+            if user_data["hp"] <= 0 or opponent_data["hp"] <= 0:
+                break
 
             if turn_counter >= 30:
                 battle_log.append("⏱️ The battle has reached its time limit!")
