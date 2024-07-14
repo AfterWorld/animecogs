@@ -898,6 +898,7 @@ class OnePieceBattle(commands.Cog):
             description=f"*{env_effect['description']} The seas tremble as two mighty warriors clash!*",
             color=discord.Color.red()
         )
+        battle_embed.add_field(name="__Health Status__", value="Battle starting...", inline=False)
         battle_message = await ctx.send(embed=battle_embed)
 
         # Calculate base strength
@@ -976,8 +977,14 @@ class OnePieceBattle(commands.Cog):
             user_health_text = f"**{ctx.author.name}**\n{user_health} {user_data['hp']:.0f}/{user_strength * 20:.0f} HP"
             opp_health_text = f"**{opponent_name}**\n{opp_health} {opponent_data['hp']:.0f}/{opp_strength * 20:.0f} HP"
             
-            battle_embed.set_field_at(0, name="__Health Status__", value=f"{user_health_text}\n\n{opp_health_text}", inline=False)
-            battle_embed.add_field(name="__Battle Environment__", value=f"{battle_env}: {env_effect['description']}", inline=False)
+            health_status = f"{user_health_text}\n\n{opp_health_text}"
+            
+            # Check if the field exists, if not, add it
+            if len(battle_embed.fields) == 0:
+                battle_embed.add_field(name="__Health Status__", value=health_status, inline=False)
+            else:
+                # If the field exists, update it
+                battle_embed.set_field_at(0, name="__Health Status__", value=health_status, inline=False)
             
             await battle_message.edit(embed=battle_embed)
 
