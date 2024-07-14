@@ -171,20 +171,19 @@ class OnePieceBattle(commands.Cog):
                 {"name": "Sea King Attack", "description": "A massive Sea King emerges!", "effect": self.sea_king_attack},
                 {"name": "Whirlpool", "description": "A dangerous whirlpool forms nearby!", "effect": self.whirlpool_effect},
                 {"name": "Tidal Wave", "description": "A massive tidal wave approaches!", "effect": self.tidal_wave_effect},
-                {"name": "Storm Surge", "description": "A powerful storm surge hits the area!", "effect": self.storm_surge}
+                {"name": "Storm Surge", "description": "A powerful storm surge hits the area!", "effect": self.storm_surge_effect}
             ],
             "Island": [
-                {"name": "Volcano Eruption", "description": "The island's volcano begins to erupt!", "effect": self.volcano_eruption},
-                {"name": "Jungle Ambush", "description": "Wild animals suddenly attack!", "effect": self.jungle_ambush},
+                {"name": "Volcano Eruption", "description": "The island's volcano begins to erupt!", "effect": self.volcano_eruption_effect},
+                {"name": "Jungle Ambush", "description": "Wild animals suddenly attack!", "effect": self.jungle_ambush_effect},
                 {"name": "Quicksand", "description": "The ground beneath turns to quicksand!", "effect": self.quicksand_effect},
-                {"name": "Earthquake", "description": "The island is hit by a sudden earthquake!", "effect": self.earthquake}
+                {"name": "Earthquake", "description": "The island is hit by a sudden earthquake!", "effect": self.earthquake_effect}
             ],
             "City": [
-                {"name": "Falling Debris", "description": "Buildings start to collapse!", "effect": self.falling_debris},
-                {"name": "Civilian Panic", "description": "Panicked civilians run through the battlefield!", "effect": self.civilian_panic},
-                {"name": "Marine Interference", "description": "A Marine patrol stumbles upon the battle!", "effect": self.marine_interference},
-                {"name": "Blackout", "description": "The city's power grid fails, causing a blackout!", "effect": self.blackout},
-                {"name": "Toxic Gas Leak", "description": "A nearby factory releases toxic gas!", "effect": self.toxic_gas_leak}
+                {"name": "Falling Debris", "description": "Buildings start to collapse!", "effect": self.falling_debris_effect},
+                {"name": "Civilian Panic", "description": "Panicked civilians run through the battlefield!", "effect": self.civilian_panic_effect},
+                {"name": "Marine Interference", "description": "A Marine patrol stumbles upon the battle!", "effect": self.marine_interference_effect},
+                {"name": "Blackout", "description": "The city's power grid fails, causing a blackout!", "effect": self.blackout_effect}
             ]
         }
         
@@ -533,6 +532,21 @@ class OnePieceBattle(commands.Cog):
         terrain_modifier = self.terrain_effects[terrain].get(attack_element, 1.0)
         return attack_power * terrain_modifier
     
+    async def sea_king_attack(self, ctx, user_data, opponent_data):
+        damage = random.randint(50, 100)
+        user_data["hp"] -= damage
+        opponent_data["hp"] -= damage
+        return f"The Sea King attacks both fighters for {damage} damage!"
+
+    async def whirlpool_effect(self, ctx, user_data, opponent_data):
+        if user_data.get("devil_fruit"):
+            user_data["hp"] -= 50
+            return f"{ctx.author.name} is weakened by the whirlpool and loses 50 HP!"
+        elif opponent_data.get("devil_fruit"):
+            opponent_data["hp"] -= 50
+            return f"{opponent_data['name']} is weakened by the whirlpool and loses 50 HP!"
+        return "The whirlpool rages, but both fighters manage to stay clear!"
+
     async def tidal_wave_effect(self, ctx, user_data, opponent_data):
         user_damage = random.randint(30, 70)
         opp_damage = random.randint(30, 70)
@@ -540,19 +554,19 @@ class OnePieceBattle(commands.Cog):
         opponent_data["hp"] -= opp_damage
         return f"The tidal wave crashes into both fighters! {ctx.author.name} takes {user_damage} damage and {opponent_data['name']} takes {opp_damage} damage!"
 
-    async def storm_surge(self, ctx, user_data, opponent_data):
+    async def storm_surge_effect(self, ctx, user_data, opponent_data):
         speed_penalty = 10
         user_data["speed"] = max(0, user_data["speed"] - speed_penalty)
         opponent_data["speed"] = max(0, opponent_data["speed"] - speed_penalty)
         return f"A storm surge hits! Both fighters' speed is reduced by {speed_penalty}!"
 
-    async def volcano_eruption(self, ctx, user_data, opponent_data):
+    async def volcano_eruption_effect(self, ctx, user_data, opponent_data):
         damage = random.randint(40, 80)
         user_data["hp"] -= damage
         opponent_data["hp"] -= damage
         return f"The volcano erupts, showering both fighters with hot ash and debris! Both take {damage} damage!"
 
-    async def jungle_ambush(self, ctx, user_data, opponent_data):
+    async def jungle_ambush_effect(self, ctx, user_data, opponent_data):
         if random.random() < 0.5:
             user_data["hp"] -= 30
             return f"Wild animals ambush {ctx.author.name}, dealing 30 damage!"
@@ -566,13 +580,13 @@ class OnePieceBattle(commands.Cog):
         opponent_data["speed"] = max(0, opponent_data["speed"] - speed_reduction)
         return f"Quicksand appears! Both fighters' speed is reduced by {speed_reduction}!"
 
-    async def earthquake(self, ctx, user_data, opponent_data):
+    async def earthquake_effect(self, ctx, user_data, opponent_data):
         damage = random.randint(20, 60)
         user_data["hp"] -= damage
         opponent_data["hp"] -= damage
         return f"An earthquake shakes the island! Both fighters take {damage} damage and lose their footing!"
 
-    async def falling_debris(self, ctx, user_data, opponent_data):
+    async def falling_debris_effect(self, ctx, user_data, opponent_data):
         if random.random() < 0.5:
             damage = random.randint(30, 70)
             user_data["hp"] -= damage
@@ -582,29 +596,23 @@ class OnePieceBattle(commands.Cog):
             opponent_data["hp"] -= damage
             return f"Falling debris hits {opponent_data['name']}, dealing {damage} damage!"
 
-    async def civilian_panic(self, ctx, user_data, opponent_data):
+    async def civilian_panic_effect(self, ctx, user_data, opponent_data):
         speed_boost = 15
         user_data["speed"] += speed_boost
         opponent_data["speed"] += speed_boost
         return f"Panicked civilians create chaos! Both fighters' speed increases by {speed_boost} as they maneuver through the crowd!"
 
-    async def marine_interference(self, ctx, user_data, opponent_data):
+    async def marine_interference_effect(self, ctx, user_data, opponent_data):
         damage = random.randint(10, 40)
         user_data["hp"] -= damage
         opponent_data["hp"] -= damage
         return f"Marine forces interfere with the battle! Both fighters take {damage} damage from stray attacks!"
 
-    async def blackout(self, ctx, user_data, opponent_data):
+    async def blackout_effect(self, ctx, user_data, opponent_data):
         accuracy_penalty = 20
         user_data["accuracy"] = max(0, user_data.get("accuracy", 100) - accuracy_penalty)
         opponent_data["accuracy"] = max(0, opponent_data.get("accuracy", 100) - accuracy_penalty)
         return f"A sudden blackout occurs! Both fighters' accuracy is reduced by {accuracy_penalty}%!"
-
-    async def toxic_gas_leak(self, ctx, user_data, opponent_data):
-        poison_damage = 10
-        user_data["hp"] -= poison_damage
-        opponent_data["hp"] -= poison_damage
-        return f"Toxic gas leaks into the area! Both fighters take {poison_damage} poison damage and will continue to take damage each turn!"
     
     async def trigger_hazard(self, ctx, environment, user_data, opponent_data):
         if random.random() < 0.2:  # 20% chance of a hazard occurring
