@@ -60,13 +60,15 @@ class OnePieceBattle(commands.Cog):
         }
         
         default_guild = {
-            "active_quests": []
+            "active_quests": [],
+            "bounty_rankings": {}  # Add this line
         }
         
         
         self.battle_royale_task = self.bot.loop.create_task(self.battle_royale_scheduler())
         self.bounty_update_task = self.bot.loop.create_task(self.periodic_bounty_update()) # Start the bounty update loop
         self.config.register_global(**default_global)
+        self.config.register_guild(**default_guild)
         self.config.register_user(**default_user)
         self.max_fatigue = 100
         self.fatigue_per_battle = 10
@@ -1166,10 +1168,15 @@ class OnePieceBattle(commands.Cog):
         return None
 
     async def update_bounty_rankings(self, guild, user, bounty):
-        async with self.config.guild(guild).bounty_rankings() as rankings:
-            rankings[str(user.id)] = bounty
+        async with self.config.guild(guild).all() as guild_data:
+            if "bounty_rankings" not in guild_data:
+                guild_data["bounty_rankings"] = {}
+            
+            guild_data["bounty_rankings"][str(user.id)] = bounty
+            
             # Keep only top 100 bounties
-            rankings = dict(sorted(rankings.items(), key=lambda x: x[1], reverse=True)[:100])
+            sorted_rankings = sorted(guild_data["bounty_rankings"].items(), key=lambda x: x[1], reverse=True)[:100]
+            guild_data["bounty_rankings"] = dict(sorted_rankings)
 
     async def update_discovered_zones(self, user, zone):
         async with self.config.user(user).discovered_zones() as zones:
