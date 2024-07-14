@@ -2244,11 +2244,29 @@ class OnePieceBattle(commands.Cog):
         available_techniques = self.techniques.get(fighting_style, [])
         learned_techniques = user_data["learned_techniques"]
         
-        embed = discord.Embed(title=f"Techniques for {fighting_style}", color=discord.Color.blue())
-        for technique in available_techniques:
-            status = "Learned" if technique in learned_techniques else "Not Learned"
-            embed.add_field(name=technique, value=status, inline=False)
+        embed = discord.Embed(title=f"Techniques for {fighting_style}", 
+                            color=discord.Color.blue(),
+                            description=f"Your current level: {user_data['level']}")
         
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url)
+        embed.set_footer(text="💡 Tip: Train and level up to unlock more techniques!")
+
+        for technique in available_techniques:
+            name = technique['name']
+            level_req = technique['level']
+            is_learned = name in learned_techniques
+            can_learn = user_data['level'] >= level_req
+
+            status = "✅ Learned" if is_learned else "🔓 Available" if can_learn else "🔒 Locked"
+            value = f"Required Level: {level_req}\nStatus: {status}"
+            
+            # Use inline=True to make the embed more compact
+            embed.add_field(name=name, value=value, inline=True)
+        
+        # Ensure we have an even number of fields for symmetry
+        if len(available_techniques) % 2 != 0:
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+
         await ctx.send(embed=embed)
 
     @op.command(name="view_equipment")
