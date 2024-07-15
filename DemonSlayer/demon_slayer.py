@@ -25,7 +25,7 @@ class DemonSlayer(commands.Cog):
             "has_passed_exam": False,
             "exam_cooldown": None,
             "breathing_technique": None,
-            "breathing_mastery": "{}",  # JSON string
+            "breathing_mastery": {},  # Change this to an empty dict
             "nichirin_blade_color": None,
             "nichirin_blade_level": 0,
             "material_scarlet_iron_sand": 0,
@@ -42,6 +42,7 @@ class DemonSlayer(commands.Cog):
             "blood_demon_art": None,
             "demons_consumed": 0,
             "story_progress": 0,
+            "blood_demon_art_mastery": {},  # Add this line
         }
         
         default_guild = {
@@ -686,26 +687,26 @@ class DemonSlayer(commands.Cog):
         """Train to improve your skills"""
         user_data = await self.config.user(ctx.author).all()
         
-        if not user_data.get("has_passed_exam", False):
+        if not user_data["has_passed_exam"]:
             await ctx.send("You must pass the entrance exam before you can train!")
             return
         
-        if user_data.get("is_demon", False):
+        if user_data["is_demon"]:
             # Demon training
-            blood_art = user_data.get("blood_demon_art")
+            blood_art = user_data["blood_demon_art"]
             if not blood_art:
                 await ctx.send("You don't have a Blood Demon Art. Please contact an admin to assign you one.")
                 return
             
             mastery_gain = random.randint(1, 10)
             
-            blood_demon_art_mastery = safe_json_loads(user_data.get("blood_demon_art_mastery", "{}"), default={})
+            blood_demon_art_mastery = user_data.get("blood_demon_art_mastery", {})
             
             if blood_art not in blood_demon_art_mastery:
                 blood_demon_art_mastery[blood_art] = 0
             
             blood_demon_art_mastery[blood_art] += mastery_gain
-            user_data["blood_demon_art_mastery"] = json.dumps(blood_demon_art_mastery)
+            user_data["blood_demon_art_mastery"] = blood_demon_art_mastery
             
             embed = discord.Embed(title="Demon Training", color=discord.Color.dark_red())
             embed.add_field(name="Blood Demon Art", value=blood_art)
@@ -713,7 +714,7 @@ class DemonSlayer(commands.Cog):
             embed.add_field(name="Current Mastery", value=str(blood_demon_art_mastery[blood_art]))
         else:
             # Human training
-            technique = user_data.get("breathing_technique")
+            technique = user_data["breathing_technique"]
             if not technique:
                 await ctx.send("You don't have a breathing technique yet. Please contact an admin to assign you one.")
                 return
@@ -723,7 +724,7 @@ class DemonSlayer(commands.Cog):
                 await ctx.send(f"No forms found for {technique} breathing. Please contact an admin to fix this.")
                 return
             
-            breathing_mastery = safe_json_loads(user_data.get("breathing_mastery", "{}"), default={})
+            breathing_mastery = user_data.get("breathing_mastery", {})
             
             if technique not in breathing_mastery:
                 breathing_mastery[technique] = {}
@@ -735,7 +736,7 @@ class DemonSlayer(commands.Cog):
                 breathing_mastery[technique][form_to_train] = 0
             
             breathing_mastery[technique][form_to_train] += mastery_gain
-            user_data["breathing_mastery"] = json.dumps(breathing_mastery)
+            user_data["breathing_mastery"] = breathing_mastery
             
             embed = discord.Embed(title="Breathing Technique Training", color=discord.Color.blue())
             embed.add_field(name="Technique", value=technique)
@@ -745,7 +746,7 @@ class DemonSlayer(commands.Cog):
         
         # Common for both demons and humans
         xp_gained = random.randint(10, 50)
-        user_data["experience"] = user_data.get("experience", 0) + xp_gained
+        user_data["experience"] += xp_gained
         embed.add_field(name="XP Gained", value=str(xp_gained))
         
         await self.config.user(ctx.author).set(user_data)
@@ -906,13 +907,12 @@ class DemonSlayer(commands.Cog):
 
     async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
-        user_data = safe_json_loads(user_data, default={})
         
-        if user_data.get("is_demon", False):
+        if user_data["is_demon"]:
             current_rank_index = self.demon_ranks.index(user_data.get("demon_rank", "Newly Turned"))
             xp_threshold = (current_rank_index + 1) * 1500  # Demons need more XP to rank up
             
-            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
+            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
                 new_rank = self.demon_ranks[current_rank_index + 1]
                 user_data["demon_rank"] = new_rank
                 await self.config.user(ctx.author).set(user_data)
@@ -921,7 +921,7 @@ class DemonSlayer(commands.Cog):
             current_rank_index = self.ranks.index(user_data.get("rank", "Mizunoto"))
             xp_threshold = (current_rank_index + 1) * 1000
             
-            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.ranks) - 1:
+            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
                 new_rank = self.ranks[current_rank_index + 1]
                 user_data["rank"] = new_rank
                 await self.config.user(ctx.author).set(user_data)
