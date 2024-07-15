@@ -322,6 +322,10 @@ class DemonSlayer(commands.Cog):
             await ctx.send("As a demon, you cannot participate in Demon Slayer story quests.")
             return
         
+        if user_data["story_progress"] >= len(self.story_quests):
+            await ctx.send("Congratulations! You have completed all available story quests. Stay tuned for more adventures!")
+            return
+        
         quest = self.story_quests[user_data["story_progress"]]
         
         embed = discord.Embed(title=quest["title"], description=quest["description"], color=discord.Color.blue())
@@ -344,39 +348,44 @@ class DemonSlayer(commands.Cog):
             user_data["experience"] += 100  # Reward for completing a story quest
             await self.config.user(ctx.author).set(user_data)
             
+            if user_data["story_progress"] < len(self.story_quests):
+                await ctx.send(f"You've completed this quest! Use the command again to start the next one.")
+            else:
+                await ctx.send("Congratulations! You've completed all available story quests. Stay tuned for more adventures!")
+            
         except asyncio.TimeoutError:
             await ctx.send("You took too long to respond. The quest has been cancelled.")
-
-    @ds.command(name="demon")
-    async def become_demon(self, ctx):
-        """Choose to become a demon"""
-        user_data = await self.config.user(ctx.author).all()
-        
-        if user_data["is_demon"]:
-            await ctx.send("You are already a demon!")
-            return
-        
-        await ctx.send("Are you sure you want to abandon your humanity and become a demon? This action is irreversible. (yes/no)")
-        
-        def check(m):
-            return m.author == ctx.author and m.content.lower() in ['yes', 'no']
-        
-        try:
-            choice = await self.bot.wait_for('message', check=check, timeout=30.0)
+    
+        @ds.command(name="demon")
+        async def become_demon(self, ctx):
+            """Choose to become a demon"""
+            user_data = await self.config.user(ctx.author).all()
             
-            if choice.content.lower() == 'yes':
-                user_data["is_demon"] = True
-                user_data["demon_rank"] = "Newly Turned"
-                user_data["blood_demon_art"] = random.choice(self.blood_demon_arts)
-                user_data["breathing_technique"] = None  # Demons don't use breathing techniques
+            if user_data["is_demon"]:
+                await ctx.send("You are already a demon!")
+                return
+            
+            await ctx.send("Are you sure you want to abandon your humanity and become a demon? This action is irreversible. (yes/no)")
+            
+            def check(m):
+                return m.author == ctx.author and m.content.lower() in ['yes', 'no']
+            
+            try:
+                choice = await self.bot.wait_for('message', check=check, timeout=30.0)
                 
-                await self.config.user(ctx.author).set(user_data)
-                await ctx.send(f"You have become a demon! Your Blood Demon Art is: {user_data['blood_demon_art']}")
-            else:
-                await ctx.send("You have chosen to remain human.")
-                
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long to respond. The transformation has been cancelled.")
+                if choice.content.lower() == 'yes':
+                    user_data["is_demon"] = True
+                    user_data["demon_rank"] = "Newly Turned"
+                    user_data["blood_demon_art"] = random.choice(self.blood_demon_arts)
+                    user_data["breathing_technique"] = None  # Demons don't use breathing techniques
+                    
+                    await self.config.user(ctx.author).set(user_data)
+                    await ctx.send(f"You have become a demon! Your Blood Demon Art is: {user_data['blood_demon_art']}")
+                else:
+                    await ctx.send("You have chosen to remain human.")
+                    
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to respond. The transformation has been cancelled.")
 
     @ds.command(name="dbattle")
     async def demon_battle(self, ctx, opponent: discord.Member):
