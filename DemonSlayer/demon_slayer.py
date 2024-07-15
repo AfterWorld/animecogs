@@ -568,11 +568,19 @@ class DemonSlayer(commands.Cog):
         """Hunt for demons or humans"""
         user_data = await self.config.user(ctx.author).all()
         
-        if not user_data["has_passed_exam"]:
+        # Convert string values to appropriate types
+        for key, value in user_data.items():
+            if isinstance(value, str):
+                try:
+                    user_data[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if it's not JSON
+    
+        if not user_data.get("has_passed_exam", False):
             await ctx.send("You must pass the entrance exam before you can hunt!")
             return
         
-        if user_data["is_demon"]:
+        if user_data.get("is_demon", False):
             prey = "human"
             prey_types = ["Civilian", "Demon Slayer Trainee", "Lower Rank Demon Slayer", "Higher Rank Demon Slayer"]
         else:
@@ -606,9 +614,9 @@ class DemonSlayer(commands.Cog):
                 "Lower Moon": random.randint(100, 500), "Upper Moon": random.randint(500, 1000)
             }[target]
             
-            user_data["experience"] += xp_gain
-            if not user_data["is_demon"]:
-                user_data["demons_slayed"] += 1
+            user_data["experience"] = user_data.get("experience", 0) + xp_gain
+            if not user_data.get("is_demon", False):
+                user_data["demons_slayed"] = user_data.get("demons_slayed", 0) + 1
             else:
                 user_data["humans_consumed"] = user_data.get("humans_consumed", 0) + 1
             
@@ -616,16 +624,21 @@ class DemonSlayer(commands.Cog):
             result_embed.add_field(name="Outcome", value="Victory!")
             result_embed.add_field(name="XP Gained", value=str(xp_gain))
             
-            if not user_data["is_demon"]:
+            if not user_data.get("is_demon", False):
                 material_gain = {
                     "scarlet_iron_sand": random.randint(1, 5),
                     "scarlet_ore": random.randint(0, 2),
                     "spirit_wood": random.randint(1, 3)
                 }
                 for material, amount in material_gain.items():
-                    user_data[f"material_{material}"] += amount
+                    user_data[f"material_{material}"] = user_data.get(f"material_{material}", 0) + amount
                 result_embed.add_field(name="Materials Gained", value="\n".join([f"{mat.replace('_', ' ').title()}: {amt}" for mat, amt in material_gain.items()]))
             
+            # Convert dict values back to JSON strings
+            for key, value in user_data.items():
+                if isinstance(value, dict):
+                    user_data[key] = json.dumps(value)
+    
             await self.config.user(ctx.author).set(user_data)
             await ctx.send(embed=result_embed)
             await self.check_rank_up(ctx)
@@ -908,22 +921,42 @@ class DemonSlayer(commands.Cog):
     async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
         
-        if user_data["is_demon"]:
+        # Convert string values to appropriate types
+        for key, value in user_data.items():
+            if isinstance(value, str):
+                try:
+                    user_data[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if it's not JSON
+    
+        if user_data.get("is_demon", False):
             current_rank_index = self.demon_ranks.index(user_data.get("demon_rank", "Newly Turned"))
             xp_threshold = (current_rank_index + 1) * 1500  # Demons need more XP to rank up
             
-            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
+            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
                 new_rank = self.demon_ranks[current_rank_index + 1]
                 user_data["demon_rank"] = new_rank
+                
+                # Convert dict values back to JSON strings
+                for key, value in user_data.items():
+                    if isinstance(value, dict):
+                        user_data[key] = json.dumps(value)
+                
                 await self.config.user(ctx.author).set(user_data)
                 await ctx.send(f"Congratulations, {ctx.author.mention}! You've ascended to {new_rank}!")
         else:
             current_rank_index = self.ranks.index(user_data.get("rank", "Mizunoto"))
             xp_threshold = (current_rank_index + 1) * 1000
             
-            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
+            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.ranks) - 1:
                 new_rank = self.ranks[current_rank_index + 1]
                 user_data["rank"] = new_rank
+                
+                # Convert dict values back to JSON strings
+                for key, value in user_data.items():
+                    if isinstance(value, dict):
+                        user_data[key] = json.dumps(value)
+                
                 await self.config.user(ctx.author).set(user_data)
                 await ctx.send(f"Congratulations, {ctx.author.mention}! You've been promoted to {new_rank}!")
             
