@@ -6,14 +6,6 @@ from datetime import datetime, timedelta
 import json
 from redbot.core.utils.predicates import MessagePredicate
 
-def safe_json_loads(self, data, default=None):
-    if isinstance(data, dict):
-        return data
-    try:
-        return json.loads(data)
-    except (json.JSONDecodeError, TypeError):
-        return default if default is not None else {}
-
 class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -160,7 +152,14 @@ class DemonSlayer(commands.Cog):
         ]
         self.current_event = random.choice(events)
         await self.current_event()
-        
+
+    def safe_json_loads(self, data, default=None):
+    if isinstance(data, dict):
+        return data
+    try:
+        return json.loads(data)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else {}
 
     @commands.group()
     async def ds(self, ctx):
