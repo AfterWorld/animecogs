@@ -6,20 +6,20 @@ from datetime import datetime, timedelta
 import json
 from redbot.core.utils.predicates import MessagePredicate
 
+def safe_json_loads(data, default=None):
+    if isinstance(data, dict):
+        return data
+    try:
+        return json.loads(data)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else {}
+
 class DemonSlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
         self.event_task = self.bot.loop.create_task(self.random_event_loop())
         self.current_event = None
-
-        def safe_json_loads(self, data, default=None):
-            if isinstance(data, dict):
-                return data
-            try:
-                return json.loads(data)
-            except (json.JSONDecodeError, TypeError):
-                return default if default is not None else {}
         
         default_user = {
             "has_passed_exam": False,
@@ -773,7 +773,7 @@ class DemonSlayer(commands.Cog):
         embed.add_field(name="Companion", value=user_data["companion"])
         embed.add_field(name="Nichirin Blade", value=f"{user_data['nichirin_blade_color']} (+{user_data['nichirin_blade_level']})")
         
-        breathing_mastery = self.safe_json_loads(user_data["breathing_mastery"])
+        breathing_mastery = safe_json_loads(user_data["breathing_mastery"])
         mastery_text = "\n".join([f"{form}: {mastery}" for form, mastery in breathing_mastery.get(user_data["breathing_technique"], {}).items()])
         embed.add_field(name="Breathing Mastery", value=mastery_text or "No forms mastered yet", inline=False)
         
