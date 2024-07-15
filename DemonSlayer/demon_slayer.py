@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import json
 from redbot.core.utils.predicates import MessagePredicate
 
-def safe_json_loads(data, default=None):
-    if isinstance(data, (dict, list)):
+def safe_json_loads(self, data, default=None):
+    if isinstance(data, dict):
         return data
     try:
         return json.loads(data)
@@ -884,23 +884,24 @@ class DemonSlayer(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    async def check_rank_up(self, ctx):
+   async def check_rank_up(self, ctx):
         user_data = await self.config.user(ctx.author).all()
+        user_data = self.safe_json_loads(user_data, default={})
         
-        if user_data["is_demon"]:
-            current_rank_index = self.demon_ranks.index(user_data["demon_rank"])
+        if user_data.get("is_demon", False):
+            current_rank_index = self.demon_ranks.index(user_data.get("demon_rank", "Newly Turned"))
             xp_threshold = (current_rank_index + 1) * 1500  # Demons need more XP to rank up
             
-            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
+            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.demon_ranks) - 1:
                 new_rank = self.demon_ranks[current_rank_index + 1]
                 user_data["demon_rank"] = new_rank
                 await self.config.user(ctx.author).set(user_data)
                 await ctx.send(f"Congratulations, {ctx.author.mention}! You've ascended to {new_rank}!")
         else:
-            current_rank_index = self.ranks.index(user_data["rank"])
+            current_rank_index = self.ranks.index(user_data.get("rank", "Mizunoto"))
             xp_threshold = (current_rank_index + 1) * 1000
             
-            if user_data["experience"] >= xp_threshold and current_rank_index < len(self.ranks) - 1:
+            if user_data.get("experience", 0) >= xp_threshold and current_rank_index < len(self.ranks) - 1:
                 new_rank = self.ranks[current_rank_index + 1]
                 user_data["rank"] = new_rank
                 await self.config.user(ctx.author).set(user_data)
