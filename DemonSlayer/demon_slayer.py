@@ -25,7 +25,7 @@ class DemonSlayer(commands.Cog):
             "has_passed_exam": False,
             "exam_cooldown": None,
             "breathing_technique": None,
-            "breathing_mastery": {},  # Change this to an empty dict
+            "breathing_mastery": "{}",  # Change this back to a JSON string
             "nichirin_blade_color": None,
             "nichirin_blade_level": 0,
             "material_scarlet_iron_sand": 0,
@@ -42,9 +42,9 @@ class DemonSlayer(commands.Cog):
             "blood_demon_art": None,
             "demons_consumed": 0,
             "story_progress": 0,
-            "blood_demon_art_mastery": {},  # Add this line
+            "blood_demon_art_mastery": "{}"  # Change this to a JSON string
         }
-        
+            
         default_guild = {
             "active_hashira_training": None,  # Will be set as JSON string when active
             "event_channel": None,
@@ -700,13 +700,13 @@ class DemonSlayer(commands.Cog):
             
             mastery_gain = random.randint(1, 10)
             
-            blood_demon_art_mastery = user_data.get("blood_demon_art_mastery", {})
+            blood_demon_art_mastery = json.loads(user_data.get("blood_demon_art_mastery", "{}"))
             
             if blood_art not in blood_demon_art_mastery:
                 blood_demon_art_mastery[blood_art] = 0
             
             blood_demon_art_mastery[blood_art] += mastery_gain
-            user_data["blood_demon_art_mastery"] = blood_demon_art_mastery
+            user_data["blood_demon_art_mastery"] = json.dumps(blood_demon_art_mastery)
             
             embed = discord.Embed(title="Demon Training", color=discord.Color.dark_red())
             embed.add_field(name="Blood Demon Art", value=blood_art)
@@ -724,7 +724,7 @@ class DemonSlayer(commands.Cog):
                 await ctx.send(f"No forms found for {technique} breathing. Please contact an admin to fix this.")
                 return
             
-            breathing_mastery = user_data.get("breathing_mastery", {})
+            breathing_mastery = json.loads(user_data.get("breathing_mastery", "{}"))
             
             if technique not in breathing_mastery:
                 breathing_mastery[technique] = {}
@@ -736,7 +736,7 @@ class DemonSlayer(commands.Cog):
                 breathing_mastery[technique][form_to_train] = 0
             
             breathing_mastery[technique][form_to_train] += mastery_gain
-            user_data["breathing_mastery"] = breathing_mastery
+            user_data["breathing_mastery"] = json.dumps(breathing_mastery)
             
             embed = discord.Embed(title="Breathing Technique Training", color=discord.Color.blue())
             embed.add_field(name="Technique", value=technique)
