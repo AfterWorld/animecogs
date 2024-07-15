@@ -668,6 +668,9 @@ class DemonSlayer(commands.Cog):
             if "blood_demon_art_mastery" not in user_data:
                 user_data["blood_demon_art_mastery"] = {}
             
+            if isinstance(user_data["blood_demon_art_mastery"], str):
+                user_data["blood_demon_art_mastery"] = {}
+            
             if blood_art not in user_data["blood_demon_art_mastery"]:
                 user_data["blood_demon_art_mastery"][blood_art] = 0
             
@@ -687,6 +690,12 @@ class DemonSlayer(commands.Cog):
             forms = self.breathing_techniques[technique]
             
             breathing_mastery = user_data.get("breathing_mastery", {})
+            if isinstance(breathing_mastery, str):
+                try:
+                    breathing_mastery = json.loads(breathing_mastery)
+                except json.JSONDecodeError:
+                    breathing_mastery = {}
+            
             if technique not in breathing_mastery:
                 breathing_mastery[technique] = {}
             
