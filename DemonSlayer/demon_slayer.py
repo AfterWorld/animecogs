@@ -515,7 +515,7 @@ class DemonSlayer(commands.Cog):
             await ctx.send(f"You've failed the exam with a score of {score}/5. You can retake it in 5 minutes.")
 
     @commands.is_owner()
-    @ds.command(name="wipe_data")
+    @ds.command(name="wipe_all_data")
     async def wipe_all_data(self, ctx):
         """Wipe all Demon Slayer data (Owner only)"""
         await ctx.send("⚠️ **WARNING**: This will delete ALL Demon Slayer data for all users and guilds. "
@@ -536,6 +536,28 @@ class DemonSlayer(commands.Cog):
             await self.config.clear_all_guilds()
             
             await ctx.send("All Demon Slayer data has been wiped.")
+        else:
+            await ctx.send("Data wipe cancelled.")
+
+    @commands.is_owner()
+    @ds.command(name="wipe_user_data")
+    async def wipe_user_data(self, ctx, user: discord.User):
+        """Wipe Demon Slayer data for a specific user (Owner only)"""
+        await ctx.send(f"⚠️ **WARNING**: This will delete ALL Demon Slayer data for {user.name}. "
+                       "This action is irreversible. Are you sure you want to proceed? (yes/no)")
+
+        pred = MessagePredicate.yes_or_no(ctx)
+        try:
+            await self.bot.wait_for("message", check=pred, timeout=30)
+        except asyncio.TimeoutError:
+            await ctx.send("No response received. Data wipe cancelled.")
+            return
+
+        if pred.result is True:
+            # Wipe the specific user's data
+            await self.config.user(user).clear()
+            
+            await ctx.send(f"All Demon Slayer data for {user.name} has been wiped.")
         else:
             await ctx.send("Data wipe cancelled.")
 
