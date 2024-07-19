@@ -405,9 +405,9 @@ class OnePieceBattle(commands.Cog):
                 await self.battle_turn(ctx, player1, player2, battle_msg, is_player=True)
                 if player2["hp"] <= 0:
                     break
-                await self.battle_turn(ctx, player2, player1, battle_msg, is_player=True)
+                await self.battle_turn(ctx, player2, player1, battle_msg, is_player='skills' in player2)
             else:
-                await self.battle_turn(ctx, player2, player1, battle_msg, is_player=True)
+                await self.battle_turn(ctx, player2, player1, battle_msg, is_player='skills' in player2)
                 if player1["hp"] <= 0:
                     break
                 await self.battle_turn(ctx, player1, player2, battle_msg, is_player=True)
@@ -418,7 +418,7 @@ class OnePieceBattle(commands.Cog):
             return player2
 
     async def battle_turn(self, ctx, attacker, defender, battle_msg, is_player=True):
-        if is_player:
+        if is_player and 'skills' in attacker:
             skill = await self.get_player_skill(ctx, attacker)
         else:
             skill = random.choice(["Punch", "Kick", "Slam"])  # Basic enemy skills
