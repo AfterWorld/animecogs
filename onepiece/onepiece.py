@@ -715,7 +715,14 @@ class OnePieceBattle(commands.Cog):
         embed = discord.Embed(title="WANTED", color=discord.Color.red())
         embed.add_field(name="Name", value=f"{user_data['name']} '{user_data['epithet']}'", inline=False)
         embed.add_field(name="Bounty", value=f"{user_data['bounty']:,} ฿", inline=False)
-        embed.set_thumbnail(url=target.avatar_url)
+        
+        # Use avatar.url instead of avatar_url
+        if target.avatar:
+            embed.set_thumbnail(url=target.avatar.url)
+        else:
+            # If the user has no avatar, you can set a default image or leave it blank
+            embed.set_thumbnail(url="https://example.com/default_avatar.png")  # Replace with a default image URL if desired
+        
         embed.set_footer(text="Dead or Alive")
         await ctx.send(embed=embed)
         
