@@ -304,7 +304,7 @@ class OnePieceBattle(commands.Cog):
         return ""
 
     @op.command()
-    async def eat_devil_fruit(self, ctx):
+    async def eat(self, ctx):
         """Eat a random Devil Fruit"""
         user_data = await self.config.user(ctx.author).all()
         if user_data["devil_fruit"]:
@@ -313,9 +313,16 @@ class OnePieceBattle(commands.Cog):
 
         fruit = random.choice(list(self.devil_fruits.keys()))
         user_data["devil_fruit"] = fruit
-        user_data["skills"].append(self.devil_fruits[fruit]["skill"])
+        
+        # Add all skills associated with the Devil Fruit
+        for skill in self.devil_fruits[fruit]["skills"]:
+            if skill not in user_data["skills"]:
+                user_data["skills"].append(skill)
+        
         await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You've eaten the {fruit}! You can now use the skill: {self.devil_fruits[fruit]['skill']}")
+        
+        skills_str = ", ".join(self.devil_fruits[fruit]["skills"])
+        await ctx.send(f"You've eaten the {fruit}! You can now use the skills: {skills_str}")
 
     @op.command()
     async def create_crew(self, ctx, crew_name: str):
