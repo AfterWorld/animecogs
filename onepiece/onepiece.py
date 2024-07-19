@@ -23,7 +23,9 @@ class OnePieceBattle(commands.Cog):
             "bounty": 0,
             "belly": 0,
             "skills": ["Punch"],
-            "crew": None
+            "crew": None,
+            "class": None,
+            "pvp_wins": 0
         }
         
         self.config.register_user(**default_user)
@@ -140,6 +142,70 @@ class OnePieceBattle(commands.Cog):
             "Armament Haki": {"damage": 1.3, "accuracy": 90, "effect": "defense_up"},
             "Conqueror's Haki": {"damage": 1.0, "accuracy": 50, "effect": "stun"}
         }
+        
+        self.current_event = None
+        self.current_weather = "Clear"
+        self.weather_effects = {
+            "Clear": {"description": "Perfect weather for sailing!", "battle_effect": None},
+            "Stormy": {"description": "Rough seas ahead!", "battle_effect": self.stormy_effect},
+            "Foggy": {"description": "Visibility is low.", "battle_effect": self.foggy_effect},
+            "Scorching": {"description": "The heat is intense!", "battle_effect": self.scorching_effect},
+            "Snowing": {"description": "It's freezing cold!", "battle_effect": self.snowing_effect}
+        }
+
+        self.character_classes = {
+            "Swordsman": {"attack": 12, "defense": 8, "speed": 10, "skills": ["Sword Technique", "Iaijutsu"]},
+            "Sniper": {"attack": 15, "defense": 5, "speed": 12, "skills": ["Precision Shot", "Smoke Star"]},
+            "Navigator": {"attack": 8, "defense": 7, "speed": 15, "skills": ["Weather Prediction", "Climate Baton"]},
+            "Cook": {"attack": 10, "defense": 10, "speed": 10, "skills": ["Diable Jambe", "Food Boost"]}
+        }
+
+        self.bot.loop.create_task(self.event_loop())
+
+    async def event_loop(self):
+        while True:
+            await asyncio.sleep(3600)  # Check for new event every hour
+            if random.random() < 0.2:  # 20% chance of event
+                await self.trigger_random_event()
+            await self.change_weather()
+
+    async def trigger_random_event(self):
+        events = [
+            ("Buster Call", "A Buster Call has been initiated! All pirates must flee or face destruction!"),
+            ("Pirate Invasion", "A powerful pirate crew is invading! Defend your territory or join the chaos!"),
+            ("Marine Ford War", "A major battle between Marines and Pirates has broken out! Choose your side!"),
+            ("Celestial Dragon Visit", "A Celestial Dragon is visiting! Beware of increased Marine presence."),
+            ("Blackbeard's Ambush", "Blackbeard and his crew are on the move! Protect your Devil Fruits!")
+        ]
+        self.current_event, description = random.choice(events)
+        # Replace ANNOUNCEMENT_CHANNEL_ID with the actual channel ID
+        await self.bot.get_channel(1248527533436047390).send(f"🌟 World Event: {self.current_event} 🌟\n{description}")
+
+    async def change_weather(self):
+        self.current_weather = random.choice(list(self.weather_effects.keys()))
+        # Replace ANNOUNCEMENT_CHANNEL_ID with the actual channel ID
+        await self.bot.get_channel(1248527533436047390).send(f"Weather Update: {self.current_weather}\n{self.weather_effects[self.current_weather]['description']}")
+
+    async def stormy_effect(self, attacker, defender):
+        if random.random() < 0.2:
+            damage = random.randint(5, 15)
+            attacker["hp"] -= damage
+            return f"{attacker['name']} was hit by lightning for {damage} damage!"
+        return ""
+
+    async def foggy_effect(self, attacker, defender):
+        attacker["accuracy"] = max(10, attacker.get("accuracy", 90) - 20)
+        return f"{attacker['name']}'s accuracy was lowered due to the fog!"
+
+    async def scorching_effect(self, attacker, defender):
+        if random.random() < 0.3:
+            attacker["hp"] -= 5
+            return f"{attacker['name']} took 5 damage from the intense heat!"
+        return ""
+
+    async def snowing_effect(self, attacker, defender):
+        attacker["speed"] = max(1, attacker["speed"] - 2)
+        return f"{attacker['name']}'s speed was lowered due to the snow!"
 
     @commands.group()
     async def op(self, ctx):
@@ -158,7 +224,92 @@ class OnePieceBattle(commands.Cog):
         user_data["epithet"] = epithet
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"{ctx.author.mention}, welcome to the world of One Piece, {name} '{epithet}'!")
+    
+    @op.command()
+    async def current_event(self, ctx):
+        """Check the current world event"""
+        if self.current_event:
+            await ctx.send(f"Current World Event: {self.current_event}")
+        else:
+            await ctx.send("There is no active world event at the moment.")
 
+    @op.command()
+    async def check_weather(self, ctx):
+        """Check the current weather"""
+        await ctx.send(f"Current Weather: {self.current_weather}\n{self.weather_effects[self.current_weather]['description']}")
+
+    @op.command()
+    async def choose_class(self, ctx, class_name: str):
+        """Choose your character class"""
+        user_data = await self.config.user(ctx.author).all()
+        if user_data.get("class"):
+            await ctx.send("You've already chosen a class!")
+            return
+
+        if class_name not in self.character_classes:
+            await ctx.send(f"Invalid class. Choose from: {', '.join(self.character_classes.keys())}")
+            return
+
+        chosen_class = self.character_classes[class_name]
+        user_data["class"] = class_name
+        user_data["attack"] += chosen_class["attack"]
+        user_data["defense"] += chosen_class["defense"]
+        user_data["speed"] += chosen_class["speed"]
+        user_data["skills"].extend(chosen_class["skills"])
+
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You are now a {class_name}! You've gained new stats and skills.")
+
+    @op.command()
+    async def pvp(self, ctx, opponent: discord.Member):
+        """Challenge another player to a PvP duel"""
+        if opponent == ctx.author:
+            await ctx.send("You can't duel yourself!")
+            return
+
+        user_data = await self.config.user(ctx.author).all()
+        opponent_data = await self.config.user(opponent).all()
+
+        if not user_data["name"] or not opponent_data["name"]:
+            await ctx.send("Both players need to have started their journey to duel!")
+            return
+
+        await ctx.send(f"{opponent.mention}, {ctx.author.mention} has challenged you to a duel! Type 'accept' to begin.")
+
+        def check(m):
+            return m.author == opponent and m.content.lower() == 'accept'
+
+        try:
+            await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            await ctx.send("The challenge was not accepted.")
+            return
+
+        winner = await self.conduct_battle(ctx, user_data, opponent_data)
+
+        if winner == user_data:
+            user_data["pvp_wins"] += 1
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"{ctx.author.mention} wins the duel!")
+        else:
+            opponent_data["pvp_wins"] += 1
+            await self.config.user(opponent).set(opponent_data)
+            await ctx.send(f"{opponent.mention} wins the duel!")
+    
+    @op.command()
+    async def pvp_rankings(self, ctx):
+        """Display PvP rankings"""
+        all_users = await self.config.all_users()
+        sorted_users = sorted(all_users.items(), key=lambda x: x[1]['pvp_wins'], reverse=True)[:10]
+
+        embed = discord.Embed(title="PvP Rankings", color=discord.Color.gold())
+        for i, (user_id, user_data) in enumerate(sorted_users, 1):
+            user = self.bot.get_user(int(user_id))
+            if user:
+                embed.add_field(name=f"{i}. {user.name}", value=f"Wins: {user_data['pvp_wins']}", inline=False)
+
+        await ctx.send(embed=embed)
+    
     @op.command()
     async def profile(self, ctx):
         """View your pirate profile"""
@@ -192,8 +343,30 @@ class OnePieceBattle(commands.Cog):
             return
 
         if opponent:
-            return await self.pvp_battle(ctx, opponent)
+            opponent_data = await self.config.user(opponent).all()
+            if not opponent_data["name"]:
+                await ctx.send(f"{opponent.mention} hasn't started their journey yet!")
+                return
+            
+            embed = discord.Embed(title="⚔️ PvP Battle Begins ⚔️", color=discord.Color.red())
+            embed.add_field(name=user_data["name"], value=f"HP: {user_data['hp']}/{user_data['max_hp']}", inline=True)
+            embed.add_field(name=opponent_data["name"], value=f"HP: {opponent_data['hp']}/{opponent_data['max_hp']}", inline=True)
+            battle_msg = await ctx.send(embed=embed)
+            
+            winner = await self.conduct_battle(ctx, user_data, opponent_data, battle_msg)
+            
+            if winner == user_data:
+                await ctx.send(f"{ctx.author.mention} wins the duel!")
+                user_data["pvp_wins"] = user_data.get("pvp_wins", 0) + 1
+                await self.config.user(ctx.author).set(user_data)
+            else:
+                await ctx.send(f"{opponent.mention} wins the duel!")
+                opponent_data["pvp_wins"] = opponent_data.get("pvp_wins", 0) + 1
+                await self.config.user(opponent).set(opponent_data)
+            
+            return
 
+        # Rest of the existing code for battling an enemy
         enemy_name = random.choice(list(self.enemies.keys()))
         enemy = self.enemies[enemy_name].copy()
         enemy["name"] = enemy_name
@@ -203,19 +376,9 @@ class OnePieceBattle(commands.Cog):
         embed.add_field(name=enemy["name"], value=f"HP: {enemy['hp']}/{enemy['hp']}", inline=True)
         battle_msg = await ctx.send(embed=embed)
         
-        while user_data["hp"] > 0 and enemy["hp"] > 0:
-            if user_data["speed"] >= enemy["speed"]:
-                await self.battle_turn(ctx, user_data, enemy, battle_msg, is_player=True)
-                if enemy["hp"] <= 0:
-                    break
-                await self.battle_turn(ctx, enemy, user_data, battle_msg, is_player=False)
-            else:
-                await self.battle_turn(ctx, enemy, user_data, battle_msg, is_player=False)
-                if user_data["hp"] <= 0:
-                    break
-                await self.battle_turn(ctx, user_data, enemy, battle_msg, is_player=True)
+        winner = await self.conduct_battle(ctx, user_data, enemy, battle_msg)
 
-        if user_data["hp"] > 0:
+        if winner == user_data:
             exp_gain = enemy["exp"]
             belly_gain = enemy["belly"]
             bounty_gain = enemy["exp"] * 10
@@ -235,6 +398,24 @@ class OnePieceBattle(commands.Cog):
             await ctx.send(embed=defeat_embed)
 
         await self.config.user(ctx.author).set(user_data)
+
+    async def conduct_battle(self, ctx, player1, player2, battle_msg):
+        while player1["hp"] > 0 and player2["hp"] > 0:
+            if player1["speed"] >= player2["speed"]:
+                await self.battle_turn(ctx, player1, player2, battle_msg, is_player=True)
+                if player2["hp"] <= 0:
+                    break
+                await self.battle_turn(ctx, player2, player1, battle_msg, is_player=True)
+            else:
+                await self.battle_turn(ctx, player2, player1, battle_msg, is_player=True)
+                if player1["hp"] <= 0:
+                    break
+                await self.battle_turn(ctx, player1, player2, battle_msg, is_player=True)
+        
+        if player1["hp"] > 0:
+            return player1
+        else:
+            return player2
 
     async def battle_turn(self, ctx, attacker, defender, battle_msg, is_player=True):
         if is_player:
@@ -262,6 +443,11 @@ class OnePieceBattle(commands.Cog):
 
         embed.add_field(name=attacker["name"], value=f"HP: {attacker['hp']}/{attacker['max_hp'] if 'max_hp' in attacker else attacker['hp']}", inline=True)
         embed.add_field(name=defender["name"], value=f"HP: {defender['hp']}/{defender['max_hp'] if 'max_hp' in defender else defender['hp']}", inline=True)
+        
+        if self.weather_effects[self.current_weather]["battle_effect"]:
+            weather_effect = await self.weather_effects[self.current_weather]["battle_effect"](attacker, defender)
+            if weather_effect:
+                embed.add_field(name="Weather Effect", value=weather_effect, inline=False)
         
         await battle_msg.edit(embed=embed)
         await asyncio.sleep(2)
