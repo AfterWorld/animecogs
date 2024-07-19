@@ -114,7 +114,10 @@ class OnePieceBattle(commands.Cog):
         enemy = self.enemies[enemy_name].copy()
         enemy["name"] = enemy_name
 
-        battle_msg = await ctx.send(f"⚔️ {user_data['name']} vs {enemy['name']} ⚔️\nBattle starting...")
+        embed = discord.Embed(title="⚔️ Battle Begins ⚔️", color=discord.Color.red())
+        embed.add_field(name=user_data["name"], value=f"HP: {user_data['hp']}/{user_data['max_hp']}", inline=True)
+        embed.add_field(name=enemy["name"], value=f"HP: {enemy['hp']}/{enemy['hp']}", inline=True)
+        battle_msg = await ctx.send(embed=embed)
         
         while user_data["hp"] > 0 and enemy["hp"] > 0:
             if user_data["speed"] >= enemy["speed"]:
@@ -135,12 +138,17 @@ class OnePieceBattle(commands.Cog):
             user_data["exp"] += exp_gain
             user_data["belly"] += belly_gain
             user_data["bounty"] += bounty_gain
-            await ctx.send(f"You won! Gained {exp_gain} EXP, {belly_gain} ฿, and your bounty increased by {bounty_gain} ฿!")
+            
+            result_embed = discord.Embed(title="🏆 Victory! 🏆", color=discord.Color.green())
+            result_embed.add_field(name="Rewards", value=f"EXP: {exp_gain}\nBelly: {belly_gain} ฿\nBounty Increase: {bounty_gain} ฿")
+            await ctx.send(embed=result_embed)
 
             await self.check_level_up(ctx, user_data)
         else:
             user_data["hp"] = user_data["max_hp"]  # Restore HP after losing
-            await ctx.send("You were defeated. Better luck next time!")
+            defeat_embed = discord.Embed(title="☠️ Defeat ☠️", color=discord.Color.dark_red())
+            defeat_embed.description = "You were defeated. Better luck next time!"
+            await ctx.send(embed=defeat_embed)
 
         await self.config.user(ctx.author).set(user_data)
 
@@ -148,10 +156,12 @@ class OnePieceBattle(commands.Cog):
         if is_player:
             skill = await self.get_player_skill(ctx, attacker)
         else:
-            skill = "Punch"  # Enemies use basic attacks for simplicity
+            skill = random.choice(["Punch", "Kick", "Slam"])  # Basic enemy skills
 
-        skill_data = self.skills[skill]
+        skill_data = self.skills.get(skill, {"damage": 1.0, "accuracy": 90})
         accuracy_check = random.randint(1, 100)
+        
+        embed = discord.Embed(title="⚔️ Battle in Progress ⚔️", color=discord.Color.blue())
         
         if accuracy_check <= skill_data["accuracy"]:
             base_damage = attacker["attack"] * skill_data["damage"]
@@ -160,60 +170,31 @@ class OnePieceBattle(commands.Cog):
 
             effect_msg = ""
             if "effect" in skill_data:
-                if skill_data["effect"] == "defense_up":
-                    attacker["defense"] += 2
-                    effect_msg = f"\n{attacker['name']} raised their defense!"
-                elif skill_data["effect"] == "defense_down":
-                    defender["defense"] = max(0, defender["defense"] - 2)
-                    effect_msg = f"\n{defender['name']}'s defense was lowered!"
-                elif skill_data["effect"] == "dodge_up":
-                    attacker["speed"] += 2
-                    effect_msg = f"\n{attacker['name']} became more evasive!"
-                elif skill_data["effect"] == "stun" and random.random() < 0.3:
-                    effect_msg = f"\n{defender['name']} was stunned and can't move next turn!"
-                    # Implement stun mechanic in a more complex battle system
+                effect_msg = self.apply_skill_effect(attacker, defender, skill_data["effect"])
 
-            result = f"{attacker['name']} used {skill} and dealt {damage} damage!{effect_msg}"
+            embed.description = f"{attacker['name']} used {skill} and dealt {damage} damage!{effect_msg}"
         else:
-            result = f"{attacker['name']} used {skill} but missed!"
+            embed.description = f"{attacker['name']} used {skill} but missed!"
 
-        await battle_msg.edit(content=f"⚔️ {result}\n{attacker['name']} ({attacker['hp']} HP) vs {defender['name']} ({defender['hp']} HP) ⚔️")
+        embed.add_field(name=attacker["name"], value=f"HP: {attacker['hp']}/{attacker['max_hp'] if 'max_hp' in attacker else attacker['hp']}", inline=True)
+        embed.add_field(name=defender["name"], value=f"HP: {defender['hp']}/{defender['max_hp'] if 'max_hp' in defender else defender['hp']}", inline=True)
+        
+        await battle_msg.edit(embed=embed)
         await asyncio.sleep(2)
 
-    async def get_player_skill(self, ctx, user_data):
-        skill_msg = await ctx.send(f"Choose your skill: {', '.join(user_data['skills'])}")
-        
-        def check(m):
-            return m.author == ctx.author and m.content in user_data["skills"]
-
-        try:
-            skill_choice = await self.bot.wait_for("message", check=check, timeout=30.0)
-            await skill_msg.delete()
-            return skill_choice.content
-        except asyncio.TimeoutError:
-            await skill_msg.delete()
-            return "Punch"
-
-    async def check_level_up(self, ctx, user_data):
-        if user_data["exp"] >= user_data["level"] * 100:
-            user_data["level"] += 1
-            user_data["attack"] += 2
-            user_data["defense"] += 1
-            user_data["speed"] += 1
-            user_data["max_hp"] += 10
-            user_data["hp"] = user_data["max_hp"]
-            user_data["exp"] -= (user_data["level"] - 1) * 100
-
-            await ctx.send(f"🎉 Level Up! {user_data['name']} is now level {user_data['level']}!")
-
-            if user_data["level"] % 5 == 0:
-                haki_type = random.choice(["observation", "armament", "conqueror"])
-                user_data["haki"][haki_type] += 1
-                await ctx.send(f"🔮 Your {haki_type.capitalize()} Haki has improved!")
-
-                if haki_type.capitalize() + " Haki" not in user_data["skills"]:
-                    user_data["skills"].append(haki_type.capitalize() + " Haki")
-                    await ctx.send(f"🎓 You've learned {haki_type.capitalize()} Haki!")
+    def apply_skill_effect(self, attacker, defender, effect):
+        if effect == "defense_up":
+            attacker["defense"] += 2
+            return f"\n{attacker['name']} raised their defense!"
+        elif effect == "defense_down":
+            defender["defense"] = max(0, defender["defense"] - 2)
+            return f"\n{defender['name']}'s defense was lowered!"
+        elif effect == "dodge_up":
+            attacker["speed"] += 2
+            return f"\n{attacker['name']} became more evasive!"
+        elif effect == "stun" and random.random() < 0.3:
+            return f"\n{defender['name']} was stunned and can't move next turn!"
+        return ""
 
     @op.command()
     async def eat_devil_fruit(self, ctx):
@@ -392,20 +373,20 @@ class OnePieceBattle(commands.Cog):
         if not user_data["name"]:
             await ctx.send(f"{target.mention} hasn't started their journey yet!")
             return
-    
+
         embed = discord.Embed(title="WANTED", color=discord.Color.red())
         embed.add_field(name="Name", value=f"{user_data['name']} '{user_data['epithet']}'", inline=False)
         embed.add_field(name="Bounty", value=f"{user_data['bounty']:,} ฿", inline=False)
-        
-        # Use avatar.url instead of avatar_url
-        if target.avatar:
-            embed.set_thumbnail(url=target.avatar.url)
-        else:
-            # If the user has no avatar, you can set a default image or leave it blank
-            embed.set_thumbnail(url="https://example.com/default_avatar.png")  # Replace with a default image URL if desired
-        
+        embed.set_thumbnail(url=target.avatar_url)
         embed.set_footer(text="Dead or Alive")
         await ctx.send(embed=embed)
+        
+    @op.command()
+    @checks.is_owner()
+    async def wipe(self, ctx, user: discord.Member):
+        """Wipe a user's data (Owner only)"""
+        await self.config.user(user).clear()
+        await ctx.send(f"{user.mention}'s data has been wiped.")
 
 def setup(bot):
     bot.add_cog(OnePieceBattle(bot))
