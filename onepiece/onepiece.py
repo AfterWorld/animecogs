@@ -383,6 +383,30 @@ class OnePieceBattle(commands.Cog):
         await self.config.user(winner_user).set(winner)
         await self.config.user(loser_user).set(loser)
         
+    async def check_level_up(self, ctx, user_data):
+        while user_data["exp"] >= user_data["level"] * 100:
+            user_data["level"] += 1
+            user_data["attack"] += 2
+            user_data["defense"] += 1
+            user_data["speed"] += 1
+            user_data["max_hp"] += 10
+            user_data["hp"] = user_data["max_hp"]
+            user_data["exp"] -= (user_data["level"] - 1) * 100
+
+            await ctx.send(f"🎉 Level Up! {user_data['name']} is now level {user_data['level']}!")
+
+            if user_data["level"] % 5 == 0:
+                haki_type = random.choice(["observation", "armament", "conqueror"])
+                user_data["haki"][haki_type] += 1
+                await ctx.send(f"🔮 Your {haki_type.capitalize()} Haki has improved!")
+
+                haki_skill = f"{haki_type.capitalize()} Haki"
+                if haki_skill not in user_data["skills"]:
+                    user_data["skills"].append(haki_skill)
+                    await ctx.send(f"🎓 You've learned {haki_skill}!")
+
+        await self.config.user(ctx.author).set(user_data)
+        
     async def get_player_skill(self, ctx, user_data):
         skill_msg = await ctx.send(f"Choose your skill: {', '.join(user_data['skills'])}")
         
