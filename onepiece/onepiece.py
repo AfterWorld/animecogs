@@ -37,21 +37,105 @@ class OnePieceBattle(commands.Cog):
         }
 
         self.devil_fruits = {
-            "Gomu Gomu no Mi": {"type": "Paramecia", "skill": "Gum-Gum Pistol"},
-            "Mera Mera no Mi": {"type": "Logia", "skill": "Fire Fist"},
-            "Hie Hie no Mi": {"type": "Logia", "skill": "Ice Age"},
-            "Ope Ope no Mi": {"type": "Paramecia", "skill": "Room"},
-            "Gura Gura no Mi": {"type": "Paramecia", "skill": "Quake Punch"}
+            "Gomu Gomu no Mi": {
+                "type": "Paramecia",
+                "skills": ["Gum-Gum Pistol", "Gum-Gum Bazooka", "Gum-Gum Gatling"]
+            },
+            "Mera Mera no Mi": {
+                "type": "Logia",
+                "skills": ["Fire Fist", "Fire Gun", "Flame Commandment"]
+            },
+            "Hie Hie no Mi": {
+                "type": "Logia",
+                "skills": ["Ice Age", "Ice Block: Pheasant Beak", "Ice Time"]
+            },
+            "Ope Ope no Mi": {
+                "type": "Paramecia",
+                "skills": ["Room", "Shambles", "Gamma Knife"]
+            },
+            "Gura Gura no Mi": {
+                "type": "Paramecia",
+                "skills": ["Quake Punch", "Seaquake", "Tsunami"]
+            },
+            "Yami Yami no Mi": {
+                "type": "Logia",
+                "skills": ["Black Hole", "Liberation", "Dark Matter"]
+            },
+            "Pika Pika no Mi": {
+                "type": "Logia",
+                "skills": ["Yasakani Sacred Jewel", "Light Speed Kick", "Ama no Murakumo"]
+            },
+            "Magu Magu no Mi": {
+                "type": "Logia",
+                "skills": ["Great Eruption", "Meteor Volcano", "Hound Blaze"]
+            },
+            "Suna Suna no Mi": {
+                "type": "Logia",
+                "skills": ["Desert Spada", "Ground Secco", "Sandstorm"]
+            },
+            "Goro Goro no Mi": {
+                "type": "Logia",
+                "skills": ["El Thor", "Volt Ampe", "Kari"]
+            }
         }
 
         self.skills = {
+            # Basic Skills
             "Punch": {"damage": 1.0, "accuracy": 95},
+            "Kick": {"damage": 1.1, "accuracy": 90},
             "Sword Slash": {"damage": 1.2, "accuracy": 90},
+            
+            # Gomu Gomu no Mi
             "Gum-Gum Pistol": {"damage": 1.5, "accuracy": 85, "fruit": "Gomu Gomu no Mi"},
+            "Gum-Gum Bazooka": {"damage": 1.8, "accuracy": 80, "fruit": "Gomu Gomu no Mi"},
+            "Gum-Gum Gatling": {"damage": 2.0, "accuracy": 75, "fruit": "Gomu Gomu no Mi"},
+            
+            # Mera Mera no Mi
             "Fire Fist": {"damage": 1.8, "accuracy": 80, "fruit": "Mera Mera no Mi"},
+            "Fire Gun": {"damage": 1.5, "accuracy": 85, "fruit": "Mera Mera no Mi"},
+            "Flame Commandment": {"damage": 2.2, "accuracy": 70, "fruit": "Mera Mera no Mi"},
+            
+            # Hie Hie no Mi
             "Ice Age": {"damage": 1.6, "accuracy": 75, "fruit": "Hie Hie no Mi"},
+            "Ice Block: Pheasant Beak": {"damage": 2.0, "accuracy": 70, "fruit": "Hie Hie no Mi"},
+            "Ice Time": {"damage": 1.8, "accuracy": 80, "fruit": "Hie Hie no Mi", "effect": "speed_down"},
+            
+            # Ope Ope no Mi
             "Room": {"damage": 1.4, "accuracy": 100, "fruit": "Ope Ope no Mi", "effect": "defense_down"},
+            "Shambles": {"damage": 1.6, "accuracy": 90, "fruit": "Ope Ope no Mi", "effect": "confusion"},
+            "Gamma Knife": {"damage": 2.2, "accuracy": 70, "fruit": "Ope Ope no Mi"},
+            
+            # Gura Gura no Mi
             "Quake Punch": {"damage": 2.0, "accuracy": 70, "fruit": "Gura Gura no Mi"},
+            "Seaquake": {"damage": 2.2, "accuracy": 65, "fruit": "Gura Gura no Mi", "effect": "stun"},
+            "Tsunami": {"damage": 2.5, "accuracy": 60, "fruit": "Gura Gura no Mi"},
+            
+            # Yami Yami no Mi
+            "Black Hole": {"damage": 1.8, "accuracy": 80, "fruit": "Yami Yami no Mi", "effect": "pull"},
+            "Liberation": {"damage": 2.0, "accuracy": 75, "fruit": "Yami Yami no Mi"},
+            "Dark Matter": {"damage": 2.2, "accuracy": 70, "fruit": "Yami Yami no Mi"},
+            
+            # Pika Pika no Mi
+            "Yasakani Sacred Jewel": {"damage": 2.0, "accuracy": 75, "fruit": "Pika Pika no Mi"},
+            "Light Speed Kick": {"damage": 1.8, "accuracy": 85, "fruit": "Pika Pika no Mi"},
+            "Ama no Murakumo": {"damage": 2.2, "accuracy": 70, "fruit": "Pika Pika no Mi"},
+            
+            # Magu Magu no Mi
+            "Great Eruption": {"damage": 2.2, "accuracy": 70, "fruit": "Magu Magu no Mi"},
+            "Meteor Volcano": {"damage": 2.5, "accuracy": 65, "fruit": "Magu Magu no Mi"},
+            "Hound Blaze": {"damage": 1.8, "accuracy": 80, "fruit": "Magu Magu no Mi", "effect": "burn"},
+            
+            # Suna Suna no Mi
+            "Desert Spada": {"damage": 1.8, "accuracy": 80, "fruit": "Suna Suna no Mi"},
+            "Ground Secco": {"damage": 1.6, "accuracy": 85, "fruit": "Suna Suna no Mi", "effect": "dehydrate"},
+            "Sandstorm": {"damage": 2.0, "accuracy": 75, "fruit": "Suna Suna no Mi", "effect": "blind"},
+            
+            # Goro Goro no Mi
+            "El Thor": {"damage": 2.2, "accuracy": 70, "fruit": "Goro Goro no Mi"},
+            "Volt Ampe": {"damage": 1.8, "accuracy": 80, "fruit": "Goro Goro no Mi", "effect": "paralyze"},
+            "Kari": {"damage": 2.0, "accuracy": 75, "fruit": "Goro Goro no Mi"},
+            
+            # Haki Skills
             "Observation Haki": {"damage": 0.8, "accuracy": 100, "effect": "dodge_up"},
             "Armament Haki": {"damage": 1.3, "accuracy": 90, "effect": "defense_up"},
             "Conqueror's Haki": {"damage": 1.0, "accuracy": 50, "effect": "stun"}
@@ -192,8 +276,31 @@ class OnePieceBattle(commands.Cog):
         elif effect == "dodge_up":
             attacker["speed"] += 2
             return f"\n{attacker['name']} became more evasive!"
+        elif effect == "speed_down":
+            defender["speed"] = max(1, defender["speed"] - 2)
+            return f"\n{defender['name']}'s speed was lowered!"
         elif effect == "stun" and random.random() < 0.3:
+            defender["stunned"] = True
             return f"\n{defender['name']} was stunned and can't move next turn!"
+        elif effect == "confusion" and random.random() < 0.3:
+            defender["confused"] = True
+            return f"\n{defender['name']} became confused!"
+        elif effect == "pull":
+            defender["defense"] = max(0, defender["defense"] - 1)
+            defender["speed"] = max(1, defender["speed"] - 1)
+            return f"\n{defender['name']} was pulled in, lowering their defense and speed!"
+        elif effect == "burn":
+            defender["burned"] = 2  # Burns for 2 turns
+            return f"\n{defender['name']} was burned!"
+        elif effect == "dehydrate":
+            defender["attack"] = max(1, defender["attack"] - 2)
+            return f"\n{defender['name']} was dehydrated, lowering their attack!"
+        elif effect == "blind":
+            defender["accuracy"] = max(10, defender.get("accuracy", 90) - 20)
+            return f"\n{defender['name']} was blinded, greatly reducing their accuracy!"
+        elif effect == "paralyze" and random.random() < 0.3:
+            defender["paralyzed"] = True
+            return f"\n{defender['name']} was paralyzed and may not be able to move!"
         return ""
 
     @op.command()
