@@ -268,6 +268,20 @@ class OnePieceBattle(commands.Cog):
 
         await self.config.user(winner_user).set(winner)
         await self.config.user(loser_user).set(loser)
+        
+    async def get_player_skill(self, ctx, user_data):
+        skill_msg = await ctx.send(f"Choose your skill: {', '.join(user_data['skills'])}")
+        
+        def check(m):
+            return m.author == ctx.author and m.content in user_data["skills"]
+
+        try:
+            skill_choice = await self.bot.wait_for("message", check=check, timeout=30.0)
+            await skill_msg.delete()
+            return skill_choice.content
+        except asyncio.TimeoutError:
+            await skill_msg.delete()
+            return "Punch"
 
     @op.command()
     async def train(self, ctx, stat: str):
