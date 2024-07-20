@@ -454,7 +454,7 @@ class MHAGame(commands.Cog):
         except asyncio.TimeoutError:
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
-    @mha.command(name="battle", aliases=["fight", "duel"])
+    @mha.command(name="battle", aliases=["duel"])
     async def start_battle(self, ctx):
         """Start a battle against a villain"""
         user_data = await self.config.user(ctx.author).all()
