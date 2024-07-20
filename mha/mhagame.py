@@ -99,7 +99,8 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
-
+            await self.send_mha_help(ctx)
+            
     async def send_mha_help(self, ctx):
         embed = discord.Embed(title="My Hero Academia Game Help", 
                               description="Here are all the commands for the MHA game:",
