@@ -208,10 +208,10 @@ class MHAGame(commands.Cog):
         attend_number = random.randint(10000, 99999)
 
         # Add text to the image
-        draw.text((450, 220), f"{user_data['name']}", font=font, fill=(0, 0, 0))
+        draw.text((200, 220), f"{user_data['name']}", font=font, fill=(0, 0, 0))
         
         created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((450, 440 ), f"{created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
+        draw.text((450, 260), f"{created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
         
         quirk_text = f"{user_data['quirk']}"
         lines = textwrap.wrap(quirk_text, width=40)  # Adjust width as needed
@@ -221,7 +221,7 @@ class MHAGame(commands.Cog):
             y_text += 30  # Adjust line spacing as needed
 
         current_year = datetime.now().year
-        draw.text((450, 260), f"{current_year}", font=font, fill=(0, 0, 0))
+        draw.text((450, 560), f"{current_year}", font=font, fill=(0, 0, 0))
         
         draw.text((450, 220), "Year 1", font=font, fill=(0, 0, 0))  # Default to Year 1
         draw.text((450, 480), f"{attend_number}", font=font, fill=(0, 0, 0))
