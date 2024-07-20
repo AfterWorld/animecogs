@@ -193,12 +193,12 @@ class MHAGame(commands.Cog):
                         
                         # Resize avatar to fit the blue rectangle
                         # Adjust these values to match your template
-                        avatar_size = (295, 400)  # Example size, adjust as needed
+                        avatar_size = (290, 400)  # Example size, adjust as needed
                         avatar_image = avatar_image.resize(avatar_size, Image.Resampling.LANCZOS)
                         
                         # Paste the avatar onto the profile card
                         # Adjust these coordinates to match your template
-                        avatar_position = (100, 200)  # Example position, adjust as needed
+                        avatar_position = (95, 200)  # Example position, adjust as needed
                         img.paste(avatar_image, avatar_position)
 
         # Add text to the image
