@@ -177,9 +177,11 @@ class MHAGame(commands.Cog):
         draw = ImageDraw.Draw(img)
         
         try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+            main_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
         except IOError:
-            font = ImageFont.load_default()
+            main_font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
 
         # Add user avatar (now supports GIFs)
         if user.avatar:
@@ -207,24 +209,33 @@ class MHAGame(commands.Cog):
         # Generate random attendance number
         attend_number = random.randint(10000, 99999)
 
-        # Add text to the image
-        draw.text((300, 220), f"{user_data['name']}", font=font, fill=(0, 0, 0))
-        
-        created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((450, 260), f"{created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
-        
-        quirk_text = f"{user_data['quirk']}"
-        lines = textwrap.wrap(quirk_text, width=40)  # Adjust width as needed
-        y_text = 480
-        for line in lines:
-            draw.text((450, y_text), line, font=font, fill=(0, 0, 0))
-            y_text += 30  # Adjust line spacing as needed
-
+        # Current year
         current_year = datetime.now().year
-        draw.text((450, 560), f"{current_year}", font=font, fill=(0, 0, 0))
-        
-        draw.text((450, 220), "Year 1", font=font, fill=(0, 0, 0))  # Default to Year 1
-        draw.text((450, 480), f"{attend_number}", font=font, fill=(0, 0, 0))
+
+        # Add text to the image
+        draw.text((450, 100), f"Year {current_year}", font=main_font, fill=(0, 0, 0))
+        draw.text((450, 140), "Year 1", font=main_font, fill=(0, 0, 0))  # Department (Year 1 by default)
+        draw.text((450, 180), f"{attend_number}", font=main_font, fill=(0, 0, 0))  # Attendance number
+
+        draw.text((450, 260), user_data['name'], font=main_font, fill=(0, 0, 0))
+
+        created_at = datetime.fromisoformat(user_data["created_at"])
+        draw.text((450, 300), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
+
+        # Quirk with smaller font and word wrap
+        quirk_text = f"{user_data['quirk']}"
+        lines = textwrap.wrap(quirk_text, width=50)  # Adjust width as needed
+        y_text = 340
+        for line in lines:
+            draw.text((450, y_text), line, font=small_font, fill=(0, 0, 0))
+            y_text += 25  # Adjust line spacing as needed
+
+        # Add "Proof that the person above is a student at our University" text
+        proof_text = "Proof that the person above is a student at our University"
+        draw.text((50, 620), proof_text, font=small_font, fill=(0, 0, 0))
+
+        # Add "High School Principal" text
+        draw.text((450, 620), "High School Principal", font=small_font, fill=(0, 0, 0))
 
         # Save the image to a bytes buffer
         buffer = io.BytesIO()
