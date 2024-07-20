@@ -214,8 +214,8 @@ class MHAGame(commands.Cog):
 
         # Add text to the image
         draw.text((450, 100), f"Year {current_year}", font=main_font, fill=(0, 0, 0))
-        draw.text((450, 270), "Year 1", font=main_font, fill=(0, 0, 0))  # Department (Year 1 by default)
-        draw.text((450, 300), f"{attend_number}", font=main_font, fill=(0, 0, 0))  # Attendance number
+        draw.text((450, 200), "Year 1", font=main_font, fill=(0, 0, 0))  # Department (Year 1 by default)
+        draw.text((450, 290), f"{attend_number}", font=main_font, fill=(0, 0, 0))  # Attendance number
 
         draw.text((450, 380), user_data['name'], font=main_font, fill=(0, 0, 0))
 
