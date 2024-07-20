@@ -288,8 +288,8 @@ class MHAGame(commands.Cog):
         buffer.seek(0)
 
         return buffer
-    
-    @commands.command(name="moves", aliases=["techniques"])
+        
+    @mha.command(name="moves", aliases=["techniques"])
     async def show_moves(self, ctx):
         """Show your learned moves"""
         user_data = await self.config.user(ctx.author).all()
