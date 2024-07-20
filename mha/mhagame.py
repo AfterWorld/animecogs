@@ -39,82 +39,215 @@ class MHAGame(commands.Cog):
         self.config.register_user(**default_user)
         
         self.moves = {
-            # Physical Moves (can be learned by anyone)
-            "Punch": {"power": 40, "accuracy": 100, "type": "Physical", "required_level": 1},
-            "Kick": {"power": 60, "accuracy": 90, "type": "Physical", "required_level": 1},
-            "Tackle": {"power": 50, "accuracy": 95, "type": "Physical", "required_level": 1},
-            "Mega Punch": {"power": 80, "accuracy": 85, "type": "Physical", "required_level": 10},
-            "Body Slam": {"power": 85, "accuracy": 80, "type": "Physical", "required_level": 15},
-            
             # Fire Moves
             "Ember": {"power": 40, "accuracy": 100, "type": "Fire", "required_level": 1},
             "Fire Blast": {"power": 80, "accuracy": 85, "type": "Fire", "required_level": 10},
-            "Flame Burst": {"power": 70, "accuracy": 90, "type": "Fire", "effect": "burn", "required_level": 5},
             "Inferno": {"power": 100, "accuracy": 75, "type": "Fire", "effect": "burn", "required_level": 20},
-            "Heat Wave": {"power": 95, "accuracy": 80, "type": "Fire", "required_level": 15},
-            
+            "Flame Barrier": {"power": 0, "accuracy": 100, "type": "Fire", "effect": "defense_up", "required_level": 15},
+            "Phoenix Rise": {"power": 120, "accuracy": 70, "type": "Fire", "effect": "heal", "required_level": 25},
+
             # Water Moves
             "Water Gun": {"power": 40, "accuracy": 100, "type": "Water", "required_level": 1},
-            "Water Jet": {"power": 60, "accuracy": 95, "type": "Water", "required_level": 5},
             "Hydro Pump": {"power": 90, "accuracy": 80, "type": "Water", "required_level": 15},
+            "Tidal Wave": {"power": 110, "accuracy": 75, "type": "Water", "effect": "speed_down", "required_level": 20},
             "Aqua Ring": {"power": 0, "accuracy": 100, "type": "Water", "effect": "heal", "required_level": 10},
-            "Whirlpool": {"power": 70, "accuracy": 85, "type": "Water", "effect": "trap", "required_level": 20},
-            
+            "Whirlpool": {"power": 70, "accuracy": 85, "type": "Water", "effect": "trap", "required_level": 18},
+
             # Earth Moves
             "Rock Throw": {"power": 50, "accuracy": 90, "type": "Earth", "required_level": 1},
-            "Earth Wall": {"power": 0, "accuracy": 100, "type": "Earth", "effect": "defense_up", "required_level": 5},
             "Earthquake": {"power": 100, "accuracy": 85, "type": "Earth", "required_level": 20},
-            "Mud Shot": {"power": 55, "accuracy": 95, "type": "Earth", "effect": "speed_down", "required_level": 10},
-            "Rock Slide": {"power": 75, "accuracy": 90, "type": "Earth", "required_level": 15},
-            
+            "Terra Shield": {"power": 0, "accuracy": 100, "type": "Earth", "effect": "defense_up", "required_level": 12},
+            "Fissure": {"power": 150, "accuracy": 60, "type": "Earth", "required_level": 25},
+            "Mud Shot": {"power": 55, "accuracy": 95, "type": "Earth", "effect": "speed_down", "required_level": 8},
+
             # Air Moves
             "Gust": {"power": 40, "accuracy": 100, "type": "Air", "required_level": 1},
-            "Air Slice": {"power": 70, "accuracy": 95, "type": "Air", "required_level": 10},
             "Tornado": {"power": 80, "accuracy": 85, "type": "Air", "effect": "confusion", "required_level": 15},
             "Cyclone": {"power": 90, "accuracy": 80, "type": "Air", "required_level": 20},
-            "Tailwind": {"power": 0, "accuracy": 100, "type": "Air", "effect": "speed_up", "required_level": 5},
-            
-            # Electric Moves
-            "Spark": {"power": 40, "accuracy": 100, "type": "Electric", "required_level": 1},
-            "Thunderbolt": {"power": 75, "accuracy": 90, "type": "Electric", "effect": "stun", "required_level": 10},
-            "Static Shock": {"power": 60, "accuracy": 95, "type": "Electric", "effect": "speed_up", "required_level": 5},
-            "Thunder": {"power": 100, "accuracy": 70, "type": "Electric", "effect": "stun", "required_level": 20},
-            "Charge Beam": {"power": 50, "accuracy": 90, "type": "Electric", "effect": "attack_up", "required_level": 15},
-            
-            # Ice Moves
-            "Ice Shard": {"power": 40, "accuracy": 100, "type": "Ice", "required_level": 1},
-            "Ice Beam": {"power": 70, "accuracy": 90, "type": "Ice", "effect": "freeze", "required_level": 10},
-            "Blizzard": {"power": 95, "accuracy": 75, "type": "Ice", "effect": "freeze", "required_level": 20},
-            "Frost Breath": {"power": 60, "accuracy": 95, "type": "Ice", "required_level": 5},
-            "Icy Wind": {"power": 55, "accuracy": 95, "type": "Ice", "effect": "speed_down", "required_level": 15},
-            
-            # Psychic Moves
-            "Confusion": {"power": 50, "accuracy": 100, "type": "Psychic", "effect": "confusion", "required_level": 1},
-            "Psychic Blast": {"power": 80, "accuracy": 85, "type": "Psychic", "effect": "confusion", "required_level": 15},
-            "Mind Control": {"power": 0, "accuracy": 70, "type": "Psychic", "effect": "stun", "required_level": 10},
-            "Telekinesis": {"power": 0, "accuracy": 80, "type": "Psychic", "effect": "levitate", "required_level": 5},
-            "Psybeam": {"power": 65, "accuracy": 90, "type": "Psychic", "required_level": 20},
-            
-            # Dark Moves
-            "Shadow Ball": {"power": 75, "accuracy": 90, "type": "Dark", "required_level": 10},
-            "Dark Pulse": {"power": 85, "accuracy": 85, "type": "Dark", "effect": "confusion", "required_level": 15},
-            "Night Slash": {"power": 70, "accuracy": 95, "type": "Dark", "required_level": 5},
-            "Shadow Sneak": {"power": 40, "accuracy": 100, "type": "Dark", "required_level": 1},
-            "Dark Void": {"power": 0, "accuracy": 75, "type": "Dark", "effect": "sleep", "required_level": 20},
-            
+            "Air Cutter": {"power": 60, "accuracy": 95, "type": "Air", "required_level": 10},
+            "Stratosphere": {"power": 0, "accuracy": 90, "type": "Air", "effect": "evasion_up", "required_level": 18},
+
             # Light Moves
             "Flash": {"power": 0, "accuracy": 100, "type": "Light", "effect": "accuracy_down", "required_level": 1},
             "Dazzling Gleam": {"power": 70, "accuracy": 95, "type": "Light", "required_level": 10},
             "Solar Beam": {"power": 100, "accuracy": 80, "type": "Light", "required_level": 20},
-            "Photon Geyser": {"power": 90, "accuracy": 85, "type": "Light", "required_level": 15},
-            "Gleaming Burst": {"power": 60, "accuracy": 95, "type": "Light", "effect": "blind", "required_level": 5},
-            
+            "Photon Pulse": {"power": 85, "accuracy": 90, "type": "Light", "effect": "blind", "required_level": 15},
+            "Radiant Heal": {"power": 0, "accuracy": 100, "type": "Light", "effect": "heal", "required_level": 18},
+
+            # Dark Moves
+            "Shadow Ball": {"power": 75, "accuracy": 90, "type": "Dark", "required_level": 10},
+            "Dark Pulse": {"power": 85, "accuracy": 85, "type": "Dark", "effect": "confusion", "required_level": 15},
+            "Nightmare": {"power": 0, "accuracy": 80, "type": "Dark", "effect": "sleep", "required_level": 20},
+            "Umbra Slash": {"power": 70, "accuracy": 95, "type": "Dark", "required_level": 12},
+            "Void Absorption": {"power": 60, "accuracy": 100, "type": "Dark", "effect": "drain", "required_level": 18},
+
+            # Energy Moves
+            "Energy Ball": {"power": 65, "accuracy": 95, "type": "Energy", "required_level": 8},
+            "Hyper Beam": {"power": 120, "accuracy": 70, "type": "Energy", "required_level": 25},
+            "Power Surge": {"power": 0, "accuracy": 100, "type": "Energy", "effect": "attack_up", "required_level": 15},
+            "Quantum Blast": {"power": 90, "accuracy": 85, "type": "Energy", "required_level": 20},
+            "Energy Drain": {"power": 75, "accuracy": 90, "type": "Energy", "effect": "drain", "required_level": 18},
+
+            # Gravity Moves
+            "Gravity Well": {"power": 0, "accuracy": 90, "type": "Gravity", "effect": "speed_down", "required_level": 10},
+            "Meteor Crash": {"power": 100, "accuracy": 80, "type": "Gravity", "required_level": 20},
+            "Zero-G": {"power": 0, "accuracy": 85, "type": "Gravity", "effect": "confusion", "required_level": 15},
+            "Graviton Pulse": {"power": 75, "accuracy": 90, "type": "Gravity", "required_level": 12},
+            "Black Hole": {"power": 120, "accuracy": 70, "type": "Gravity", "effect": "trap", "required_level": 25},
+
+            # Time Moves
+            "Time Skip": {"power": 0, "accuracy": 80, "type": "Time", "effect": "evasion_up", "required_level": 15},
+            "Temporal Shift": {"power": 70, "accuracy": 90, "type": "Time", "effect": "confusion", "required_level": 18},
+            "Age Acceleration": {"power": 85, "accuracy": 85, "type": "Time", "effect": "weaken", "required_level": 20},
+            "Chrono Break": {"power": 100, "accuracy": 75, "type": "Time", "required_level": 25},
+            "Rewind": {"power": 0, "accuracy": 100, "type": "Time", "effect": "heal", "required_level": 22},
+
+            # Space Moves
+            "Wormhole": {"power": 0, "accuracy": 85, "type": "Space", "effect": "teleport", "required_level": 15},
+            "Spatial Rend": {"power": 95, "accuracy": 80, "type": "Space", "required_level": 20},
+            "Dimension Slash": {"power": 80, "accuracy": 90, "type": "Space", "required_level": 18},
+            "Cosmic Crush": {"power": 110, "accuracy": 75, "type": "Space", "required_level": 25},
+            "Void Pocket": {"power": 0, "accuracy": 100, "type": "Space", "effect": "trap", "required_level": 22},
+
+            # Lightning Moves
+            "Thunderbolt": {"power": 75, "accuracy": 90, "type": "Lightning", "effect": "stun", "required_level": 10},
+            "Lightning Strike": {"power": 90, "accuracy": 85, "type": "Lightning", "required_level": 15},
+            "Thunder God": {"power": 110, "accuracy": 70, "type": "Lightning", "effect": "stun", "required_level": 25},
+            "Static Field": {"power": 0, "accuracy": 95, "type": "Lightning", "effect": "speed_down", "required_level": 18},
+            "Shock Chain": {"power": 65, "accuracy": 95, "type": "Lightning", "effect": "chain", "required_level": 20},
+
+            # Ice Moves
+            "Ice Shard": {"power": 40, "accuracy": 100, "type": "Ice", "required_level": 1},
+            "Blizzard": {"power": 95, "accuracy": 75, "type": "Ice", "effect": "freeze", "required_level": 20},
+            "Frost Armor": {"power": 0, "accuracy": 100, "type": "Ice", "effect": "defense_up", "required_level": 15},
+            "Glacial Spike": {"power": 85, "accuracy": 85, "type": "Ice", "required_level": 18},
+            "Absolute Zero": {"power": 120, "accuracy": 65, "type": "Ice", "effect": "freeze", "required_level": 25},
+
+            # Magma Moves
+            "Lava Burst": {"power": 70, "accuracy": 90, "type": "Magma", "effect": "burn", "required_level": 12},
+            "Volcano": {"power": 110, "accuracy": 75, "type": "Magma", "required_level": 22},
+            "Magma Armor": {"power": 0, "accuracy": 100, "type": "Magma", "effect": "defense_up", "required_level": 18},
+            "Pyroclastic Flow": {"power": 95, "accuracy": 80, "type": "Magma", "effect": "speed_down", "required_level": 20},
+            "Core Surge": {"power": 85, "accuracy": 85, "type": "Magma", "effect": "burn", "required_level": 15},
+
+            # Plant Moves
+            "Vine Whip": {"power": 45, "accuracy": 100, "type": "Plant", "required_level": 1},
+            "Solar Beam": {"power": 100, "accuracy": 80, "type": "Plant", "required_level": 20},
+            "Spore Cloud": {"power": 0, "accuracy": 90, "type": "Plant", "effect": "sleep", "required_level": 15},
+            "Thorny Shield": {"power": 0, "accuracy": 100, "type": "Plant", "effect": "defense_up", "required_level": 12},
+            "Nature's Wrath": {"power": 95, "accuracy": 85, "type": "Plant", "effect": "drain", "required_level": 22},
+
+            # Metal Moves
+            "Metal Claw": {"power": 50, "accuracy": 95, "type": "Metal", "required_level": 5},
+            "Iron Defense": {"power": 0, "accuracy": 100, "type": "Metal", "effect": "defense_up", "required_level": 10},
+            "Steel Beam": {"power": 100, "accuracy": 80, "type": "Metal", "required_level": 20},
+            "Magnetic Pull": {"power": 0, "accuracy": 90, "type": "Metal", "effect": "trap", "required_level": 15},
+            "Chrome Crusher": {"power": 90, "accuracy": 85, "type": "Metal", "required_level": 18},
+
+            # Sound Moves
+            "Sonic Boom": {"power": 60, "accuracy": 95, "type": "Sound", "required_level": 8},
+            "Deafening Screech": {"power": 0, "accuracy": 85, "type": "Sound", "effect": "defense_down", "required_level": 15},
+            "Resonance": {"power": 80, "accuracy": 90, "type": "Sound", "effect": "confusion", "required_level": 18},
+            "Soundwave Burst": {"power": 95, "accuracy": 80, "type": "Sound", "required_level": 22},
+            "Harmony": {"power": 0, "accuracy": 100, "type": "Sound", "effect": "heal", "required_level": 20},
+
+            # Magnetism Moves
+            "Magnetic Pulse": {"power": 65, "accuracy": 95, "type": "Magnetism", "required_level": 10},
+            "Polarity Shift": {"power": 0, "accuracy": 90, "type": "Magnetism", "effect": "confusion", "required_level": 15},
+            "Electromagnetic Storm": {"power": 95, "accuracy": 80, "type": "Magnetism", "required_level": 22},
+            "Attract": {"power": 0, "accuracy": 100, "type": "Magnetism", "effect": "trap", "required_level": 18},
+            "Repel": {"power": 0, "accuracy": 100, "type": "Magnetism", "effect": "evasion_up", "required_level": 20},
+
+            # Acid Moves
+            "Acid Spray": {"power": 55, "accuracy": 95, "type": "Acid", "effect": "defense_down", "required_level": 8},
+            "Corrosive Mist": {"power": 0, "accuracy": 90, "type": "Acid", "effect": "defense_down", "required_level": 15},
+            "Dissolve": {"power": 85, "accuracy": 85, "type": "Acid", "required_level": 18},
+            "Acid Rain": {"power": 70, "accuracy": 90, "type": "Acid", "effect": "poison", "required_level": 20},
+            "Molecular Breakdown": {"power": 100, "accuracy": 75, "type": "Acid", "effect": "weaken", "required_level": 25},
+
             # Poison Moves
-            "Poison Sting": {"power": 40, "accuracy": 100, "type": "Poison", "effect": "poison", "required_level": 1},
-            "Toxic": {"power": 0, "accuracy": 85, "type": "Poison", "effect": "badly_poison", "required_level": 10},
-            "Sludge Bomb": {"power": 75, "accuracy": 90, "type": "Poison", "effect": "poison", "required_level": 15},
-            "Acid Spray": {"power": 55, "accuracy": 95, "type": "Poison", "effect": "defense_down", "required_level": 5},
-            "Venom Drench": {"power": 0, "accuracy": 100, "type": "Poison", "effect": "multi_stat_down", "required_level": 20},
+            "Toxic": {"power": 0, "accuracy": 85, "type": "Poison", "effect": "badly_poison", "required_level": 12},
+            "Venom Strike": {"power": 70, "accuracy": 90, "type": "Poison", "effect": "poison", "required_level": 15},
+            "Poison Fog": {"power": 0, "accuracy": 95, "type": "Poison", "effect": "poison", "required_level": 18},
+            "Contaminate": {"power": 85, "accuracy": 85, "type": "Poison", "effect": "poison", "required_level": 20},
+            "Toxic Burst": {"power": 95, "accuracy": 80, "type": "Poison", "effect": "badly_poison", "required_level": 25},
+
+            # Illusion Moves
+            "Mirage": {"power": 0, "accuracy": 90, "type": "Illusion", "effect": "evasion_up", "required_level": 10},
+            "Phantom Force": {"power": 75, "accuracy": 85, "type": "Illusion", "required_level": 15},
+            "Reality Warp": {"power": 0, "accuracy": 80, "type": "Illusion", "effect": "confusion", "required_level": 18},
+            "Dreamweaver": {"power": 85, "accuracy": 85, "type": "Illusion", "effect": "sleep", "required_level": 22},
+            "Shattered Mirror": {"power": 95, "accuracy": 80, "type": "Illusion", "effect": "confusion", "required_level": 25},
+            
+            # Telekinesis Moves
+            "Psychic Push": {"power": 50, "accuracy": 100, "type": "Telekinesis", "required_level": 1},
+            "Mind Crush": {"power": 80, "accuracy": 90, "type": "Telekinesis", "required_level": 15},
+            "Telekinetic Barrier": {"power": 0, "accuracy": 95, "type": "Telekinesis", "effect": "defense_up", "required_level": 12},
+            "Psionic Burst": {"power": 95, "accuracy": 85, "type": "Telekinesis", "effect": "confusion", "required_level": 20},
+            "Mental Overload": {"power": 110, "accuracy": 75, "type": "Telekinesis", "effect": "stun", "required_level": 25},
+
+            # Shapeshifting Moves
+            "Morph Strike": {"power": 60, "accuracy": 95, "type": "Shapeshifting", "required_level": 5},
+            "Mimicry": {"power": 0, "accuracy": 100, "type": "Shapeshifting", "effect": "copy_move", "required_level": 15},
+            "Adaptive Form": {"power": 0, "accuracy": 90, "type": "Shapeshifting", "effect": "defense_up", "required_level": 18},
+            "Chimera Assault": {"power": 90, "accuracy": 85, "type": "Shapeshifting", "required_level": 22},
+            "Perfect Copy": {"power": 100, "accuracy": 80, "type": "Shapeshifting", "effect": "copy_stats", "required_level": 25},
+
+            # Healing Moves
+            "Regenerate": {"power": 0, "accuracy": 100, "type": "Healing", "effect": "heal", "required_level": 1},
+            "Vitality Surge": {"power": 0, "accuracy": 90, "type": "Healing", "effect": "big_heal", "required_level": 15},
+            "Cleansing Touch": {"power": 0, "accuracy": 95, "type": "Healing", "effect": "cure_status", "required_level": 10},
+            "Life Transfer": {"power": 0, "accuracy": 85, "type": "Healing", "effect": "drain_heal", "required_level": 20},
+            "Miracle Heal": {"power": 0, "accuracy": 75, "type": "Healing", "effect": "full_heal", "required_level": 25},
+
+            # Duplication Moves
+            "Double Team": {"power": 0, "accuracy": 100, "type": "Duplication", "effect": "evasion_up", "required_level": 5},
+            "Clone Strike": {"power": 70, "accuracy": 90, "type": "Duplication", "required_level": 12},
+            "Multiply": {"power": 0, "accuracy": 85, "type": "Duplication", "effect": "clone_army", "required_level": 18},
+            "Echo Blast": {"power": 85, "accuracy": 85, "type": "Duplication", "effect": "multi_hit", "required_level": 22},
+            "Legion Assault": {"power": 100, "accuracy": 80, "type": "Duplication", "effect": "multi_hit", "required_level": 25},
+
+            # Invisibility Moves
+            "Vanishing Act": {"power": 0, "accuracy": 100, "type": "Invisibility", "effect": "invisibility", "required_level": 1},
+            "Stealth Strike": {"power": 70, "accuracy": 95, "type": "Invisibility", "required_level": 10},
+            "Phantom Slash": {"power": 85, "accuracy": 90, "type": "Invisibility", "required_level": 15},
+            "Unseen Terror": {"power": 0, "accuracy": 85, "type": "Invisibility", "effect": "fear", "required_level": 20},
+            "Ghost Force": {"power": 95, "accuracy": 80, "type": "Invisibility", "effect": "stun", "required_level": 25},
+
+            # Elasticity Moves
+            "Rubber Punch": {"power": 50, "accuracy": 100, "type": "Elasticity", "required_level": 1},
+            "Stretch Grab": {"power": 65, "accuracy": 95, "type": "Elasticity", "effect": "trap", "required_level": 10},
+            "Elastic Shield": {"power": 0, "accuracy": 90, "type": "Elasticity", "effect": "defense_up", "required_level": 15},
+            "Slingshot": {"power": 85, "accuracy": 85, "type": "Elasticity", "required_level": 20},
+            "Rubber Storm": {"power": 95, "accuracy": 80, "type": "Elasticity", "effect": "multi_hit", "required_level": 25},
+
+            # Hardening Moves
+            "Iron Skin": {"power": 0, "accuracy": 100, "type": "Hardening", "effect": "defense_up", "required_level": 1},
+            "Stone Fist": {"power": 70, "accuracy": 90, "type": "Hardening", "required_level": 10},
+            "Diamond Defense": {"power": 0, "accuracy": 85, "type": "Hardening", "effect": "big_defense_up", "required_level": 18},
+            "Titanium Slam": {"power": 90, "accuracy": 85, "type": "Hardening", "required_level": 22},
+            "Unbreakable": {"power": 100, "accuracy": 80, "type": "Hardening", "effect": "invulnerability", "required_level": 25},
+
+            # Teleportation Moves
+            "Blink": {"power": 0, "accuracy": 100, "type": "Teleportation", "effect": "evasion_up", "required_level": 1},
+            "Warp Strike": {"power": 75, "accuracy": 90, "type": "Teleportation", "required_level": 12},
+            "Dimensional Rift": {"power": 0, "accuracy": 85, "type": "Teleportation", "effect": "confusion", "required_level": 18},
+            "Quantum Leap": {"power": 90, "accuracy": 85, "type": "Teleportation", "required_level": 22},
+            "Omnipresence": {"power": 100, "accuracy": 75, "type": "Teleportation", "effect": "multi_hit", "required_level": 25},
+
+            # Mind Control Moves
+            "Suggestion": {"power": 0, "accuracy": 90, "type": "Mind Control", "effect": "confusion", "required_level": 5},
+            "Psychic Command": {"power": 70, "accuracy": 85, "type": "Mind Control", "effect": "control", "required_level": 15},
+            "Mental Domination": {"power": 0, "accuracy": 75, "type": "Mind Control", "effect": "long_control", "required_level": 20},
+            "Mindbreaker": {"power": 85, "accuracy": 80, "type": "Mind Control", "effect": "confusion", "required_level": 22},
+            "Hivemind": {"power": 95, "accuracy": 70, "type": "Mind Control", "effect": "mass_control", "required_level": 25},
+
+            # Force Field Moves
+            "Energy Shield": {"power": 0, "accuracy": 100, "type": "Force Field", "effect": "defense_up", "required_level": 1},
+            "Barrier Punch": {"power": 65, "accuracy": 95, "type": "Force Field", "required_level": 10},
+            "Reflect": {"power": 0, "accuracy": 90, "type": "Force Field", "effect": "reflect_damage", "required_level": 15},
+            "Force Push": {"power": 80, "accuracy": 85, "type": "Force Field", "required_level": 20},
+            "Impenetrable Dome": {"power": 0, "accuracy": 75, "type": "Force Field", "effect": "invulnerability", "required_level": 25},
         }
         
         self.quests = {
@@ -150,15 +283,9 @@ class MHAGame(commands.Cog):
         new_moves = []
         
         # Check for level-based moves
-        if level == 5:
-            new_moves.append("Mega Punch")
-        elif level == 10:
-            new_moves.append("Hyper Beam")
-        
-        # Check for quirk-specific moves
-        if quirk_type:
-            quirk_moves = [move for move, data in self.moves.items() if data["type"].lower() == quirk_type.lower()]
-            new_moves.extend(quirk_moves[:min(level // 3, len(quirk_moves))])  # Learn a quirk move every 3 levels
+        for move, move_data in self.moves.items():
+            if move_data["required_level"] == level and (move_data["type"] == quirk_type or move_data["type"] == "Physical"):
+                new_moves.append(move)
         
         # Add new moves to learned moves
         for move in new_moves:
