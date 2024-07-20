@@ -280,17 +280,17 @@ class MHAGame(commands.Cog):
     
     async def pve_battle(self, ctx, player, enemy):
         # Announce the battle
-        await ctx.send(f"�arena **Battle Start!**\n{player['name']} vs {enemy['name']}")
-    
+        await ctx.send(f"🏟️ **Battle Start!**\n{player['name']} vs {enemy['name']}")
+
         battle_embed = discord.Embed(title="Battle", color=discord.Color.red())
         battle_embed.add_field(name=player['name'], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
         battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
         battle_msg = await ctx.send(embed=battle_embed)
-    
+
         player_moves = await self.get_quirk_moves(player["quirk"])
         move_embed = discord.Embed(title="Choose your move", description="\n".join(player_moves), color=discord.Color.blue())
         move_msg = await ctx.send(embed=move_embed)
-    
+
         while player["hp"] > 0 and enemy["hp"] > 0:
             # Player turn
             move = await self.get_player_move(ctx, player_moves, move_msg)
@@ -304,10 +304,10 @@ class MHAGame(commands.Cog):
             battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
             await battle_msg.edit(embed=battle_embed)
             await asyncio.sleep(2)
-    
+
             if enemy["hp"] <= 0:
                 break
-    
+
             # Enemy turn
             enemy_move = random.choice(list(self.moves.keys()))
             damage, effect = await self.use_move(enemy, player, enemy_move)
@@ -320,9 +320,9 @@ class MHAGame(commands.Cog):
             battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
             await battle_msg.edit(embed=battle_embed)
             await asyncio.sleep(2)
-    
+
         await move_msg.delete()  # Clean up the move selection message
-    
+
         if player["hp"] > 0:
             await ctx.send(f"🏆 {player['name']} wins the battle!")
             return player
@@ -356,16 +356,17 @@ class MHAGame(commands.Cog):
         else:
             return 0, "The move missed!"
 
-    async def get_player_move(self, ctx, moves):
-        move_list = "\n".join(moves)
-        await ctx.send(f"Choose your move:\n{move_list}")
-        
+    async def get_player_move(self, ctx, moves, move_msg):
+        move_embed = discord.Embed(title="Choose your move", description="\n".join(moves), color=discord.Color.blue())
+        await move_msg.edit(embed=move_embed)
+
         def check(m):
-            return m.author == ctx.author and m.content in moves
+            return m.author == ctx.author and m.content.lower() in [move.lower() for move in moves]
         
         try:
-            move_msg = await self.bot.wait_for("message", check=check, timeout=30.0)
-            return move_msg.content
+            move_choice = await self.bot.wait_for("message", check=check, timeout=30.0)
+            await move_choice.delete()  # Delete the player's move choice message
+            return move_choice.content
         except asyncio.TimeoutError:
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
