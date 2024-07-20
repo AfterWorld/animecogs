@@ -194,7 +194,7 @@ class MHAGame(commands.Cog):
         """My Hero Academia game commands"""
 
 
-    @commands.command(name="begin", aliases=["start"])
+    @mha.command(name="begin", aliases=["start"])
     async def begin_journey(self, ctx, name: str, alignment: str):
         """Begin your hero/villain journey"""
         user_data = await self.config.user(ctx.author).all()
