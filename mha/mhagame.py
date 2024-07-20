@@ -99,8 +99,33 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
+        if ctx.invoked_subcommand is None:
+            await self.send_mha_help(ctx)
 
-    @mha.command(name="begin")
+    async def send_mha_help(self, ctx):
+        embed = discord.Embed(title="My Hero Academia Game Help", 
+                              description="Here are all the commands for the MHA game:",
+                              color=discord.Color.blue())
+
+        commands_info = {
+            "begin": {"aliases": ["start"], "desc": "Begin your hero/villain journey. Usage: `.mha begin <name> <hero/villain>`"},
+            "profile": {"aliases": ["stats"], "desc": "Display your hero/villain profile"},
+            "battle": {"aliases": ["fight"], "desc": "Start a battle against a random enemy"},
+            "train": {"aliases": ["workout"], "desc": "Train a specific stat. Usage: `.mha train <stat>`"},
+            "quests": {"aliases": ["missions"], "desc": "Display available quests"},
+            "accept_quest": {"aliases": ["take_quest"], "desc": "Accept a quest. Usage: `.mha accept_quest <quest_name>`"},
+            "complete_quest": {"aliases": ["finish_quest"], "desc": "Complete your active quest"},
+            "abandon_quest": {"aliases": ["quit_quest"], "desc": "Abandon your active quest"},
+            "join_event": {"aliases": ["enter_event"], "desc": "Join the current event"},
+        }
+
+        for cmd, info in commands_info.items():
+            aliases = ", ".join(info["aliases"])
+            embed.add_field(name=f"{cmd} ({aliases})", value=info["desc"], inline=False)
+
+        await ctx.send(embed=embed)
+
+    @mha.command(name="begin", aliases=["start"])
     async def begin_journey(self, ctx, name: str, alignment: str):
         """Begin your hero/villain journey"""
         user_data = await self.config.user(ctx.author).all()
@@ -169,7 +194,7 @@ class MHAGame(commands.Cog):
 
         return buffer
 
-    @mha.command(name="profile")
+    @mha.command(name="profile", aliases=["stats", "info"])
     async def show_profile(self, ctx):
         """Display your hero/villain profile"""
         user_data = await self.config.user(ctx.author).all()
@@ -251,7 +276,7 @@ class MHAGame(commands.Cog):
         except asyncio.TimeoutError:
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
-    @mha.command(name="battle")
+    @mha.command(name="battle", aliases=["fight", "duel"])
     async def start_battle(self, ctx):
         """Start a battle against a random enemy"""
         user_data = await self.config.user(ctx.author).all()
@@ -275,7 +300,7 @@ class MHAGame(commands.Cog):
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
 
-    @mha.command(name="train")
+    @mha.command(name="train", aliases=["workout", "practice"])
     async def train_stat(self, ctx, stat: str):
         """Train a specific stat"""
         user_data = await self.config.user(ctx.author).all()
@@ -305,7 +330,7 @@ class MHAGame(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You spent {cost} currency and trained your {stat}. It increased by {increase} points!")
 
-    @mha.command(name="quests")
+    @mha.command(name="quests", aliases=["missions", "tasks"])
     async def show_quests(self, ctx):
         """Display available quests"""
         embed = discord.Embed(title="Available Quests", color=discord.Color.green())
@@ -313,7 +338,7 @@ class MHAGame(commands.Cog):
             embed.add_field(name=quest, value=f"{data['description']}\nReward: {data['reward']} currency, {data['exp']} EXP", inline=False)
         await ctx.send(embed=embed)
 
-    @mha.command(name="accept_quest")
+    @mha.command(name="accept_quest", aliases=["take_quest", "start_mission"])
     async def accept_quest(self, ctx, *, quest_name: str):
         """Accept a quest"""
         user_data = await self.config.user(ctx.author).all()
@@ -333,7 +358,7 @@ class MHAGame(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You have accepted the quest: {quest_name}")
 
-    @mha.command(name="complete_quest")
+    @mha.command(name="complete_quest", aliases=["finish_quest", "end_mission"])
     async def complete_quest(self, ctx):
         """Complete your active quest"""
         user_data = await self.config.user(ctx.author).all()
@@ -351,7 +376,7 @@ class MHAGame(commands.Cog):
         await ctx.send(f"Congratulations! You completed the quest: {completed_quest}\nYou earned {quest['reward']} currency and {quest['exp']} EXP.")
         await self.check_level_up(ctx, user_data)
 
-    @mha.command(name="abandon_quest")
+    @mha.command(name="abandon_quest", aliases=["quit_quest", "cancel_mission"])
     async def abandon_quest(self, ctx):
         """Abandon your active quest"""
         user_data = await self.config.user(ctx.author).all()
@@ -364,7 +389,7 @@ class MHAGame(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"You have abandoned the quest: {abandoned_quest}")
 
-    @mha.command(name="join_event")
+    @mha.command(name="join_event", aliases=["enter_event", "participate"])
     async def join_event(self, ctx):
         """Join the current event"""
         if not self.current_event:
@@ -379,7 +404,7 @@ class MHAGame(commands.Cog):
         self.event_participants.add(ctx.author.id)
         await ctx.send(f"You've joined the {self.current_event} event!")
 
-    @mha.command(name="end_event")
+    @mha.command(name="end_event", aliases=["finish_event", "conclude_event"])
     @checks.is_owner()
     async def end_event(self, ctx):
         """End the current event and distribute rewards (Owner only)"""
