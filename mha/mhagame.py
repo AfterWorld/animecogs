@@ -225,17 +225,10 @@ class MHAGame(commands.Cog):
         # Quirk with smaller font and word wrap
         quirk_text = f"{user_data['quirk']}"
         lines = textwrap.wrap(quirk_text, width=50)  # Adjust width as needed
-        y_text = 340
+        y_text = 480
         for line in lines:
             draw.text((450, y_text), line, font=small_font, fill=(0, 0, 0))
             y_text += 25  # Adjust line spacing as needed
-
-        # Add "Proof that the person above is a student at our University" text
-        proof_text = "Proof that the person above is a student at our University"
-        draw.text((50, 620), proof_text, font=small_font, fill=(0, 0, 0))
-
-        # Add "High School Principal" text
-        draw.text((450, 620), "High School Principal", font=small_font, fill=(0, 0, 0))
 
         # Save the image to a bytes buffer
         buffer = io.BytesIO()
