@@ -37,13 +37,59 @@ class MHAGame(commands.Cog):
         self.config.register_user(**default_user)
         
         self.moves = {
+            # Basic Physical Moves
             "Punch": {"power": 40, "accuracy": 100, "type": "Physical"},
             "Kick": {"power": 60, "accuracy": 90, "type": "Physical"},
+            "Tackle": {"power": 50, "accuracy": 95, "type": "Physical"},
+            
+            # Fire Moves
             "Fire Blast": {"power": 80, "accuracy": 85, "type": "Fire"},
+            "Flame Burst": {"power": 70, "accuracy": 90, "type": "Fire", "effect": "burn"},
+            "Inferno": {"power": 100, "accuracy": 75, "type": "Fire", "effect": "burn"},
+            
+            # Water Moves
             "Water Jet": {"power": 75, "accuracy": 90, "type": "Water"},
+            "Hydro Pump": {"power": 90, "accuracy": 80, "type": "Water"},
+            "Aqua Ring": {"power": 0, "accuracy": 100, "type": "Water", "effect": "heal"},
+            
+            # Earth Moves
             "Earth Wall": {"power": 0, "accuracy": 100, "type": "Earth", "effect": "defense_up"},
+            "Rock Throw": {"power": 65, "accuracy": 90, "type": "Earth"},
+            "Earthquake": {"power": 85, "accuracy": 85, "type": "Earth"},
+            
+            # Air Moves
             "Air Slice": {"power": 70, "accuracy": 95, "type": "Air"},
-            # Add more moves here
+            "Tornado": {"power": 80, "accuracy": 85, "type": "Air", "effect": "confusion"},
+            "Gust": {"power": 55, "accuracy": 100, "type": "Air", "effect": "speed_up"},
+            
+            # Electric Moves
+            "Thunderbolt": {"power": 75, "accuracy": 90, "type": "Electric", "effect": "stun"},
+            "Static Shock": {"power": 60, "accuracy": 95, "type": "Electric", "effect": "speed_up"},
+            
+            # Ice Moves
+            "Ice Beam": {"power": 70, "accuracy": 90, "type": "Ice", "effect": "freeze"},
+            "Blizzard": {"power": 95, "accuracy": 75, "type": "Ice", "effect": "freeze"},
+            
+            # Psychic Moves
+            "Psychic Blast": {"power": 80, "accuracy": 85, "type": "Psychic", "effect": "confusion"},
+            "Mind Control": {"power": 0, "accuracy": 70, "type": "Psychic", "effect": "stun"},
+            
+            # Dark Moves
+            "Shadow Ball": {"power": 75, "accuracy": 90, "type": "Dark"},
+            "Dark Pulse": {"power": 85, "accuracy": 85, "type": "Dark", "effect": "confusion"},
+            
+            # Light Moves
+            "Dazzling Gleam": {"power": 70, "accuracy": 95, "type": "Light"},
+            "Solar Beam": {"power": 100, "accuracy": 80, "type": "Light"},
+            
+            # Poison Moves
+            "Toxic": {"power": 0, "accuracy": 85, "type": "Poison", "effect": "poison"},
+            "Sludge Bomb": {"power": 75, "accuracy": 90, "type": "Poison", "effect": "poison"},
+            
+            # Special Moves
+            "Drain Life": {"power": 60, "accuracy": 90, "type": "Special", "effect": "drain"},
+            "Mega Punch": {"power": 90, "accuracy": 80, "type": "Physical"},
+            "Hyper Beam": {"power": 120, "accuracy": 70, "type": "Special"},
         }
         
         self.quests = {
@@ -101,7 +147,8 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
-        await self.send_mha_help(ctx)
+        if ctx.invoked_subcommand is None:
+            await self.send_mha_help(ctx)
 
     async def send_mha_help(self, ctx):
         embed = discord.Embed(title="My Hero Academia Game Help", 
@@ -151,16 +198,7 @@ class MHAGame(commands.Cog):
         # Open the template image
         img = Image.open("/home/adam/photos/mhaid.png")
         draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("/home/adam/photos/mhafont.ttf", 24)
-
-        # Add text to the image
-        draw.text((200, 100), user_data["name"], font=font, fill=(0, 0, 0))
-        draw.text((200, 150), user_data["quirk"], font=font, fill=(0, 0, 0))
-        draw.text((200, 200), user_data["alignment"], font=font, fill=(0, 0, 0))
-        draw.text((200, 250), f"Level: {user_data['level']}", font=font, fill=(0, 0, 0))
-        
-        created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((200, 300), f"Joined: {created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
+        font = ImageFont.truetype("path/to/your/font.ttf", 24)
 
         # Add user avatar
         if user.avatar:
@@ -171,22 +209,24 @@ class MHAGame(commands.Cog):
                         avatar_data = await resp.read()
                         avatar_image = Image.open(BytesIO(avatar_data))
                         
-                        # Resize avatar to fit the card (adjust size as needed)
-                        avatar_size = (100, 100)
-                        avatar_image = avatar_image.resize(avatar_size)
-                        
-                        # Create a circular mask
-                        mask = Image.new('L', avatar_size, 0)
-                        draw = ImageDraw.Draw(mask)
-                        draw.ellipse((0, 0) + avatar_size, fill=255)
-                        
-                        # Apply the circular mask to the avatar
-                        output = ImageOps.fit(avatar_image, mask.size, centering=(0.5, 0.5))
-                        output.putalpha(mask)
+                        # Resize avatar to fit the blue rectangle
+                        # Adjust these values to match your template
+                        avatar_size = (150, 200)  # Example size, adjust as needed
+                        avatar_image = avatar_image.resize(avatar_size, Image.Resampling.LANCZOS)
                         
                         # Paste the avatar onto the profile card
-                        avatar_position = (50, 50)  # Adjust position as needed
-                        img.paste(output, avatar_position, output)
+                        # Adjust these coordinates to match your template
+                        avatar_position = (50, 50)  # Example position, adjust as needed
+                        img.paste(avatar_image, avatar_position)
+
+        # Add text to the image
+        draw.text((200, 100), user_data["name"], font=font, fill=(0, 0, 0))
+        draw.text((200, 150), user_data["quirk"], font=font, fill=(0, 0, 0))
+        draw.text((200, 200), user_data["alignment"], font=font, fill=(0, 0, 0))
+        draw.text((200, 250), f"Level: {user_data['level']}", font=font, fill=(0, 0, 0))
+        
+        created_at = datetime.fromisoformat(user_data["created_at"])
+        draw.text((200, 300), f"Joined: {created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
 
         # Save the image to a bytes buffer
         buffer = io.BytesIO()
@@ -457,19 +497,47 @@ class MHAGame(commands.Cog):
         }
 
     def apply_effect(self, attacker, defender, effect):
-        if effect == "defense_up":
-            attacker["defense"] += 2
-            return f"{attacker['name']}'s defense increased!"
-        elif effect == "speed_up":
-            attacker["speed"] += 2
-            return f"{attacker['name']}'s speed increased!"
-        # Add more effects as needed
-        return ""
+    if effect == "defense_up":
+        attacker["defense"] += 2
+        return f"{attacker['name']}'s defense increased!"
+    elif effect == "speed_up":
+        attacker["speed"] += 2
+        return f"{attacker['name']}'s speed increased!"
+    elif effect == "attack_up":
+        attacker["attack"] += 2
+        return f"{attacker['name']}'s attack increased!"
+    elif effect == "heal":
+        heal_amount = min(20, attacker["max_hp"] - attacker["hp"])
+        attacker["hp"] += heal_amount
+        return f"{attacker['name']} healed for {heal_amount} HP!"
+    elif effect == "poison":
+        defender["status"] = "poisoned"
+        return f"{defender['name']} was poisoned!"
+    elif effect == "stun":
+        defender["status"] = "stunned"
+        return f"{defender['name']} was stunned!"
+    elif effect == "burn":
+        defender["status"] = "burned"
+        return f"{defender['name']} was burned!"
+    elif effect == "freeze":
+        defender["status"] = "frozen"
+        return f"{defender['name']} was frozen!"
+    elif effect == "confusion":
+        defender["status"] = "confused"
+        return f"{defender['name']} became confused!"
+    elif effect == "drain":
+        drain_amount = min(20, defender["hp"])
+        defender["hp"] -= drain_amount
+        attacker["hp"] = min(attacker["max_hp"], attacker["hp"] + drain_amount)
+        return f"{attacker['name']} drained {drain_amount} HP from {defender['name']}!"
+    return ""
 
     @commands.group(name="mhaadmin")
     @checks.is_owner()
     async def mha_admin(self, ctx):
         """MHA game admin commands"""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
 
     @mha_admin.command(name="wipe")
     async def wipe_user_data(self, ctx, user: discord.Member):
