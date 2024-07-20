@@ -147,31 +147,8 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
-        if ctx.invoked_subcommand is None:
-            await self.send_mha_help(ctx)
+        await self.send_mha_help(ctx)
 
-    async def send_mha_help(self, ctx):
-        embed = discord.Embed(title="My Hero Academia Game Help", 
-                              description="Here are all the commands for the MHA game:",
-                              color=discord.Color.blue())
-
-        commands_info = {
-            "begin": {"aliases": ["start"], "desc": "Begin your hero/villain journey. Usage: `.mha begin <name> <hero/villain>`"},
-            "profile": {"aliases": ["stats"], "desc": "Display your hero/villain profile"},
-            "battle": {"aliases": ["fight"], "desc": "Start a battle against a random enemy"},
-            "train": {"aliases": ["workout"], "desc": "Train a specific stat. Usage: `.mha train <stat>`"},
-            "quests": {"aliases": ["missions"], "desc": "Display available quests"},
-            "accept_quest": {"aliases": ["take_quest"], "desc": "Accept a quest. Usage: `.mha accept_quest <quest_name>`"},
-            "complete_quest": {"aliases": ["finish_quest"], "desc": "Complete your active quest"},
-            "abandon_quest": {"aliases": ["quit_quest"], "desc": "Abandon your active quest"},
-            "join_event": {"aliases": ["enter_event"], "desc": "Join the current event"},
-        }
-
-        for cmd, info in commands_info.items():
-            aliases = ", ".join(info["aliases"])
-            embed.add_field(name=f"{cmd} ({aliases})", value=info["desc"], inline=False)
-
-        await ctx.send(embed=embed)
 
     @mha.command(name="begin", aliases=["start"])
     async def begin_journey(self, ctx, name: str, alignment: str):
