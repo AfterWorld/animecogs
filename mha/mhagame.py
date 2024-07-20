@@ -256,12 +256,32 @@ class MHAGame(commands.Cog):
 
     async def get_quirk_moves(self, quirk):
         quirk_type = quirk.split('(')[1].split(')')[0].lower()
-        return [move for move, data in self.moves.items() if data['type'].lower() == quirk_type]
-
+        quirk_moves = [move for move, data in self.moves.items() if data['type'].lower() == quirk_type]
+        
+        # Always include some default moves
+        default_moves = ["Punch", "Kick", "Dodge"]
+        return list(set(quirk_moves + default_moves))  # Use set to remove duplicates
+    
+    async def get_player_move(self, ctx, moves):
+        if not moves:
+            return "Punch"  # Default move if no moves are available
+        
+        move_list = "\n".join(moves)
+        await ctx.send(f"Choose your move:\n{move_list}")
+        
+        def check(m):
+            return m.author == ctx.author and m.content in moves
+        
+        try:
+            move_msg = await self.bot.wait_for("message", check=check, timeout=30.0)
+            return move_msg.content
+        except asyncio.TimeoutError:
+            return random.choice(moves)  # Choose a random move if the player doesn't respond in time
+    
     async def pve_battle(self, ctx, player, enemy):
         battle_embed = discord.Embed(title="Battle", color=discord.Color.red())
         battle_msg = await ctx.send(embed=battle_embed)
-
+    
         while player["hp"] > 0 and enemy["hp"] > 0:
             # Player turn
             player_moves = await self.get_quirk_moves(player["quirk"])
@@ -271,10 +291,10 @@ class MHAGame(commands.Cog):
             battle_embed.add_field(name="Player Attack", value=f"{player['name']} uses {move} and deals {damage} damage!", inline=False)
             if effect:
                 battle_embed.add_field(name="Effect", value=effect, inline=False)
-
+    
             if enemy["hp"] <= 0:
                 break
-
+    
             # Enemy turn
             enemy_move = random.choice(list(self.moves.keys()))
             damage, effect = await self.use_move(enemy, player, enemy_move)
@@ -282,13 +302,13 @@ class MHAGame(commands.Cog):
             battle_embed.add_field(name="Enemy Attack", value=f"{enemy['name']} uses {enemy_move} and deals {damage} damage!", inline=False)
             if effect:
                 battle_embed.add_field(name="Effect", value=effect, inline=False)
-
+    
             battle_embed.clear_fields()
             battle_embed.add_field(name=player["name"], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
             battle_embed.add_field(name=enemy["name"], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
             await battle_msg.edit(embed=battle_embed)
             await asyncio.sleep(2)
-
+    
         if player["hp"] > 0:
             return player
         else:
