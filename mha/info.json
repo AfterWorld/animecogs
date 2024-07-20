@@ -1,0 +1,9 @@
+{
+    "author": ["UltPanda"],
+    "description": "An MHA-inspired game for Discord servers.",
+    "install_msg": "Thanks for installing the MHA Game cog! Use [p]help MHAGame to see available commands.",
+    "short": "MHA-inspired Discord game",
+    "tags": ["game", "rpg", "mha"],
+    "type": "COG",
+    "end_user_data_statement": "This cog stores user data related to game progress, including character information and game statistics."
+}
