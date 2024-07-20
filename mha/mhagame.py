@@ -217,10 +217,10 @@ class MHAGame(commands.Cog):
         draw.text((450, 140), "Year 1", font=main_font, fill=(0, 0, 0))  # Department (Year 1 by default)
         draw.text((450, 180), f"{attend_number}", font=main_font, fill=(0, 0, 0))  # Attendance number
 
-        draw.text((450, 320), user_data['name'], font=main_font, fill=(0, 0, 0))
+        draw.text((450, 380), user_data['name'], font=main_font, fill=(0, 0, 0))
 
         created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((450, 380), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
+        draw.text((450, 340), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
 
         # Quirk with smaller font and word wrap
         quirk_text = f"{user_data['quirk']}"
@@ -580,4 +580,3 @@ class MHAGame(commands.Cog):
 
 def setup(bot):
     bot.add_cog(MHAGame(bot))
-
