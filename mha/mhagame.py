@@ -217,17 +217,17 @@ class MHAGame(commands.Cog):
         draw.text((450, 140), "Year 1", font=main_font, fill=(0, 0, 0))  # Department (Year 1 by default)
         draw.text((450, 180), f"{attend_number}", font=main_font, fill=(0, 0, 0))  # Attendance number
 
-        draw.text((450, 500), user_data['name'], font=main_font, fill=(0, 0, 0))
+        draw.text((450, 620), user_data['name'], font=main_font, fill=(0, 0, 0))
 
         created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((450, 600), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
+        draw.text((450, 580), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
 
         # Quirk with smaller font and word wrap
         quirk_text = f"{user_data['quirk']}"
         lines = textwrap.wrap(quirk_text, width=50)  # Adjust width as needed
         y_text = 480
         for line in lines:
-            draw.text((435, y_text), line, font=small_font, fill=(0, 0, 0))
+            draw.text((430, y_text), line, font=small_font, fill=(0, 0, 0))
             y_text += 25  # Adjust line spacing as needed
 
         # Save the image to a bytes buffer
