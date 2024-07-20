@@ -477,7 +477,7 @@ class MHAGame(commands.Cog):
         except asyncio.TimeoutError:
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
-    @mha.command(name="battle", aliases=["fight", "duel"])
+    @mha.command(name="battle", aliases=["duel"])
     async def start_battle(self, ctx):
         """Start a battle against a villain"""
         user_data = await self.config.user(ctx.author).all()
@@ -501,7 +501,7 @@ class MHAGame(commands.Cog):
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
         
-    @mha.command(name="pvp", aliases=["pvp"])
+    @mha.command(name="pvp", aliases=["fight"])
     async def pvp_battle(self, ctx, opponent: discord.Member):
         """Challenge another player to a PvP battle"""
         if opponent == ctx.author:
