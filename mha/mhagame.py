@@ -279,18 +279,31 @@ class MHAGame(commands.Cog):
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
     
     async def pve_battle(self, ctx, player, enemy):
+        # Announce the battle
+        await ctx.send(f"�arena **Battle Start!**\n{player['name']} vs {enemy['name']}")
+    
         battle_embed = discord.Embed(title="Battle", color=discord.Color.red())
+        battle_embed.add_field(name=player['name'], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
+        battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
         battle_msg = await ctx.send(embed=battle_embed)
+    
+        player_moves = await self.get_quirk_moves(player["quirk"])
+        move_embed = discord.Embed(title="Choose your move", description="\n".join(player_moves), color=discord.Color.blue())
+        move_msg = await ctx.send(embed=move_embed)
     
         while player["hp"] > 0 and enemy["hp"] > 0:
             # Player turn
-            player_moves = await self.get_quirk_moves(player["quirk"])
-            move = await self.get_player_move(ctx, player_moves)
+            move = await self.get_player_move(ctx, player_moves, move_msg)
             damage, effect = await self.use_move(player, enemy, move)
             
+            battle_embed.clear_fields()
             battle_embed.add_field(name="Player Attack", value=f"{player['name']} uses {move} and deals {damage} damage!", inline=False)
             if effect:
                 battle_embed.add_field(name="Effect", value=effect, inline=False)
+            battle_embed.add_field(name=player['name'], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
+            battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
+            await battle_msg.edit(embed=battle_embed)
+            await asyncio.sleep(2)
     
             if enemy["hp"] <= 0:
                 break
@@ -299,20 +312,34 @@ class MHAGame(commands.Cog):
             enemy_move = random.choice(list(self.moves.keys()))
             damage, effect = await self.use_move(enemy, player, enemy_move)
             
+            battle_embed.clear_fields()
             battle_embed.add_field(name="Enemy Attack", value=f"{enemy['name']} uses {enemy_move} and deals {damage} damage!", inline=False)
             if effect:
                 battle_embed.add_field(name="Effect", value=effect, inline=False)
-    
-            battle_embed.clear_fields()
-            battle_embed.add_field(name=player["name"], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
-            battle_embed.add_field(name=enemy["name"], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
+            battle_embed.add_field(name=player['name'], value=f"HP: {player['hp']}/{player['max_hp']}", inline=True)
+            battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
             await battle_msg.edit(embed=battle_embed)
             await asyncio.sleep(2)
     
+        await move_msg.delete()  # Clean up the move selection message
+    
         if player["hp"] > 0:
+            await ctx.send(f"🏆 {player['name']} wins the battle!")
             return player
         else:
+            await ctx.send(f"☠️ {enemy['name']} wins the battle!")
             return enemy
+    
+    async def get_player_move(self, ctx, moves, move_msg):
+        def check(m):
+            return m.author == ctx.author and m.content.lower() in [move.lower() for move in moves]
+        
+        try:
+            move_choice = await self.bot.wait_for("message", check=check, timeout=30.0)
+            await move_choice.delete()  # Delete the player's move choice message
+            return move_choice.content
+        except asyncio.TimeoutError:
+            return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
     async def use_move(self, attacker, defender, move):
         move_data = self.moves[move]
@@ -349,10 +376,10 @@ class MHAGame(commands.Cog):
         if not user_data["name"]:
             await ctx.send("You haven't started your journey yet! Use the `mha begin` command to start.")
             return
-
+    
         enemy = self.generate_enemy(user_data["level"])
         winner = await self.pve_battle(ctx, user_data, enemy)
-
+    
         if winner == user_data:
             exp_gain = enemy["level"] * 10
             currency_gain = enemy["level"] * 5
@@ -362,7 +389,7 @@ class MHAGame(commands.Cog):
             await self.check_level_up(ctx, user_data)
         else:
             await ctx.send("You were defeated. Better luck next time!")
-
+    
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
 
