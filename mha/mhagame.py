@@ -208,7 +208,7 @@ class MHAGame(commands.Cog):
         attend_number = random.randint(10000, 99999)
 
         # Add text to the image
-        draw.text((200, 220), f"{user_data['name']}", font=font, fill=(0, 0, 0))
+        draw.text((300, 220), f"{user_data['name']}", font=font, fill=(0, 0, 0))
         
         created_at = datetime.fromisoformat(user_data["created_at"])
         draw.text((450, 260), f"{created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
