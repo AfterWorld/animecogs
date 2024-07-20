@@ -456,57 +456,167 @@ class MHAGame(commands.Cog):
 
     @mha.command(name="battle", aliases=["fight", "duel"])
     async def start_battle(self, ctx):
-        """Start a battle against a random enemy"""
+        """Start a battle against a villain"""
         user_data = await self.config.user(ctx.author).all()
         if not user_data["name"]:
             await ctx.send("You haven't started your journey yet! Use the `mha begin` command to start.")
             return
-    
-        enemy = self.generate_enemy(user_data["level"])
-        winner = await self.pve_battle(ctx, user_data, enemy)
-    
+
+        villain = self.generate_villain(user_data["level"])
+        winner = await self.conduct_battle(ctx, user_data, villain)
+
         if winner == user_data:
-            exp_gain = enemy["level"] * 10
-            currency_gain = enemy["level"] * 5
+            exp_gain = villain["level"] * 10
+            currency_gain = villain["level"] * 5
             user_data["exp"] += exp_gain
             user_data["currency"] += currency_gain
             await ctx.send(f"You won! Gained {exp_gain} EXP and {currency_gain} currency.")
             await self.check_level_up(ctx, user_data)
         else:
             await ctx.send("You were defeated. Better luck next time!")
-    
+
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
+        
+    @mha.command(name="pvp", aliases=["duel"])
+    async def pvp_battle(self, ctx, opponent: discord.Member):
+        """Challenge another player to a PvP battle"""
+        if opponent == ctx.author:
+            await ctx.send("You can't battle yourself!")
+            return
 
-    @mha.command(name="train", aliases=["workout", "practice"])
-    async def train_stat(self, ctx, stat: str):
-        """Train a specific stat"""
+        player_data = await self.config.user(ctx.author).all()
+        opponent_data = await self.config.user(opponent).all()
+
+        if not player_data["name"] or not opponent_data["name"]:
+            await ctx.send("Both players need to have started their journey to battle!")
+            return
+
+        await ctx.send(f"{opponent.mention}, {ctx.author.mention} has challenged you to a battle! Type 'accept' to begin.")
+
+        def check(m):
+            return m.author == opponent and m.content.lower() == 'accept'
+
+        try:
+            await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            await ctx.send("The challenge was not accepted.")
+            return
+
+        winner = await self.conduct_battle(ctx, player_data, opponent_data)
+
+        if winner == player_data:
+            await ctx.send(f"{ctx.author.mention} wins the duel!")
+        else:
+            await ctx.send(f"{opponent.mention} wins the duel!")
+
+    async def conduct_battle(self, ctx, player1, player2):
+        await ctx.send(f"🏟️ **Battle Start!**\n{player1['name']} vs {player2['name']}")
+
+        battle_embed = discord.Embed(title="Battle", color=discord.Color.red())
+        battle_embed.add_field(name=player1['name'], value=f"HP: {player1['hp']}/{player1['max_hp']}", inline=True)
+        battle_embed.add_field(name=player2['name'], value=f"HP: {player2['hp']}/{player2['max_hp']}", inline=True)
+        battle_msg = await ctx.send(embed=battle_embed)
+
+        while player1["hp"] > 0 and player2["hp"] > 0:
+            for attacker, defender in [(player1, player2), (player2, player1)]:
+                if attacker["hp"] <= 0:
+                    break
+
+                move_embed = discord.Embed(title=f"{attacker['name']}, choose your move", description="\n".join(attacker['learned_moves']), color=discord.Color.blue())
+                move_msg = await ctx.send(embed=move_embed)
+
+                move = await self.get_player_move(ctx, attacker['learned_moves'], move_msg)
+                damage, effect = await self.use_move(attacker, defender, move)
+
+                battle_embed.clear_fields()
+                battle_embed.add_field(name=f"{attacker['name']}'s Attack", value=f"{attacker['name']} uses {move} and deals {damage} damage!", inline=False)
+                if effect:
+                    battle_embed.add_field(name="Effect", value=effect, inline=False)
+                battle_embed.add_field(name=player1['name'], value=f"HP: {player1['hp']}/{player1['max_hp']}", inline=True)
+                battle_embed.add_field(name=player2['name'], value=f"HP: {player2['hp']}/{player2['max_hp']}", inline=True)
+                await battle_msg.edit(embed=battle_embed)
+                await move_msg.delete()
+                await asyncio.sleep(2)
+
+        if player1["hp"] > 0:
+            return player1
+        else:
+            return player2
+
+    def generate_villain(self, level):
+        villain_names = ["Shadow Fist", "Vortex", "Inferno", "Frost Giant", "Mind Bender"]
+        quirk_types = ["Dark", "Air", "Fire", "Ice", "Psychic"]
+        
+        name = random.choice(villain_names)
+        quirk_type = random.choice(quirk_types)
+        quirk = f"Villainous {quirk_type} (Emitter)"
+        
+        villain = {
+            "name": name,
+            "quirk": quirk,
+            "quirk_type": quirk_type,
+            "level": level,
+            "hp": level * 20,
+            "max_hp": level * 20,
+            "attack": level * 3,
+            "defense": level * 2,
+            "speed": level * 2,
+            "learned_moves": self.get_moves_for_quirk(quirk_type, level)
+        }
+        
+        return villain
+
+    def get_moves_for_quirk(self, quirk_type, level):
+        quirk_moves = [move for move, data in self.moves.items() if data["type"].lower() == quirk_type.lower()]
+        num_moves = min(level // 2, len(quirk_moves))
+        return random.sample(quirk_moves, num_moves) + ["Punch", "Kick"]
+
+
+    @mha.command(name="train", aliases=["practice"])
+    async def train_move(self, ctx, *, move_name: str):
+        """Train to learn a new move"""
         user_data = await self.config.user(ctx.author).all()
         if not user_data["name"]:
             await ctx.send("You haven't started your journey yet! Use the `mha begin` command to start.")
             return
 
-        valid_stats = ["attack", "defense", "speed", "hp"]
-        if stat.lower() not in valid_stats:
-            await ctx.send(f"Invalid stat. Please choose from: {', '.join(valid_stats)}")
+        move_name = move_name.title()  # Capitalize each word
+        if move_name not in self.moves:
+            await ctx.send(f"'{move_name}' is not a valid move.")
             return
 
-        cost = user_data["level"] * 10
-        if user_data["currency"] < cost:
-            await ctx.send(f"You need {cost} currency to train. You only have {user_data['currency']}.")
+        if move_name in user_data["learned_moves"]:
+            await ctx.send(f"You already know the move '{move_name}'.")
             return
 
-        user_data["currency"] -= cost
-        increase = random.randint(1, 3)
+        move_data = self.moves[move_name]
+        required_level = move_data.get("required_level", 1)
         
-        if stat.lower() == "hp":
-            user_data["max_hp"] += increase
-            user_data["hp"] = user_data["max_hp"]
-        else:
-            user_data[stat.lower()] += increase
+        if user_data["level"] < required_level:
+            await ctx.send(f"You need to be at least level {required_level} to learn '{move_name}'.")
+            return
 
-        await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You spent {cost} currency and trained your {stat}. It increased by {increase} points!")
+        # Check if the move type matches the user's quirk type
+        if move_data["type"].lower() != user_data["quirk_type"].lower() and move_data["type"] != "Physical":
+            await ctx.send(f"Your quirk type doesn't match the move type. You can't learn '{move_name}'.")
+            return
+
+        # Training minigame
+        await ctx.send(f"Training to learn '{move_name}'! React with 🎯 when you see it!")
+        await asyncio.sleep(random.uniform(2, 5))
+        train_msg = await ctx.send("🎯")
+        
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) == '🎯'
+
+        try:
+            await self.bot.wait_for('reaction_add', timeout=2.0, check=check)
+            user_data["learned_moves"].append(move_name)
+            await self.config.user(ctx.author).set(user_data)
+            await ctx.send(f"Congratulations! You've learned the move '{move_name}'!")
+        except asyncio.TimeoutError:
+            await ctx.send("Training failed. You weren't quick enough. Try again!")
 
     @mha.command(name="quests", aliases=["missions", "tasks"])
     async def show_quests(self, ctx):
