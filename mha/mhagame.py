@@ -20,6 +20,7 @@ class MHAGame(commands.Cog):
         default_user = {
             "name": "",
             "quirk": "",
+            "quirk_type": None,
             "alignment": "",  # "Hero" or "Villain"
             "level": 1,
             "exp": 0,
@@ -28,7 +29,7 @@ class MHAGame(commands.Cog):
             "attack": 10,
             "defense": 5,
             "speed": 5,
-            "moves": [],
+            "learned_moves": ["Punch", "Kick", "Dodge"],  # Start with basic moves
             "inventory": [],
             "currency": 0,
             "created_at": None,
@@ -100,6 +101,49 @@ class MHAGame(commands.Cog):
             "Train New Heroes": {"description": "Help train a group of aspiring heroes.", "reward": 80, "exp": 30},
             "Investigate Mystery": {"description": "Solve a mysterious occurrence in the city.", "reward": 120, "exp": 50}
         }
+        
+    async def check_level_up(self, ctx, user_data):
+        exp_needed = user_data["level"] * 100
+        while user_data["exp"] >= exp_needed:
+            user_data["level"] += 1
+            user_data["exp"] -= exp_needed
+            user_data["max_hp"] += 10
+            user_data["hp"] = user_data["max_hp"]
+            user_data["attack"] += 2
+            user_data["defense"] += 2
+            user_data["speed"] += 2
+            exp_needed = user_data["level"] * 100
+            await ctx.send(f"Congratulations! You've leveled up to level {user_data['level']}!")
+            
+            # Check for new moves to learn
+            await self.check_new_moves(ctx, user_data)
+
+        await self.config.user(ctx.author).set(user_data)
+
+    async def check_new_moves(self, ctx, user_data):
+        level = user_data["level"]
+        quirk_type = user_data["quirk_type"]
+        
+        new_moves = []
+        
+        # Check for level-based moves
+        if level == 5:
+            new_moves.append("Mega Punch")
+        elif level == 10:
+            new_moves.append("Hyper Beam")
+        
+        # Check for quirk-specific moves
+        if quirk_type:
+            quirk_moves = [move for move, data in self.moves.items() if data["type"].lower() == quirk_type.lower()]
+            new_moves.extend(quirk_moves[:min(level // 3, len(quirk_moves))])  # Learn a quirk move every 3 levels
+        
+        # Add new moves to learned moves
+        for move in new_moves:
+            if move not in user_data["learned_moves"]:
+                user_data["learned_moves"].append(move)
+                await ctx.send(f"🎉 You learned a new move: {move}!")
+        
+        await self.config.user(ctx.author).set(user_data)
 
     async def event_loop(self):
         while True:
@@ -150,7 +194,7 @@ class MHAGame(commands.Cog):
         """My Hero Academia game commands"""
 
 
-    @mha.command(name="begin", aliases=["start"])
+    @@commands.command(name="begin", aliases=["start"])
     async def begin_journey(self, ctx, name: str, alignment: str):
         """Begin your hero/villain journey"""
         user_data = await self.config.user(ctx.author).all()
@@ -163,13 +207,18 @@ class MHAGame(commands.Cog):
             return
 
         quirk = await self.generate_quirk()
+        quirk_type = quirk.split('(')[1].split(')')[0]  # Extract quirk type
         user_data["name"] = name
         user_data["quirk"] = quirk
+        user_data["quirk_type"] = quirk_type
         user_data["alignment"] = alignment.capitalize()
         user_data["created_at"] = ctx.message.created_at.isoformat()
         
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"Welcome, {name}! Your journey as a {alignment} begins. Your quirk is: {quirk}")
+        
+        # Check for initial quirk-specific moves
+        await self.check_new_moves(ctx, user_data)
         
     async def generate_profile_card(self, user_data, user):
         # Open the template image
@@ -239,6 +288,41 @@ class MHAGame(commands.Cog):
         buffer.seek(0)
 
         return buffer
+    
+    @commands.command(name="moves", aliases=["techniques"])
+    async def show_moves(self, ctx):
+        """Show your learned moves"""
+        user_data = await self.config.user(ctx.author).all()
+        moves = user_data["learned_moves"]
+        
+        embed = discord.Embed(title=f"{ctx.author.name}'s Moves", color=discord.Color.blue())
+        for move in moves:
+            move_data = self.moves.get(move, {})
+            description = f"Power: {move_data.get('power', 'N/A')}, Accuracy: {move_data.get('accuracy', 'N/A')}%"
+            if 'effect' in move_data:
+                description += f", Effect: {move_data['effect']}"
+            embed.add_field(name=move, value=description, inline=False)
+        
+        await ctx.send(embed=embed)
+
+    async def get_player_move(self, ctx, moves, move_msg):
+        # Use the player's learned moves instead of all moves
+        user_data = await self.config.user(ctx.author).all()
+        learned_moves = user_data["learned_moves"]
+        available_moves = [move for move in learned_moves if move in moves]
+        
+        move_embed = discord.Embed(title="Choose your move", description="\n".join(available_moves), color=discord.Color.blue())
+        await move_msg.edit(embed=move_embed)
+
+        def check(m):
+            return m.author == ctx.author and m.content.lower() in [move.lower() for move in available_moves]
+        
+        try:
+            move_choice = await self.bot.wait_for("message", check=check, timeout=30.0)
+            await move_choice.delete()
+            return move_choice.content
+        except asyncio.TimeoutError:
+            return random.choice(available_moves)
 
     @mha.command(name="profile", aliases=["stats", "info"])
     async def show_profile(self, ctx):
@@ -287,7 +371,7 @@ class MHAGame(commands.Cog):
         battle_embed.add_field(name=enemy['name'], value=f"HP: {enemy['hp']}/{enemy['max_hp']}", inline=True)
         battle_msg = await ctx.send(embed=battle_embed)
 
-        player_moves = await self.get_quirk_moves(player["quirk"])
+        player_moves = player['learned_moves']
         move_embed = discord.Embed(title="Choose your move", description="\n".join(player_moves), color=discord.Color.blue())
         move_msg = await ctx.send(embed=move_embed)
 
