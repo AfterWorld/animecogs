@@ -470,7 +470,6 @@ class MHAGame(commands.Cog):
     @checks.is_owner()
     async def mha_admin(self, ctx):
         """MHA game admin commands"""
-        await ctx.send_help(ctx.command)
 
     @mha_admin.command(name="wipe")
     async def wipe_user_data(self, ctx, user: discord.Member):
