@@ -171,71 +171,70 @@ class MHAGame(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
         await ctx.send(f"Welcome, {name}! Your journey as a {alignment} begins. Your quirk is: {quirk}")
         
-    
-async def generate_profile_card(self, user_data, user):
-    # Open the template image
-    img = Image.open("/home/adam/photos/mhaid.png")
-    draw = ImageDraw.Draw(img)
-    
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-    except IOError:
-        font = ImageFont.load_default()
+    async def generate_profile_card(self, user_data, user):
+        # Open the template image
+        img = Image.open("/home/adam/photos/mhaid.png")
+        draw = ImageDraw.Draw(img)
+        
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+        except IOError:
+            font = ImageFont.load_default()
 
-    # Add user avatar (now supports GIFs)
-    if user.avatar:
-        avatar_url = user.avatar.url
-        async with aiohttp.ClientSession() as session:
-            async with session.get(str(avatar_url)) as resp:
-                if resp.status == 200:
-                    avatar_data = await resp.read()
-                    avatar_image = Image.open(BytesIO(avatar_data))
-                    
-                    # Handle GIF avatars
-                    if getattr(avatar_image, "is_animated", False):
-                        frames = []
-                        for frame in ImageSequence.Iterator(avatar_image):
-                            frame = frame.copy()
-                            frame = frame.resize((350, 400), Image.Resampling.LANCZOS)
-                            frame_img = img.copy()
-                            frame_img.paste(frame, (50, 200))
-                            frames.append(frame_img)
-                        img = frames[0]  # Use the first frame for static display
-                    else:
-                        avatar_image = avatar_image.resize((350, 400), Image.Resampling.LANCZOS)
-                        img.paste(avatar_image, (50, 200))
+        # Add user avatar (now supports GIFs)
+        if user.avatar:
+            avatar_url = user.avatar.url
+            async with aiohttp.ClientSession() as session:
+                async with session.get(str(avatar_url)) as resp:
+                    if resp.status == 200:
+                        avatar_data = await resp.read()
+                        avatar_image = Image.open(BytesIO(avatar_data))
+                        
+                        # Handle GIF avatars
+                        if getattr(avatar_image, "is_animated", False):
+                            frames = []
+                            for frame in ImageSequence.Iterator(avatar_image):
+                                frame = frame.copy()
+                                frame = frame.resize((350, 400), Image.Resampling.LANCZOS)
+                                frame_img = img.copy()
+                                frame_img.paste(frame, (50, 200))
+                                frames.append(frame_img)
+                            img = frames[0]  # Use the first frame for static display
+                        else:
+                            avatar_image = avatar_image.resize((350, 400), Image.Resampling.LANCZOS)
+                            img.paste(avatar_image, (50, 200))
 
-    # Generate random attendance number
-    attend_number = random.randint(10000, 99999)
+        # Generate random attendance number
+        attend_number = random.randint(10000, 99999)
 
-    # Add text to the image
-    draw.text((450, 220), f"Name: {user_data['name']}", font=font, fill=(0, 0, 0))
-    
-    created_at = datetime.fromisoformat(user_data["created_at"])
-    draw.text((450, 260), f"Date of Birth: {created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
-    
-    quirk_text = f"Quirk: {user_data['quirk']}"
-    lines = textwrap.wrap(quirk_text, width=40)  # Adjust width as needed
-    y_text = 300
-    for line in lines:
-        draw.text((450, y_text), line, font=font, fill=(0, 0, 0))
-        y_text += 30  # Adjust line spacing as needed
+        # Add text to the image
+        draw.text((450, 220), f"Name: {user_data['name']}", font=font, fill=(0, 0, 0))
+        
+        created_at = datetime.fromisoformat(user_data["created_at"])
+        draw.text((450, 260), f"Date of Birth: {created_at.strftime('%Y-%m-%d')}", font=font, fill=(0, 0, 0))
+        
+        quirk_text = f"Quirk: {user_data['quirk']}"
+        lines = textwrap.wrap(quirk_text, width=40)  # Adjust width as needed
+        y_text = 300
+        for line in lines:
+            draw.text((450, y_text), line, font=font, fill=(0, 0, 0))
+            y_text += 30  # Adjust line spacing as needed
 
-    current_year = datetime.now().year
-    draw.text((450, 400), f"Year: {current_year}", font=font, fill=(0, 0, 0))
-    
-    draw.text((450, 440), "Department: Year 1", font=font, fill=(0, 0, 0))  # Default to Year 1
-    draw.text((450, 480), f"Attend Number No.: {attend_number}", font=font, fill=(0, 0, 0))
+        current_year = datetime.now().year
+        draw.text((450, 400), f"Year: {current_year}", font=font, fill=(0, 0, 0))
+        
+        draw.text((450, 440), "Department: Year 1", font=font, fill=(0, 0, 0))  # Default to Year 1
+        draw.text((450, 480), f"Attend Number No.: {attend_number}", font=font, fill=(0, 0, 0))
 
-    # Save the image to a bytes buffer
-    buffer = io.BytesIO()
-    if isinstance(img, list):  # If it's a GIF
-        img[0].save(buffer, format="GIF", save_all=True, append_images=img[1:], loop=0, duration=100)
-    else:
-        img.save(buffer, format="PNG")
-    buffer.seek(0)
+        # Save the image to a bytes buffer
+        buffer = io.BytesIO()
+        if isinstance(img, list):  # If it's a GIF
+            img[0].save(buffer, format="GIF", save_all=True, append_images=img[1:], loop=0, duration=100)
+        else:
+            img.save(buffer, format="PNG")
+        buffer.seek(0)
 
-    return buffer
+        return buffer
 
     @mha.command(name="profile", aliases=["stats", "info"])
     async def show_profile(self, ctx):
