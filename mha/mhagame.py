@@ -225,7 +225,7 @@ class MHAGame(commands.Cog):
         # Quirk with smaller font and word wrap
         quirk_text = f"{user_data['quirk']}"
         lines = textwrap.wrap(quirk_text, width=50)  # Adjust width as needed
-        y_text = 480
+        y_text = 475
         for line in lines:
             draw.text((450, y_text), line, font=small_font, fill=(0, 0, 0))
             y_text += 25  # Adjust line spacing as needed
