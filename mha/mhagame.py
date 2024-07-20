@@ -478,7 +478,7 @@ class MHAGame(commands.Cog):
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
         
-    @mha.command(name="pvp", aliases=["pvp"])
+    @mha.command(name="pvp", aliases=["fight"])
     async def pvp_battle(self, ctx, opponent: discord.Member):
         """Challenge another player to a PvP battle"""
         if opponent == ctx.author:
