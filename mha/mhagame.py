@@ -99,8 +99,6 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
 
     @mha.command(name="begin")
     async def begin_journey(self, ctx, name: str, alignment: str):
