@@ -163,7 +163,7 @@ class MHAGame(commands.Cog):
         ]
         self.current_event = random.choice(events)
         self.event_participants.clear()
-        channel = self.bot.get_channel(YOUR_ANNOUNCEMENT_CHANNEL_ID)  # Replace with your channel ID
+        channel = self.bot.get_channel(1258644179928748122)  # Replace with your channel ID
         await channel.send(f"A new event has started: {self.current_event}! Use the `mha join_event` command to participate!")
 
     async def generate_quirk(self):
@@ -604,21 +604,6 @@ class MHAGame(commands.Cog):
         await ctx.send(f"The {self.current_event} has ended. Rewards have been distributed to all participants.")
         self.current_event = None
         self.event_participants.clear()
-
-    async def check_level_up(self, ctx, user_data):
-        exp_needed = user_data["level"] * 100
-        while user_data["exp"] >= exp_needed:
-            user_data["level"] += 1
-            user_data["exp"] -= exp_needed
-            user_data["max_hp"] += 10
-            user_data["hp"] = user_data["max_hp"]
-            user_data["attack"] += 2
-            user_data["defense"] += 2
-            user_data["speed"] += 2
-            exp_needed = user_data["level"] * 100
-            await ctx.send(f"Congratulations! You've leveled up to level {user_data['level']}!")
-
-        await self.config.user(ctx.author).set(user_data)
 
     def generate_enemy(self, player_level):
         enemy_types = ["Villain", "Rogue Hero", "Wild Beast", "Robot", "Alien"]
