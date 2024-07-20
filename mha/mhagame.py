@@ -174,7 +174,13 @@ class MHAGame(commands.Cog):
         # Open the template image
         img = Image.open("/home/adam/photos/mhaid.png")
         draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("path/to/your/font.ttf", 24)
+        
+        # Use a default font that should be available on most systems
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+        except IOError:
+            # Fallback to default font if the specified font is not available
+            font = ImageFont.load_default()
 
         # Add user avatar
         if user.avatar:
