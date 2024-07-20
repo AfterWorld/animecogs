@@ -198,7 +198,7 @@ class MHAGame(commands.Cog):
                         
                         # Paste the avatar onto the profile card
                         # Adjust these coordinates to match your template
-                        avatar_position = (80, 200)  # Example position, adjust as needed
+                        avatar_position = (60, 200)  # Example position, adjust as needed
                         img.paste(avatar_image, avatar_position)
 
         # Add text to the image
