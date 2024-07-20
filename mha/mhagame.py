@@ -474,40 +474,40 @@ class MHAGame(commands.Cog):
         }
 
     def apply_effect(self, attacker, defender, effect):
-    if effect == "defense_up":
-        attacker["defense"] += 2
-        return f"{attacker['name']}'s defense increased!"
-    elif effect == "speed_up":
-        attacker["speed"] += 2
-        return f"{attacker['name']}'s speed increased!"
-    elif effect == "attack_up":
-        attacker["attack"] += 2
-        return f"{attacker['name']}'s attack increased!"
-    elif effect == "heal":
-        heal_amount = min(20, attacker["max_hp"] - attacker["hp"])
-        attacker["hp"] += heal_amount
-        return f"{attacker['name']} healed for {heal_amount} HP!"
-    elif effect == "poison":
-        defender["status"] = "poisoned"
-        return f"{defender['name']} was poisoned!"
-    elif effect == "stun":
-        defender["status"] = "stunned"
-        return f"{defender['name']} was stunned!"
-    elif effect == "burn":
-        defender["status"] = "burned"
-        return f"{defender['name']} was burned!"
-    elif effect == "freeze":
-        defender["status"] = "frozen"
-        return f"{defender['name']} was frozen!"
-    elif effect == "confusion":
-        defender["status"] = "confused"
-        return f"{defender['name']} became confused!"
-    elif effect == "drain":
-        drain_amount = min(20, defender["hp"])
-        defender["hp"] -= drain_amount
-        attacker["hp"] = min(attacker["max_hp"], attacker["hp"] + drain_amount)
-        return f"{attacker['name']} drained {drain_amount} HP from {defender['name']}!"
-    return ""
+        if effect == "defense_up":
+            attacker["defense"] += 2
+            return f"{attacker['name']}'s defense increased!"
+        elif effect == "speed_up":
+            attacker["speed"] += 2
+            return f"{attacker['name']}'s speed increased!"
+        elif effect == "attack_up":
+            attacker["attack"] += 2
+            return f"{attacker['name']}'s attack increased!"
+        elif effect == "heal":
+            heal_amount = min(20, attacker["max_hp"] - attacker["hp"])
+            attacker["hp"] += heal_amount
+            return f"{attacker['name']} healed for {heal_amount} HP!"
+        elif effect == "poison":
+            defender["status"] = "poisoned"
+            return f"{defender['name']} was poisoned!"
+        elif effect == "stun":
+            defender["status"] = "stunned"
+            return f"{defender['name']} was stunned!"
+        elif effect == "burn":
+            defender["status"] = "burned"
+            return f"{defender['name']} was burned!"
+        elif effect == "freeze":
+            defender["status"] = "frozen"
+            return f"{defender['name']} was frozen!"
+        elif effect == "confusion":
+            defender["status"] = "confused"
+            return f"{defender['name']} became confused!"
+        elif effect == "drain":
+            drain_amount = min(20, defender["hp"])
+            defender["hp"] -= drain_amount
+            attacker["hp"] = min(attacker["max_hp"], attacker["hp"] + drain_amount)
+            return f"{attacker['name']} drained {drain_amount} HP from {defender['name']}!"
+        return ""
 
     @commands.group(name="mhaadmin")
     @checks.is_owner()
