@@ -147,7 +147,6 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
-        await self.send_mha_help(ctx)
 
 
     @mha.command(name="begin", aliases=["start"])
