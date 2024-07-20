@@ -2,9 +2,11 @@ import discord
 from redbot.core import commands, Config, checks
 import random
 import asyncio
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 from datetime import datetime
+import aiohttp
+from io import BytesIO
 
 class MHAGame(commands.Cog):
     def __init__(self, bot):
@@ -99,8 +101,9 @@ class MHAGame(commands.Cog):
     @commands.group(name="mha")
     async def mha(self, ctx):
         """My Hero Academia game commands"""
+        if ctx.invoked_subcommand is None:
             await self.send_mha_help(ctx)
-            
+
     async def send_mha_help(self, ctx):
         embed = discord.Embed(title="My Hero Academia Game Help", 
                               description="Here are all the commands for the MHA game:",
