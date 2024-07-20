@@ -39,59 +39,82 @@ class MHAGame(commands.Cog):
         self.config.register_user(**default_user)
         
         self.moves = {
-            # Basic Physical Moves
-            "Punch": {"power": 40, "accuracy": 100, "type": "Physical"},
-            "Kick": {"power": 60, "accuracy": 90, "type": "Physical"},
-            "Tackle": {"power": 50, "accuracy": 95, "type": "Physical"},
+            # Physical Moves (can be learned by anyone)
+            "Punch": {"power": 40, "accuracy": 100, "type": "Physical", "required_level": 1},
+            "Kick": {"power": 60, "accuracy": 90, "type": "Physical", "required_level": 1},
+            "Tackle": {"power": 50, "accuracy": 95, "type": "Physical", "required_level": 1},
+            "Mega Punch": {"power": 80, "accuracy": 85, "type": "Physical", "required_level": 10},
+            "Body Slam": {"power": 85, "accuracy": 80, "type": "Physical", "required_level": 15},
             
             # Fire Moves
-            "Fire Blast": {"power": 80, "accuracy": 85, "type": "Fire"},
-            "Flame Burst": {"power": 70, "accuracy": 90, "type": "Fire", "effect": "burn"},
-            "Inferno": {"power": 100, "accuracy": 75, "type": "Fire", "effect": "burn"},
+            "Ember": {"power": 40, "accuracy": 100, "type": "Fire", "required_level": 1},
+            "Fire Blast": {"power": 80, "accuracy": 85, "type": "Fire", "required_level": 10},
+            "Flame Burst": {"power": 70, "accuracy": 90, "type": "Fire", "effect": "burn", "required_level": 5},
+            "Inferno": {"power": 100, "accuracy": 75, "type": "Fire", "effect": "burn", "required_level": 20},
+            "Heat Wave": {"power": 95, "accuracy": 80, "type": "Fire", "required_level": 15},
             
             # Water Moves
-            "Water Jet": {"power": 75, "accuracy": 90, "type": "Water"},
-            "Hydro Pump": {"power": 90, "accuracy": 80, "type": "Water"},
-            "Aqua Ring": {"power": 0, "accuracy": 100, "type": "Water", "effect": "heal"},
+            "Water Gun": {"power": 40, "accuracy": 100, "type": "Water", "required_level": 1},
+            "Water Jet": {"power": 60, "accuracy": 95, "type": "Water", "required_level": 5},
+            "Hydro Pump": {"power": 90, "accuracy": 80, "type": "Water", "required_level": 15},
+            "Aqua Ring": {"power": 0, "accuracy": 100, "type": "Water", "effect": "heal", "required_level": 10},
+            "Whirlpool": {"power": 70, "accuracy": 85, "type": "Water", "effect": "trap", "required_level": 20},
             
             # Earth Moves
-            "Earth Wall": {"power": 0, "accuracy": 100, "type": "Earth", "effect": "defense_up"},
-            "Rock Throw": {"power": 65, "accuracy": 90, "type": "Earth"},
-            "Earthquake": {"power": 85, "accuracy": 85, "type": "Earth"},
+            "Rock Throw": {"power": 50, "accuracy": 90, "type": "Earth", "required_level": 1},
+            "Earth Wall": {"power": 0, "accuracy": 100, "type": "Earth", "effect": "defense_up", "required_level": 5},
+            "Earthquake": {"power": 100, "accuracy": 85, "type": "Earth", "required_level": 20},
+            "Mud Shot": {"power": 55, "accuracy": 95, "type": "Earth", "effect": "speed_down", "required_level": 10},
+            "Rock Slide": {"power": 75, "accuracy": 90, "type": "Earth", "required_level": 15},
             
             # Air Moves
-            "Air Slice": {"power": 70, "accuracy": 95, "type": "Air"},
-            "Tornado": {"power": 80, "accuracy": 85, "type": "Air", "effect": "confusion"},
-            "Gust": {"power": 55, "accuracy": 100, "type": "Air", "effect": "speed_up"},
+            "Gust": {"power": 40, "accuracy": 100, "type": "Air", "required_level": 1},
+            "Air Slice": {"power": 70, "accuracy": 95, "type": "Air", "required_level": 10},
+            "Tornado": {"power": 80, "accuracy": 85, "type": "Air", "effect": "confusion", "required_level": 15},
+            "Cyclone": {"power": 90, "accuracy": 80, "type": "Air", "required_level": 20},
+            "Tailwind": {"power": 0, "accuracy": 100, "type": "Air", "effect": "speed_up", "required_level": 5},
             
             # Electric Moves
-            "Thunderbolt": {"power": 75, "accuracy": 90, "type": "Electric", "effect": "stun"},
-            "Static Shock": {"power": 60, "accuracy": 95, "type": "Electric", "effect": "speed_up"},
+            "Spark": {"power": 40, "accuracy": 100, "type": "Electric", "required_level": 1},
+            "Thunderbolt": {"power": 75, "accuracy": 90, "type": "Electric", "effect": "stun", "required_level": 10},
+            "Static Shock": {"power": 60, "accuracy": 95, "type": "Electric", "effect": "speed_up", "required_level": 5},
+            "Thunder": {"power": 100, "accuracy": 70, "type": "Electric", "effect": "stun", "required_level": 20},
+            "Charge Beam": {"power": 50, "accuracy": 90, "type": "Electric", "effect": "attack_up", "required_level": 15},
             
             # Ice Moves
-            "Ice Beam": {"power": 70, "accuracy": 90, "type": "Ice", "effect": "freeze"},
-            "Blizzard": {"power": 95, "accuracy": 75, "type": "Ice", "effect": "freeze"},
+            "Ice Shard": {"power": 40, "accuracy": 100, "type": "Ice", "required_level": 1},
+            "Ice Beam": {"power": 70, "accuracy": 90, "type": "Ice", "effect": "freeze", "required_level": 10},
+            "Blizzard": {"power": 95, "accuracy": 75, "type": "Ice", "effect": "freeze", "required_level": 20},
+            "Frost Breath": {"power": 60, "accuracy": 95, "type": "Ice", "required_level": 5},
+            "Icy Wind": {"power": 55, "accuracy": 95, "type": "Ice", "effect": "speed_down", "required_level": 15},
             
             # Psychic Moves
-            "Psychic Blast": {"power": 80, "accuracy": 85, "type": "Psychic", "effect": "confusion"},
-            "Mind Control": {"power": 0, "accuracy": 70, "type": "Psychic", "effect": "stun"},
+            "Confusion": {"power": 50, "accuracy": 100, "type": "Psychic", "effect": "confusion", "required_level": 1},
+            "Psychic Blast": {"power": 80, "accuracy": 85, "type": "Psychic", "effect": "confusion", "required_level": 15},
+            "Mind Control": {"power": 0, "accuracy": 70, "type": "Psychic", "effect": "stun", "required_level": 10},
+            "Telekinesis": {"power": 0, "accuracy": 80, "type": "Psychic", "effect": "levitate", "required_level": 5},
+            "Psybeam": {"power": 65, "accuracy": 90, "type": "Psychic", "required_level": 20},
             
             # Dark Moves
-            "Shadow Ball": {"power": 75, "accuracy": 90, "type": "Dark"},
-            "Dark Pulse": {"power": 85, "accuracy": 85, "type": "Dark", "effect": "confusion"},
+            "Shadow Ball": {"power": 75, "accuracy": 90, "type": "Dark", "required_level": 10},
+            "Dark Pulse": {"power": 85, "accuracy": 85, "type": "Dark", "effect": "confusion", "required_level": 15},
+            "Night Slash": {"power": 70, "accuracy": 95, "type": "Dark", "required_level": 5},
+            "Shadow Sneak": {"power": 40, "accuracy": 100, "type": "Dark", "required_level": 1},
+            "Dark Void": {"power": 0, "accuracy": 75, "type": "Dark", "effect": "sleep", "required_level": 20},
             
             # Light Moves
-            "Dazzling Gleam": {"power": 70, "accuracy": 95, "type": "Light"},
-            "Solar Beam": {"power": 100, "accuracy": 80, "type": "Light"},
+            "Flash": {"power": 0, "accuracy": 100, "type": "Light", "effect": "accuracy_down", "required_level": 1},
+            "Dazzling Gleam": {"power": 70, "accuracy": 95, "type": "Light", "required_level": 10},
+            "Solar Beam": {"power": 100, "accuracy": 80, "type": "Light", "required_level": 20},
+            "Photon Geyser": {"power": 90, "accuracy": 85, "type": "Light", "required_level": 15},
+            "Gleaming Burst": {"power": 60, "accuracy": 95, "type": "Light", "effect": "blind", "required_level": 5},
             
             # Poison Moves
-            "Toxic": {"power": 0, "accuracy": 85, "type": "Poison", "effect": "poison"},
-            "Sludge Bomb": {"power": 75, "accuracy": 90, "type": "Poison", "effect": "poison"},
-            
-            # Special Moves
-            "Drain Life": {"power": 60, "accuracy": 90, "type": "Special", "effect": "drain"},
-            "Mega Punch": {"power": 90, "accuracy": 80, "type": "Physical"},
-            "Hyper Beam": {"power": 120, "accuracy": 70, "type": "Special"},
+            "Poison Sting": {"power": 40, "accuracy": 100, "type": "Poison", "effect": "poison", "required_level": 1},
+            "Toxic": {"power": 0, "accuracy": 85, "type": "Poison", "effect": "badly_poison", "required_level": 10},
+            "Sludge Bomb": {"power": 75, "accuracy": 90, "type": "Poison", "effect": "poison", "required_level": 15},
+            "Acid Spray": {"power": 55, "accuracy": 95, "type": "Poison", "effect": "defense_down", "required_level": 5},
+            "Venom Drench": {"power": 0, "accuracy": 100, "type": "Poison", "effect": "multi_stat_down", "required_level": 20},
         }
         
         self.quests = {
@@ -454,7 +477,7 @@ class MHAGame(commands.Cog):
         except asyncio.TimeoutError:
             return random.choice(moves)  # Choose a random move if the player doesn't respond in time
 
-    @mha.command(name="battle", aliases=["duel"])
+    @mha.command(name="battle", aliases=["fight", "duel"])
     async def start_battle(self, ctx):
         """Start a battle against a villain"""
         user_data = await self.config.user(ctx.author).all()
@@ -478,7 +501,7 @@ class MHAGame(commands.Cog):
         user_data["hp"] = user_data["max_hp"]  # Restore HP after battle
         await self.config.user(ctx.author).set(user_data)
         
-    @mha.command(name="pvp", aliases=["fight"])
+    @mha.command(name="pvp", aliases=["pvp"])
     async def pvp_battle(self, ctx, opponent: discord.Member):
         """Challenge another player to a PvP battle"""
         if opponent == ctx.author:
@@ -597,8 +620,8 @@ class MHAGame(commands.Cog):
             await ctx.send(f"You need to be at least level {required_level} to learn '{move_name}'.")
             return
 
-        # Check if the move type matches the user's quirk type
-        if move_data["type"].lower() != user_data["quirk_type"].lower() and move_data["type"] != "Physical":
+        # Check if the move type matches the user's quirk type or is Physical
+        if move_data["type"] != "Physical" and move_data["type"].lower() != user_data["quirk_type"].lower():
             await ctx.send(f"Your quirk type doesn't match the move type. You can't learn '{move_name}'.")
             return
 
