@@ -220,7 +220,7 @@ class MHAGame(commands.Cog):
         draw.text((450, 380), user_data['name'], font=main_font, fill=(0, 0, 0))
 
         created_at = datetime.fromisoformat(user_data["created_at"])
-        draw.text((450, 340), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
+        draw.text((450, 300), f"{created_at.strftime('%Y-%m-%d')}", font=main_font, fill=(0, 0, 0))
 
         # Quirk with smaller font and word wrap
         quirk_text = f"{user_data['quirk']}"
